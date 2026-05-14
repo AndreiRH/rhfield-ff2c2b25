@@ -285,7 +285,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     const photoPath = r.photo_path ? remapStoragePath(r.photo_path) : null;
     const filePath = r.file_path ? remapStoragePath(r.file_path) : null;
     if (r.photo_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.photo_path, newPath: photoPath!, bucket: "photos", rowId: id, field: "photo_path" });
-    if (r.file_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.file_path, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
+    if (r.file_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.file_path, oldFileName: r.file_name, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
     return {
       id,
       equipment_id: peMap.get(r.equipment_id),
