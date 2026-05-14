@@ -13,7 +13,7 @@ import { ImportProjectButton } from "@/components/ImportProjectButton";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 
 function ProjectsPage() {
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
