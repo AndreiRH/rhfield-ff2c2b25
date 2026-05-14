@@ -167,10 +167,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
           <Link
             to="/p/$projectId/lines/$lineNumber/equipment/$kind/pa"
             params={{ projectId, lineNumber, kind }}
-            className="flex h-24 w-24 flex-col items-center justify-center rounded-md bg-amber-500 px-2 py-2 text-center text-xs font-semibold uppercase leading-tight tracking-wide text-white shadow-sm hover:bg-amber-600"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-sky-50"
           >
-            <span>Provisional</span>
-            <span>Acceptance</span>
+            Provisional acceptance
           </Link>
         </div>
         {/* 3 chapters in one line */}
