@@ -11,7 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Pencil, Check, X, GripVertical, ChevronDown, ChevronRight,
+  Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
   StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search,
 } from "lucide-react";
 import { toast } from "sonner";
