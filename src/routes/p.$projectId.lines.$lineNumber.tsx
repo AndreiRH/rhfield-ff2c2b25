@@ -201,7 +201,7 @@ function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
             <Link
               key={w.id}
               to="/p/$projectId/lines/$lineNumber/equipment/$kind"
-              params={{ projectId, lineNumber, kind: `extra:${w.id}` }}
+              params={{ projectId, lineNumber, kind: w.id }}
               className="block"
             >
               <Card className="transition hover:border-primary/40">
