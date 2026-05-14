@@ -331,7 +331,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     const id = newId();
     const bucket: "photos" | "files" = r.kind === "photo" ? "photos" : "files";
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "pa_attachments", oldPath: r.storage_path, newPath, bucket, rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "pa_attachments", oldPath: r.storage_path, oldFileName: r.file_name, newPath, bucket, rowId: id, field: "storage_path" });
     return {
       id,
       folder_id: folderMap.get(r.folder_id),
