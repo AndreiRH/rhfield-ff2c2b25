@@ -161,8 +161,6 @@ function LineOverview() {
               works={extraWorks}
               canEdit={canEdit}
               onChange={invalidate}
-              projectId={projectId}
-              lineNumber={lineNumber}
             />
           </>
         )}
