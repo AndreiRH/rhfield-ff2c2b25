@@ -104,7 +104,7 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
               <ul className="space-y-2">
                 {notes.map((n) => (
                   <NoteRow key={n.id} note={n} canEdit={canEdit}
-                    onUpdate={(p) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
+                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
                 ))}
               </ul>
             </SortableContext>
