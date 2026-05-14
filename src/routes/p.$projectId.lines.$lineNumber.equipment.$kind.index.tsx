@@ -349,9 +349,10 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <MiniStat label="Assembly" pct={mech} />
-          <MiniStat label="Electrical" pct={wiring} />
+          <MiniStat label="Wiring" pct={wiring} />
+          <MiniStat label="Cold comm." pct={cold} />
         </div>
       </CardContent>
     </Card>
