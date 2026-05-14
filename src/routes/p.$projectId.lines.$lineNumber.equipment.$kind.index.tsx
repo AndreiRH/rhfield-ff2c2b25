@@ -296,7 +296,6 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
         <div className="mb-3 flex items-center justify-between gap-2">
           {canEdit && !editing && (
             <button
-              ref={undefined}
               type="button"
               className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
               title="Drag to reorder"
