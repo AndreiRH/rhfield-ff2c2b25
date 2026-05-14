@@ -28,14 +28,16 @@ import { CSS } from "@dnd-kit/utilities";
 
 // Renders the list of components inside an equipment_group (or component_type).
 // Each component is a strongly-styled card with its own checklist + notes/files.
-export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group" }: any) {
+export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [search, setSearch] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const usingExternal = typeof externalSearch === "string";
+  const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(components.map((c: any) => c.id)));
 
   const q = search.trim().toLowerCase();
@@ -92,7 +94,9 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
+        {!hideTitle ? (
+          <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
+        ) : <span />}
         <div className="flex items-center gap-2">
           {components.length > 0 && (
             <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
@@ -111,12 +115,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         </div>
       </div>
 
-      {components.length > 1 && (
+      {!usingExternal && components.length > 1 && (
         <div className="relative max-w-md">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={internalSearch}
+            onChange={(e) => setInternalSearch(e.target.value)}
             placeholder="Search components by title…"
             className="h-8 pl-7 text-sm"
           />
