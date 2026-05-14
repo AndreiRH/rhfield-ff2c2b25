@@ -303,7 +303,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     };
   });
 
-  const equipment_photos = epRows.filter((r) => peMap.has(r.equipment_id)).map((r) => {
+  const equipment_photos = epRows.filter((r) => livePeIds.has(r.equipment_id)).map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
     if (r.storage_path) mediaJobs.push({ table: "equipment_photos", oldPath: r.storage_path, newPath, bucket: "photos", rowId: id, field: "storage_path" });
