@@ -437,15 +437,27 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   if (mediaJobs.length > 0) {
     report({ phase: "media", message: "Uploading photos & files…", current: 0, total: mediaJobs.length });
 
-    // Try multiple plausible locations inside the ZIP for each oldPath
-    const findInZip = (oldPath: string, bucket: "photos" | "files"): JSZip.JSZipObject | null => {
-      const fname = oldPath.split("/").pop()!;
-      // Walk all files in the bucket-letter top folder
+    // Try multiple plausible locations inside the ZIP for each oldPath.
+    // Prefer the storage-path basename (current export format), but fall back
+    // to the original file_name and a sanitized variant of it (legacy export).
+    const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
+    const findInZip = (oldPath: string, oldFileName: string | null | undefined, bucket: "photos" | "files"): JSZip.JSZipObject | null => {
+      const candidates = new Set<string>();
+      const baseFromPath = oldPath.split("/").pop();
+      if (baseFromPath) candidates.add(baseFromPath);
+      if (oldFileName) {
+        candidates.add(oldFileName);
+        candidates.add(sanitize(oldFileName));
+      }
       const prefix = bucket === "photos" ? "photos/" : "files/";
       for (const k of Object.keys(zip.files)) {
+        if (zip.files[k].dir) continue;
         const rel = root && k.startsWith(root) ? k.slice(root.length) : k;
-        if (rel.startsWith(prefix) && rel.endsWith("/" + fname)) return zip.files[k];
-        if (rel.startsWith(prefix) && rel.endsWith(fname) && !zip.files[k].dir) return zip.files[k];
+        if (!rel.startsWith(prefix)) continue;
+        const relBase = rel.split("/").pop() ?? "";
+        for (const c of candidates) {
+          if (relBase === c) return zip.files[k];
+        }
       }
       return null;
     };
@@ -456,7 +468,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
         if (signal?.aborted) throw new Error("Import cancelled");
         const idx = i++;
         const job = mediaJobs[idx];
-        const entry = findInZip(job.oldPath, job.bucket);
+        const entry = findInZip(job.oldPath, job.oldFileName, job.bucket);
         if (!entry) {
           mediaMissing++;
         } else {
