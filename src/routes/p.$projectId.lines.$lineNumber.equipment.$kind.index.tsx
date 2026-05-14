@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Cog, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 import {
@@ -355,21 +355,23 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
             </div>
           ) : (
-            <Link
-              to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId"
-              params={{ projectId, lineNumber, kind, equipmentId: pe.id }}
-              className="group flex flex-1 items-center gap-2"
-            >
+            <div className="flex flex-1 items-center gap-2">
               <Cog className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold group-hover:underline">{pe.name}</h3>
+              <h3
+                onDoubleClick={() => canEdit && setEditing(true)}
+                title={canEdit ? "Double-click to rename" : undefined}
+                className={`text-lg font-semibold ${canEdit ? "cursor-text" : ""}`}
+              >{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
-              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
-            </Link>
-          )}
-          {canEdit && !editing && !deleteMode && (
-            <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
-              <Pencil className="h-4 w-4" />
-            </Button>
+              <Link
+                to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId"
+                params={{ projectId, lineNumber, kind, equipmentId: pe.id }}
+                aria-label="Open"
+                className="group ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           )}
         </div>
         <div className="grid grid-cols-3 gap-2">
