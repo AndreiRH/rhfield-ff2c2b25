@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress } from "@/lib/progress";
+import { calcProgress, equipmentProgress } from "@/lib/progress";
 import { ProgressBar, ProgressRing } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Folder, ChevronLeft } from "lucide-react";
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
+
+function lineProgress(line: any): number {
+  const peList = (line.plant_equipment ?? []).filter((p: any) => !p.deleted_at);
+  const peParts = peList.map((pe: any) => equipmentProgress(pe).overall);
+
+  const extraGroups = (line.equipment_groups ?? []).filter((eg: any) => eg.kind === "extra_work" && !eg.deleted_at);
+  const extraParts = extraGroups.map((eg: any) => {
+    const items = (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? []);
+    return calcProgress(items).pct;
+  });
+
+  const all = [...peParts, ...extraParts];
+  if (all.length === 0) return 0;
+  return Math.round(all.reduce((s, n) => s + n, 0) / all.length);
+}
 
 function ProjectDashboard() {
   const { projectId } = Route.useParams();
@@ -27,7 +42,23 @@ function ProjectDashboard() {
       if (pe) throw pe;
       const { data: lines, error: le } = await supabase
         .from("lines")
-        .select("id, number, name, equipment_groups(id, components(id, checklist_items(done, deleted_at)))")
+        .select(`
+          id, number, name,
+          plant_equipment(
+            id, deleted_at, mech_mode, mech_manual_pct,
+            equipment_groups(
+              id, chapter, deleted_at,
+              component_types(
+                id, deleted_at,
+                components(id, deleted_at, checklist_items(id, done, deleted_at))
+              )
+            )
+          ),
+          equipment_groups(
+            id, kind, deleted_at,
+            components(id, deleted_at, checklist_items(id, done, deleted_at))
+          )
+        `)
         .eq("project_id", projectId)
         .order("number");
       if (le) throw le;
@@ -37,15 +68,9 @@ function ProjectDashboard() {
 
   if (!session) return null;
 
-  const overall = (() => {
-    if (!data?.lines) return { done: 0, total: 0, pct: 0 };
-    const items = data.lines.flatMap((l: any) =>
-      (l.equipment_groups ?? []).flatMap((eg: any) =>
-        (eg.components ?? []).flatMap((c: any) => c.checklist_items ?? [])
-      )
-    );
-    return calcProgress(items);
-  })();
+  const lineProgresses = (data?.lines ?? []).map(lineProgress);
+  const overallPct = lineProgresses.length === 0 ? 0
+    : Math.round(lineProgresses.reduce((s, n) => s + n, 0) / lineProgresses.length);
 
   return (
     <div className="min-h-screen">
@@ -63,31 +88,27 @@ function ProjectDashboard() {
               <div>
                 <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</div>
                 <h1 className="mt-1 text-3xl font-semibold">{data?.project?.name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overall.done} of {overall.total} checklist items complete</p>
-                <div className="mt-4 max-w-md"><ProgressBar value={overall.pct} size="lg" /></div>
+                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
+                <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
-              <ProgressRing value={overall.pct} size={120} />
+              <ProgressRing value={overallPct} size={120} />
             </CardContent>
           </Card>
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {(data?.lines ?? []).map((l: any) => {
-            const items = (l.equipment_groups ?? []).flatMap((eg: any) =>
-              (eg.components ?? []).flatMap((c: any) => c.checklist_items ?? [])
-            );
-            const prog = calcProgress(items);
+          {(data?.lines ?? []).map((l: any, i: number) => {
+            const pct = lineProgresses[i];
             return (
               <Link key={l.id} to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber: String(l.number) }}>
                 <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="p-4">
                     <div className="flex items-baseline justify-between">
                       <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
                     </div>
                     <div className="mt-1 text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
-                    <div className="mt-3"><ProgressBar value={prog.pct} size="sm" /></div>
-                    <div className="mt-1 text-xs tabular-nums">{prog.pct}%</div>
+                    <div className="mt-3"><ProgressBar value={pct} size="sm" /></div>
                   </CardContent>
                 </Card>
               </Link>
