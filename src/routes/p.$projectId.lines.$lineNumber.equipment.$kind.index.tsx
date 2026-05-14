@@ -50,6 +50,7 @@ function PlantEquipmentList() {
             id, name, sort_order, deleted_at, mech_mode, mech_manual_pct,
             equipment_groups(
               id, chapter, deleted_at,
+              components(id, deleted_at, checklist_items(id, done, deleted_at)),
               component_types(
                 id, deleted_at,
                 components(id, deleted_at, checklist_items(id, done, deleted_at))
