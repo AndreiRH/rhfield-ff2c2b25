@@ -516,6 +516,80 @@ export type Database = {
           },
         ]
       }
+      pa_attachments: {
+        Row: {
+          file_name: string | null
+          folder_id: string
+          id: string
+          kind: string
+          sort_order: number
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name?: string | null
+          folder_id: string
+          id?: string
+          kind: string
+          sort_order?: number
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string | null
+          folder_id?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pa_attachments_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "pa_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pa_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["plant_kind"]
+          line_id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["plant_kind"]
+          line_id: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["plant_kind"]
+          line_id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pa_notes: {
         Row: {
           body: string
@@ -523,6 +597,7 @@ export type Database = {
           created_by: string | null
           file_name: string | null
           file_path: string | null
+          folder_id: string | null
           id: string
           kind: Database["public"]["Enums"]["plant_kind"]
           line_id: string
@@ -537,6 +612,7 @@ export type Database = {
           created_by?: string | null
           file_name?: string | null
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           kind: Database["public"]["Enums"]["plant_kind"]
           line_id: string
@@ -551,6 +627,7 @@ export type Database = {
           created_by?: string | null
           file_name?: string | null
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["plant_kind"]
           line_id?: string
@@ -559,7 +636,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pa_notes_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "pa_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plant_equipment: {
         Row: {
