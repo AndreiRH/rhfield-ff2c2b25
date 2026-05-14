@@ -43,6 +43,7 @@ function ProjectsPage() {
             <h1 className="text-2xl font-semibold">Projects</h1>
             <p className="text-sm text-muted-foreground">Active commissioning projects.</p>
           </div>
+          {isAdmin && <ImportProjectButton />}
         </div>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
