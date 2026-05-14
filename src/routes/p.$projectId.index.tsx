@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Folder, ChevronLeft } from "lucide-react";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
+import { ExportProjectButton } from "@/components/ExportProjectButton";
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
 
@@ -93,7 +94,10 @@ function ProjectDashboard() {
                 <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
                 <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
-              <ProjectHotCalendarButton projectId={projectId} />
+              <div className="flex flex-col items-end gap-2">
+                <ProjectHotCalendarButton projectId={projectId} />
+                <ExportProjectButton projectId={projectId} />
+              </div>
             </CardContent>
           </Card>
         )}
