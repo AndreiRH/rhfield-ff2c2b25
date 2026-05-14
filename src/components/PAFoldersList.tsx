@@ -40,6 +40,7 @@ interface Note {
   photo_path: string | null;
   file_path: string | null;
   file_name: string | null;
+  is_shared: boolean;
 }
 
 export function PAFoldersList({
