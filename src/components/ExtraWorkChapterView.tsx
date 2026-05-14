@@ -28,14 +28,16 @@ import { CSS } from "@dnd-kit/utilities";
 
 // Renders the list of components inside an equipment_group (or component_type).
 // Each component is a strongly-styled card with its own checklist + notes/files.
-export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group" }: any) {
+export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [search, setSearch] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const usingExternal = typeof externalSearch === "string";
+  const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(components.map((c: any) => c.id)));
 
   const q = search.trim().toLowerCase();
