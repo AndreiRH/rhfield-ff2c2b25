@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportProjectButton } from "@/components/ImportProjectButton";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
+import { ExportProjectButton } from "@/components/ExportProjectButton";
 
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 
@@ -66,7 +67,7 @@ function ProjectsPage() {
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-9" : ""}`}>{prog.done}/{prog.total}</span>
+                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{prog.done}/{prog.total}</span>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
                         <ProgressBar value={prog.pct} size="md" />
@@ -75,7 +76,9 @@ function ProjectsPage() {
                     </Card>
                   </Link>
                   {isAdmin && (
-                    <div className="absolute right-2 top-2">
+                    <div className="absolute right-2 top-2 flex items-center gap-1"
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                      <ExportProjectButton projectId={p.id} />
                       <DeleteProjectButton projectId={p.id} projectName={p.name} />
                     </div>
                   )}
