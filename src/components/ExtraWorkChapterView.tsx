@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search,
+  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search, Globe, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
@@ -314,9 +314,27 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           )}
 
           {(showNoteEditor || component.note) && (
-            <Textarea value={note} disabled={!canEdit}
-              onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
-              placeholder="Component note…" className="min-h-[50px] text-xs" />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Note</span>
+                {canEdit && (
+                  <button
+                    onClick={async () => {
+                      const { error } = await supabase.from("components")
+                        .update({ note_shared: !component.note_shared }).eq("id", component.id);
+                      if (error) toast.error(error.message); else onChange();
+                    }}
+                    title={component.note_shared ? "Note shared across all lines — click to make local" : "Note local to this line — click to share across all lines"}
+                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${component.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+                  >
+                    {component.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
+                  </button>
+                )}
+              </div>
+              <Textarea value={note} disabled={!canEdit}
+                onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
+                placeholder="Component note…" className="min-h-[50px] text-xs" />
+            </div>
           )}
 
           {photos.length > 0 && (

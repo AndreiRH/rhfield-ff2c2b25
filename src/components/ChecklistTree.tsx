@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X,
+  StickyNote, ListPlus, X, Globe, Lock,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -120,7 +120,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const photos = item.item_photos ?? [];
   const files = item.item_files ?? [];
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
-  const [open, setOpen] = useState(hasContent);
+  const [open, setOpen] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(!!item.note);
   const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
@@ -253,7 +253,23 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           )}
 
           {(showNoteEditor || item.note) && (
-            <div className="px-3 py-2">
+            <div className="space-y-1 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Note</span>
+                {canEdit && (
+                  <button
+                    onClick={async () => {
+                      const { error } = await supabase.from("checklist_items")
+                        .update({ note_shared: !item.note_shared }).eq("id", item.id);
+                      if (error) toast.error(error.message); else onChange();
+                    }}
+                    title={item.note_shared ? "Note shared across all lines — click to make local" : "Note local to this line — click to share across all lines"}
+                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${item.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+                  >
+                    {item.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
+                  </button>
+                )}
+              </div>
               <Textarea value={note} disabled={!canEdit}
                 onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
                 placeholder="Note…" className="min-h-[50px] text-xs" />

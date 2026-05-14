@@ -25,6 +25,7 @@ export type Database = {
           id: string
           label: string
           note: string | null
+          note_shared: boolean
           parent_item_id: string | null
           sort_order: number
           template_id: string | null
@@ -40,6 +41,7 @@ export type Database = {
           id?: string
           label: string
           note?: string | null
+          note_shared?: boolean
           parent_item_id?: string | null
           sort_order?: number
           template_id?: string | null
@@ -55,6 +57,7 @@ export type Database = {
           id?: string
           label?: string
           note?: string | null
+          note_shared?: boolean
           parent_item_id?: string | null
           sort_order?: number
           template_id?: string | null
@@ -267,6 +270,7 @@ export type Database = {
           id: string
           name: string
           note: string | null
+          note_shared: boolean
           sort_order: number
           template_id: string | null
         }
@@ -278,6 +282,7 @@ export type Database = {
           id?: string
           name: string
           note?: string | null
+          note_shared?: boolean
           sort_order?: number
           template_id?: string | null
         }
@@ -289,6 +294,7 @@ export type Database = {
           id?: string
           name?: string
           note?: string | null
+          note_shared?: boolean
           sort_order?: number
           template_id?: string | null
         }
