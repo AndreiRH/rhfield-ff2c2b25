@@ -35,7 +35,13 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(components.map((c: any) => c.id)));
+
+  const q = search.trim().toLowerCase();
+  const visible = q
+    ? components.filter((c: any) => (c.name ?? "").toLowerCase().includes(q))
+    : components;
 
   // Auto-include freshly-added components in open set, drop removed ones
   useEffect(() => {
