@@ -103,7 +103,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange }: any) {
+function ComponentBlock({ component, canEdit, onChange, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const topLevel = allItems.filter((i: any) => !i.parent_item_id).sort((a: any, b: any) => a.sort_order - b.sort_order);
   const childrenByParent = useMemo(() => {
