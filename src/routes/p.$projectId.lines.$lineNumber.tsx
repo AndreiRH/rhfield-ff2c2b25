@@ -175,7 +175,8 @@ function kindLabel(kind: string) {
   return kind;
 }
 
-function ExtraWorksSection({ line, works, canEdit, onChange, projectId, lineNumber }: any) {
+function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
+  const { projectId, lineNumber } = Route.useParams();
   const [newWork, setNewWork] = useState("");
   const addWork = async () => {
     if (!newWork.trim()) return;
