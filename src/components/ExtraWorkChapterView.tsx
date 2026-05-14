@@ -16,7 +16,7 @@ import {
 import { Plus, Trash2, Camera, X, CornerDownRight, Pencil, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
-export function ComponentsList({ group, canEdit, onChange }: any) {
+export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group" }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -26,9 +26,10 @@ export function ComponentsList({ group, canEdit, onChange }: any) {
 
   const addComponent = async () => {
     if (!newName.trim()) return;
-    const { error } = await supabase.from("components").insert({
-      equipment_id: group.id, name: newName.trim(), sort_order: components.length,
-    });
+    const payload: any = parentKind === "component_type"
+      ? { component_type_id: group.id, name: newName.trim(), sort_order: components.length }
+      : { equipment_id: group.id, name: newName.trim(), sort_order: components.length };
+    const { error } = await supabase.from("components").insert(payload);
     if (error) toast.error(error.message);
     else { setNewName(""); setAdding(false); onChange(); }
   };
