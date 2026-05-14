@@ -761,6 +761,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_project_cascade: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -775,6 +779,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_project_bulk: { Args: { payload: Json }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "engineer" | "pm"
