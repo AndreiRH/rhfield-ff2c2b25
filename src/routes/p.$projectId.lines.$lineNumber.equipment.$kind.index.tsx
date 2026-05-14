@@ -293,7 +293,19 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
   return (
     <Card ref={setNodeRef} style={style} className="transition hover:border-primary/40">
       <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-2"></div>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          {canEdit && !editing && (
+            <button
+              ref={undefined}
+              type="button"
+              className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
+              title="Drag to reorder"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
           {editing ? (
             <div className="flex flex-1 items-center gap-2">
               <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
@@ -314,12 +326,6 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
           )}
           {canEdit && !editing && (
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" disabled={!canMoveUp} onClick={onMoveUp} title="Move up">
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" disabled={!canMoveDown} onClick={onMoveDown} title="Move down">
-                <ArrowDown className="h-4 w-4" />
-              </Button>
               <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
                 <Pencil className="h-4 w-4" />
               </Button>
