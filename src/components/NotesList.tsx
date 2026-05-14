@@ -33,6 +33,7 @@ interface Note {
   photo_path: string | null;
   file_path: string | null;
   file_name: string | null;
+  is_shared: boolean;
 }
 
 export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: string; canEdit: boolean; userId?: string }) {
@@ -40,12 +41,23 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
   const [open, setOpen] = useState(false);
 
   const load = async () => {
+    // Resolve template_id for this equipment to find sibling equipment across lines
+    const { data: pe } = await supabase
+      .from("plant_equipment").select("template_id").eq("id", equipmentId).single();
+    let siblingIds: string[] = [];
+    if (pe?.template_id) {
+      const { data: sibs } = await supabase
+        .from("plant_equipment").select("id")
+        .eq("template_id", pe.template_id).neq("id", equipmentId);
+      siblingIds = (sibs ?? []).map((s: any) => s.id);
+    }
+    const orFilter = siblingIds.length > 0
+      ? `equipment_id.eq.${equipmentId},and(is_shared.eq.true,equipment_id.in.(${siblingIds.join(",")}))`
+      : `equipment_id.eq.${equipmentId}`;
     const { data } = await supabase
-      .from("equipment_notes")
-      .select("*")
-      .eq("equipment_id", equipmentId)
-      .order("sort_order")
-      .order("created_at");
+      .from("equipment_notes").select("*")
+      .or(orFilter)
+      .order("sort_order").order("created_at");
     setNotes((data ?? []) as Note[]);
   };
   useEffect(() => { load(); }, [equipmentId]);
