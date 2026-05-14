@@ -61,7 +61,7 @@ function PAPage() {
                 Photos, files and notes from PA measurements.
               </p>
             </div>
-            <PANotesList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            <PAFoldersList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
           </>
         )}
       </main>
