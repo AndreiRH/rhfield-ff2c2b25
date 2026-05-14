@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
-import { PANotesList } from "@/components/PANotesList";
+import { PAFoldersList } from "@/components/PAFoldersList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/pa")({
   component: PAPage,
