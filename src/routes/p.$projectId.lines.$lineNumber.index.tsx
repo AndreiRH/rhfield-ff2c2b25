@@ -79,7 +79,10 @@ function LineOverview() {
       cur.items.push(...items);
       map.set(eg.kind, cur);
     }
-    return Array.from(map.values());
+    const order = ["kiln", "shs"];
+    return Array.from(map.values()).sort(
+      (a, b) => order.indexOf(a.kind) - order.indexOf(b.kind),
+    );
   }, [data]);
 
   const extraWorks = (data?.equipment_groups ?? []).filter((eg: any) => eg.kind === "extra_work" && !eg.deleted_at);
