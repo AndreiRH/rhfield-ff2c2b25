@@ -38,7 +38,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const [internalSearch, setInternalSearch] = useState("");
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
-  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(components.map((c: any) => c.id)));
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
 
   const q = search.trim().toLowerCase();
   const visible = q
@@ -50,8 +50,6 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     setOpenIds((prev) => {
       const next = new Set<string>();
       for (const c of components) if (prev.has(c.id)) next.add(c.id);
-      // newly created (not in prev) → default open
-      for (const c of components) if (!prev.has(c.id) && prev.size === 0) next.add(c.id);
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
