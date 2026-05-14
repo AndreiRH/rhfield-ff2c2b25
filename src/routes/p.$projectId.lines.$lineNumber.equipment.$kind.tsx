@@ -108,7 +108,7 @@ function EquipmentDetail() {
             <div className="sticky top-0 z-10 -mx-4 mb-6 border-b bg-background/95 px-4 py-4 backdrop-blur">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {data.line.number} · Equipment</span>
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {data.line.number} · Plant</span>
                   <h1 className="text-3xl font-semibold">
                     {title}
                     <span className="ml-3 text-base font-normal text-muted-foreground">{overall.pct}%</span>
