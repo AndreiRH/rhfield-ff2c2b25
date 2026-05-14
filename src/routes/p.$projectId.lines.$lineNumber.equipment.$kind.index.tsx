@@ -154,6 +154,14 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
               <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
             </h1>
           </div>
+          <Link
+            to="/p/$projectId/lines/$lineNumber/equipment/$kind/pa"
+            params={{ projectId, lineNumber, kind }}
+            className="inline-flex items-center gap-1 rounded-md border bg-card px-3 py-1.5 text-sm font-semibold hover:bg-accent"
+            title="Provisional Acceptance"
+          >
+            PA
+          </Link>
         </div>
         {/* 3 chapters in one line */}
         <div className="mt-4 grid grid-cols-3 gap-3">

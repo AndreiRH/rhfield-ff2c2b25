@@ -173,13 +173,12 @@ function HotCommissioningButton({ line, canEdit, onChange }: any) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <CalendarDays className="h-4 w-4" />
-          <span className="hidden sm:inline">Hot commissioning</span>
-          <span className="sm:hidden">Hot</span>
+          <span>Hot Comm</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Hot commissioning · Line {String(line.number).padStart(2, "0")}</DialogTitle>
+          <DialogTitle>Hot Comm · Line {String(line.number).padStart(2, "0")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[75vh] overflow-y-auto">
           <HotCalendar
