@@ -276,17 +276,13 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
             <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(type.name); }}><X className="h-4 w-4" /></Button>
           </div>
         ) : (
-          <button onClick={onToggleOpen} className="flex flex-1 items-center gap-2 text-left">
+          <button
+            onClick={onToggleOpen}
+            onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditing(true); } }}
+            className="flex flex-1 items-center gap-2 text-left"
+            title={canEdit ? "Double-click to rename" : undefined}
+          >
             <span className="text-base font-semibold">{type.name}</span>
-            {canEdit && (
-              <span
-                role="button"
-                onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
-              >
-                <Pencil className="h-3 w-3 text-muted-foreground" />
-              </span>
-            )}
           </button>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
