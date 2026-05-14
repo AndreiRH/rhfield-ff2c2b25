@@ -219,7 +219,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
         </CardContent>
       </Card>
 
-      <NotesBoard equipmentId={pe.id} canEdit={canEdit} userId={userId} />
+      <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} />
     </div>
   );
 }
