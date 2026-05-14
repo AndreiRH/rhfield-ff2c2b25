@@ -8,11 +8,12 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImportProjectButton } from "@/components/ImportProjectButton";
 
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 
 function ProjectsPage() {
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
@@ -42,6 +43,7 @@ function ProjectsPage() {
             <h1 className="text-2xl font-semibold">Projects</h1>
             <p className="text-sm text-muted-foreground">Active commissioning projects.</p>
           </div>
+          {isAdmin && <ImportProjectButton />}
         </div>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
