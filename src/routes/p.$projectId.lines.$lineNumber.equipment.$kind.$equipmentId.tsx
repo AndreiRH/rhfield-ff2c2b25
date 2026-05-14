@@ -3,23 +3,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, CHAPTER_LABELS } from "@/lib/progress";
+import { calcProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { HotCalendar } from "@/components/HotCalendar";
-import { ChapterGroupCard } from "@/components/ExtraWorkChapterView";
+import { ComponentsList } from "@/components/ExtraWorkChapterView";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId")({
   component: EquipmentDetail,
 });
-
-const CHAPTER_TABS = ["assembly", "wiring", "cold_comm", "hot_comm"] as const;
 
 function EquipmentDetail() {
   const { projectId, lineNumber, kind, equipmentId } = Route.useParams();
@@ -34,7 +31,7 @@ function EquipmentDetail() {
     queryFn: async () => {
       const { data: line, error } = await supabase
         .from("lines")
-        .select("id, number, hot_planned_start, hot_planned_end, project_id")
+        .select("id, number, project_id")
         .eq("project_id", projectId)
         .eq("number", Number(lineNumber))
         .single();
@@ -47,10 +44,11 @@ function EquipmentDetail() {
         .single();
       if (peErr) throw peErr;
 
+      // Get or lazily create the single default group for this equipment
       const { data: groups, error: gErr } = await supabase
         .from("equipment_groups")
         .select(`
-          id, chapter, kind, name, sort_order, deleted_at,
+          id, name, sort_order,
           components(
             id, name, sort_order, deleted_at,
             checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id,
@@ -58,31 +56,43 @@ function EquipmentDetail() {
           )
         `)
         .eq("plant_equipment_id", equipmentId)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
       if (gErr) throw gErr;
-      return { line, pe, groups: groups ?? [] };
+
+      let group = groups?.[0] ?? null;
+      if (!group) {
+        const { data: newGroup, error: insErr } = await supabase
+          .from("equipment_groups")
+          .insert({
+            line_id: line.id, chapter: "assembly", kind: kind as any,
+            name: pe.name, sort_order: 0, plant_equipment_id: equipmentId,
+          })
+          .select(`
+            id, name, sort_order,
+            components(
+              id, name, sort_order, deleted_at,
+              checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id,
+                item_photos(id, storage_path))
+            )
+          `)
+          .single();
+        if (insErr) throw insErr;
+        group = newGroup;
+      }
+
+      return { line, pe, group };
     },
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
 
   const allItems = useMemo(() => {
-    return (data?.groups ?? []).flatMap((eg: any) =>
-      (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
-    );
+    return (data?.group?.components ?? [])
+      .filter((c: any) => !c.deleted_at)
+      .flatMap((c: any) => c.checklist_items ?? []);
   }, [data]);
   const overall = calcProgress(allItems);
-
-  const chapterProgress = useMemo(() => {
-    const out: Record<string, ReturnType<typeof calcProgress>> = {};
-    for (const ch of CHAPTER_TABS) {
-      const items = (data?.groups ?? []).filter((eg: any) => eg.chapter === ch).flatMap((eg: any) =>
-        (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
-      );
-      out[ch] = calcProgress(items);
-    }
-    return out;
-  }, [data]);
 
   if (!session) return null;
 
@@ -104,10 +114,10 @@ function EquipmentDetail() {
           <Skeleton className="h-40" />
         ) : (
           <>
-            <div className="sticky top-0 z-10 -mx-4 mb-6 border-b bg-background/95 px-4 py-4 backdrop-blur">
+            <div className="mb-6 border-b pb-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {data.line.number} · {plantLabel} · Equipment</span>
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {data.line.number} · {plantLabel}</span>
                   <h1 className="text-3xl font-semibold">
                     {data.pe.name}
                     <span className="ml-3 text-base font-normal text-muted-foreground">{overall.pct}%</span>
@@ -119,61 +129,10 @@ function EquipmentDetail() {
               </div>
             </div>
 
-            <Tabs defaultValue="assembly" className="space-y-4">
-              <TabsList className="flex h-auto w-full flex-wrap">
-                {CHAPTER_TABS.map((ch) => (
-                  <TabsTrigger key={ch} value={ch} className="flex-1 min-w-[120px]">
-                    <span>{CHAPTER_LABELS[ch]}</span>
-                    <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{chapterProgress[ch].pct}%</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {CHAPTER_TABS.map((ch) => {
-                const group = (data.groups ?? []).find((g: any) => g.chapter === ch);
-                return (
-                  <TabsContent key={ch} value={ch} className="space-y-4">
-                    {ch === "hot_comm" && (
-                      <HotCalendar lineId={data.line.id} plannedStart={data.line.hot_planned_start} plannedEnd={data.line.hot_planned_end} canEdit={canEdit} onChange={invalidate} />
-                    )}
-                    {group ? (
-                      <ChapterGroupCard group={group} canEdit={canEdit} onChange={invalidate} />
-                    ) : (
-                      <CreateGroupPrompt
-                        lineId={data.line.id}
-                        chapter={ch}
-                        kind={kind}
-                        plantEquipmentId={equipmentId}
-                        name={data.pe.name}
-                        canEdit={canEdit}
-                        onChange={invalidate}
-                      />
-                    )}
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
+            <ComponentsList group={data.group} canEdit={canEdit} onChange={invalidate} />
           </>
         )}
       </main>
     </div>
-  );
-}
-
-function CreateGroupPrompt({ lineId, chapter, kind, plantEquipmentId, name, canEdit, onChange }: any) {
-  const create = async () => {
-    const { error } = await supabase.from("equipment_groups").insert({
-      line_id: lineId, chapter, kind, name, sort_order: 0, plant_equipment_id: plantEquipmentId,
-    });
-    if (error) toast.error(error.message);
-    else onChange();
-  };
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-start gap-3 p-6">
-        <p className="text-sm text-muted-foreground">No {CHAPTER_LABELS[chapter]} section yet for this equipment.</p>
-        {canEdit && <Button size="sm" onClick={create}><Plus className="mr-1 h-4 w-4" /> Create section</Button>}
-      </CardContent>
-    </Card>
   );
 }
