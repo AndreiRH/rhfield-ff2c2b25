@@ -110,6 +110,19 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           )}
         </div>
       </div>
+
+      {components.length > 1 && (
+        <div className="relative max-w-md">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search components by title…"
+            className="h-8 pl-7 text-sm"
+          />
+        </div>
+      )}
+
       {adding && (
         <div className="flex max-w-md gap-2">
           <Input value={newName} autoFocus onChange={(e) => setNewName(e.target.value)}
@@ -121,12 +134,15 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
       {components.length === 0 && !adding && (
         <p className="text-sm text-muted-foreground">No components yet. Add the first one to start tracking checks.</p>
       )}
+      {q && visible.length === 0 && (
+        <p className="text-sm text-muted-foreground">No components match "{search}".</p>
+      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={components.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={visible.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {components.map((c: any) => (
-              <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
+            {visible.map((c: any) => (
+              <ComponentBlock key={c.id} component={c} canEdit={canEdit && !q} onChange={onChange}
                 open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
             ))}
           </div>
