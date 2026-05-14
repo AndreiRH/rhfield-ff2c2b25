@@ -254,6 +254,12 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
           )}
           {canEdit && !editing && (
             <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" disabled={!canMoveUp} onClick={onMoveUp} title="Move up">
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" disabled={!canMoveDown} onClick={onMoveDown} title="Move down">
+                <ArrowDown className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
                 <Pencil className="h-4 w-4" />
               </Button>
