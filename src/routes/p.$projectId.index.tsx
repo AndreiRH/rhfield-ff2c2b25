@@ -93,7 +93,7 @@ function ProjectDashboard() {
                 <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
                 <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
-              <ProgressRing value={overallPct} size={120} />
+              <ProjectHotCalendarButton projectId={projectId} />
             </CardContent>
           </Card>
         )}
