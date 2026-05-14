@@ -170,7 +170,21 @@ function ComponentBlock({ component, canEdit, onChange, canMoveUp, canMoveDown, 
               )}
             </span>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <>
+                <span role="button" aria-disabled={!canMoveUp}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveUp ? "pointer-events-none opacity-30" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveUp?.(); }}>
+                  <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                </span>
+                <span role="button" aria-disabled={!canMoveDown}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveDown ? "pointer-events-none opacity-30" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveDown?.(); }}>
+                  <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                </span>
+              </>
+            )}
             <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
             <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
             <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
