@@ -181,7 +181,15 @@ export type Database = {
           template_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "component_types_equipment_group_id_fkey"
+            columns: ["equipment_group_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       components: {
         Row: {
@@ -215,6 +223,13 @@ export type Database = {
           template_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "components_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "components_equipment_id_fkey"
             columns: ["equipment_id"]
@@ -300,7 +315,15 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipment_photos_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "plant_equipment"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       item_photos: {
         Row: {
