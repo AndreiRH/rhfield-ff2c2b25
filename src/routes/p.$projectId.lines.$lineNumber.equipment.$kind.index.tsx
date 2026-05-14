@@ -289,6 +289,7 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
 }
 
 function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
+  const navigate = useNavigate();
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
