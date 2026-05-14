@@ -60,8 +60,8 @@ function EquipmentDetail() {
         .order("sort_order", { ascending: true });
       if (gErr) throw gErr;
 
-      let group = groups?.[0] ?? null;
-      if (!group) {
+      let canonical = groups?.[0] ?? null;
+      if (!canonical) {
         const { data: newGroup, error: insErr } = await supabase
           .from("equipment_groups")
           .insert({
@@ -78,8 +78,12 @@ function EquipmentDetail() {
           `)
           .single();
         if (insErr) throw insErr;
-        group = newGroup;
+        canonical = newGroup;
       }
+
+      // Merge components from any legacy sibling groups so nothing is hidden.
+      const mergedComponents = (groups ?? []).flatMap((g: any) => g.components ?? []);
+      const group = { ...canonical, components: mergedComponents.length ? mergedComponents : canonical.components };
 
       return { line, pe, group };
     },
