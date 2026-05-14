@@ -269,7 +269,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   const item_files = ifRows.filter((r) => ciMap.has(r.item_id)).map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "item_files", oldPath: r.storage_path, newPath, bucket: "files", rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "item_files", oldPath: r.storage_path, oldFileName: r.file_name, newPath, bucket: "files", rowId: id, field: "storage_path" });
     return {
       id,
       item_id: ciMap.get(r.item_id),
