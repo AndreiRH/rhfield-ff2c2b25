@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { equipmentProgress, CHAPTER_LABELS } from "@/lib/progress";
+import { equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -157,9 +157,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
         </div>
         {/* 3 chapters in one line */}
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <ChapterTile label={CHAPTER_LABELS.assembly} pct={avgMech} />
-          <ChapterTile label={CHAPTER_LABELS.wiring} pct={avgWiring} />
-          <ChapterTile label={CHAPTER_LABELS.cold_comm} pct={avgCold} />
+          <ChapterTile label="Assembly" pct={avgMech} />
+          <ChapterTile label="Wiring" pct={avgWiring} />
+          <ChapterTile label="Cold comm." pct={avgCold} />
         </div>
       </div>
 
@@ -219,9 +219,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
 
 function ChapterTile({ label, pct }: { label: string; pct: number }) {
   return (
-    <div className="rounded-md border bg-card p-3">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="min-w-0 rounded-md border bg-card p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-1">
+        <span className="truncate text-xs text-muted-foreground">{label}</span>
         <span className="font-mono text-xs tabular-nums">{pct}%</span>
       </div>
       <ProgressBar value={pct} size="sm" />

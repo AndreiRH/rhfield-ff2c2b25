@@ -15,7 +15,7 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
-import { NotesBoard } from "@/components/NotesBoard";
+import { NotesList } from "@/components/NotesList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId")({
   component: EquipmentDetail,
@@ -49,13 +49,14 @@ function EquipmentDetail() {
           id, chapter, name, plant_equipment_id,
           components(
             id, name, sort_order, deleted_at,
-            checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id)
+            checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+              item_photos(id, storage_path))
           ),
           component_types(
             id, name, sort_order, deleted_at,
             components(
               id, name, sort_order, deleted_at,
-              checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id,
+              checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
                 item_photos(id, storage_path))
             )
           )
@@ -219,7 +220,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
         </CardContent>
       </Card>
 
-      <NotesBoard equipmentId={pe.id} canEdit={canEdit} userId={userId} />
+      <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} />
     </div>
   );
 }

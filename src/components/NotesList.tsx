@@ -1,0 +1,216 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Trash2, Camera, Paperclip, GripVertical } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+interface Note {
+  id: string;
+  equipment_id: string;
+  title: string;
+  body: string;
+  sort_order: number;
+  photo_path: string | null;
+  file_path: string | null;
+  file_name: string | null;
+}
+
+export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: string; canEdit: boolean; userId?: string }) {
+  const [notes, setNotes] = useState<Note[]>([]);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("equipment_notes")
+      .select("*")
+      .eq("equipment_id", equipmentId)
+      .order("sort_order")
+      .order("created_at");
+    setNotes((data ?? []) as Note[]);
+  };
+  useEffect(() => { load(); }, [equipmentId]);
+
+  const addNote = async () => {
+    const { error } = await supabase.from("equipment_notes").insert({
+      equipment_id: equipmentId, title: "Note", body: "",
+      sort_order: notes.length, created_by: userId,
+    });
+    if (error) toast.error(error.message); else load();
+  };
+
+  const update = (id: string, patch: Partial<Note>) => {
+    setNotes((n) => n.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    supabase.from("equipment_notes").update(patch).eq("id", id).then();
+  };
+
+  const remove = async (n: Note) => {
+    if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
+    if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
+    await supabase.from("equipment_notes").delete().eq("id", n.id);
+    load();
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = notes.findIndex((n) => n.id === active.id);
+    const newIdx = notes.findIndex((n) => n.id === over.id);
+    const next = arrayMove(notes, oldIdx, newIdx);
+    setNotes(next);
+    await Promise.all(
+      next.map((n, i) => supabase.from("equipment_notes").update({ sort_order: i }).eq("id", n.id)),
+    );
+  };
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Notes</h3>
+          {canEdit && (
+            <Button size="sm" onClick={addNote}>
+              <Plus className="mr-1 h-4 w-4" /> Add note
+            </Button>
+          )}
+        </div>
+        {notes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No notes yet.</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+              <ul className="space-y-2">
+                {notes.map((n) => (
+                  <NoteRow key={n.id} note={n} canEdit={canEdit}
+                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+
+  const [title, setTitle] = useState(note.title);
+  const [body, setBody] = useState(note.body);
+  useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
+
+  const uploadPhoto = async (file: File) => {
+    const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("photos").upload(path, file);
+    if (error) { toast.error(error.message); return; }
+    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
+    await supabase.from("equipment_notes").update({ photo_path: path }).eq("id", note.id);
+    onReload();
+  };
+  const uploadFile = async (file: File) => {
+    const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("files").upload(path, file);
+    if (error) { toast.error(error.message); return; }
+    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
+    await supabase.from("equipment_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
+    onReload();
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="rounded-md border bg-card">
+      <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
+        {canEdit && (
+          <button {...attributes} {...listeners} className="cursor-grab touch-none p-1 active:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+        <Input
+          value={title}
+          disabled={!canEdit}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => title !== note.title && onUpdate({ title })}
+          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
+        />
+        {canEdit && (
+          <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="space-y-2 p-3">
+        <Textarea
+          value={body}
+          disabled={!canEdit}
+          onChange={(e) => setBody(e.target.value)}
+          onBlur={() => body !== note.body && onUpdate({ body })}
+          placeholder="Write something…"
+          className="min-h-[60px] resize-y text-sm"
+        />
+        {note.photo_path && <NotePhoto path={note.photo_path} />}
+        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} />}
+        {canEdit && (
+          <div className="flex gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+              <Camera className="h-3 w-3" /> Photo
+              <input type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
+            </label>
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+              <Paperclip className="h-3 w-3" /> File
+              <input type="file" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+            </label>
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function NotePhoto({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
+      if (data?.signedUrl) setUrl(data.signedUrl);
+    });
+  }, [path]);
+  if (!url) return <div className="h-24 animate-pulse rounded bg-muted" />;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="max-h-40 w-full rounded border object-cover" /></a>;
+}
+
+function NoteFile({ path, name }: { path: string | null; name: string }) {
+  const open = async () => {
+    if (!path) return;
+    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  };
+  return (
+    <button onClick={open} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-xs hover:bg-accent">
+      <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
+    </button>
+  );
+}

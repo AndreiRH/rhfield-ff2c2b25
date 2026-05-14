@@ -171,9 +171,10 @@ function HotCommissioningButton({ line, canEdit, onChange }: any) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2">
           <CalendarDays className="h-4 w-4" />
-          Hot commissioning
+          <span className="hidden sm:inline">Hot commissioning</span>
+          <span className="sm:hidden">Hot</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl">
