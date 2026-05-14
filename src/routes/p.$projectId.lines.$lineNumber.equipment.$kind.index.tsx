@@ -157,9 +157,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
         </div>
         {/* 3 chapters in one line */}
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <ChapterTile label={CHAPTER_LABELS.assembly} pct={avgMech} />
-          <ChapterTile label={CHAPTER_LABELS.wiring} pct={avgWiring} />
-          <ChapterTile label={CHAPTER_LABELS.cold_comm} pct={avgCold} />
+          <ChapterTile label="Assembly" pct={avgMech} />
+          <ChapterTile label="Wiring" pct={avgWiring} />
+          <ChapterTile label="Cold comm." pct={avgCold} />
         </div>
       </div>
 
