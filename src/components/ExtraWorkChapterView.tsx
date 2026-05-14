@@ -260,14 +260,12 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setName(component.name); }}><X className="h-4 w-4" /></Button>
           </div>
         ) : (
-          <span className="flex flex-1 items-center gap-2 font-semibold">
+          <span
+            onDoubleClick={() => canEdit && setEditingName(true)}
+            title={canEdit ? "Double-click to rename" : undefined}
+            className={`flex flex-1 items-center gap-2 font-semibold ${canEdit ? "cursor-text" : ""}`}
+          >
             {component.name}
-            {canEdit && (
-              <button onClick={() => setEditingName(true)}
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent">
-                <Pencil className="h-3 w-3 text-muted-foreground" />
-              </button>
-            )}
           </span>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
