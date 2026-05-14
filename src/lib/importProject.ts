@@ -166,8 +166,11 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     created_at: r.created_at || new Date().toISOString(),
   }));
 
-  // Skip soft-deleted items
+  // Skip soft-deleted items. IMPORTANT: filter children against these live
+  // sets (not the *Map maps, which include deleted parent IDs) — otherwise
+  // children of soft-deleted parents leak through and cause FK violations.
   const livePe = peRows.filter((r) => !r.deleted_at);
+  const livePeIds = new Set(livePe.map((r) => r.id));
   const plant_equipment = livePe.map((r) => ({
     id: peMap.get(r.id),
     line_id: lineMap.get(r.line_id),
