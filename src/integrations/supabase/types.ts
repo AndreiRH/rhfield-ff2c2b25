@@ -150,6 +150,73 @@ export type Database = {
           },
         ]
       }
+      component_files: {
+        Row: {
+          component_id: string
+          file_name: string
+          id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          component_id: string
+          file_name: string
+          id?: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          component_id?: string
+          file_name?: string
+          id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "component_files_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      component_photos: {
+        Row: {
+          component_id: string
+          id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          component_id: string
+          id?: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          component_id?: string
+          id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "component_photos_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       component_types: {
         Row: {
           created_at: string
@@ -199,6 +266,7 @@ export type Database = {
           equipment_id: string | null
           id: string
           name: string
+          note: string | null
           sort_order: number
           template_id: string | null
         }
@@ -209,6 +277,7 @@ export type Database = {
           equipment_id?: string | null
           id?: string
           name: string
+          note?: string | null
           sort_order?: number
           template_id?: string | null
         }
@@ -219,6 +288,7 @@ export type Database = {
           equipment_id?: string | null
           id?: string
           name?: string
+          note?: string | null
           sort_order?: number
           template_id?: string | null
         }

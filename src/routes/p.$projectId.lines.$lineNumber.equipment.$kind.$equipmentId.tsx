@@ -46,14 +46,18 @@ function EquipmentDetail() {
       const groupsSelect = `
           id, chapter, name, plant_equipment_id,
           components(
-            id, name, sort_order, deleted_at,
+            id, name, sort_order, deleted_at, note,
+            component_photos(id, storage_path),
+            component_files(id, storage_path, file_name),
             checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
               item_photos(id, storage_path), item_files(id, storage_path, file_name))
           ),
           component_types(
             id, name, sort_order, deleted_at,
             components(
-              id, name, sort_order, deleted_at,
+              id, name, sort_order, deleted_at, note,
+              component_photos(id, storage_path),
+              component_files(id, storage_path, file_name),
               checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
                 item_photos(id, storage_path), item_files(id, storage_path, file_name))
             )

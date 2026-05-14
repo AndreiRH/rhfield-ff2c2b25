@@ -1,21 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Pencil, Check, X, ArrowUp, ArrowDown, Layers } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, GripVertical, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, arrayMove, useSortable, horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-// Tree: equipment_group -> component_types -> components -> checklist_items
-// Used for assembly (when mech_mode = checklist), wiring and cold_commissioning.
+// Tree: equipment_group -> component_types (as TABS) -> components -> checklist_items
+// Used for wiring and cold_commissioning.
 export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any) {
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
@@ -23,28 +30,43 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (types.length === 0) { setActiveId(null); return; }
+    if (!activeId || !types.some((t: any) => t.id === activeId)) {
+      setActiveId(types[0].id);
+    }
+  }, [types, activeId]);
 
   const addType = async () => {
     if (!newName.trim() || !group) return;
-    const { error } = await supabase.from("component_types").insert({
+    const { data, error } = await supabase.from("component_types").insert({
       equipment_group_id: group.id,
       name: newName.trim(),
       sort_order: types.length,
-    });
+    }).select("id").single();
     if (error) toast.error(error.message);
-    else { setNewName(""); setAdding(false); onChange(); }
+    else { setNewName(""); setAdding(false); if (data?.id) setActiveId(data.id); onChange(); }
   };
 
-  const move = async (idx: number, dir: -1 | 1) => {
-    const target = idx + dir;
-    if (target < 0 || target >= types.length) return;
-    const a = types[idx]; const b = types[target];
-    await supabase.from("component_types").update({ sort_order: b.sort_order }).eq("id", a.id);
-    await supabase.from("component_types").update({ sort_order: a.sort_order }).eq("id", b.id);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = types.findIndex((t: any) => t.id === active.id);
+    const newIdx = types.findIndex((t: any) => t.id === over.id);
+    const next = arrayMove(types, oldIdx, newIdx);
+    await Promise.all(next.map((t: any, i: number) =>
+      supabase.from("component_types").update({ sort_order: i }).eq("id", t.id)));
     onChange();
   };
 
   const overall = calcProgress(itemsFromGroup(group));
+  const active = types.find((t: any) => t.id === activeId) ?? null;
 
   return (
     <Card>
@@ -78,30 +100,44 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
           <p className="text-sm text-muted-foreground">{emptyHint ?? "No component types yet. Add one (e.g. Sensors) to start."}</p>
         )}
 
-        <Accordion type="multiple" className="w-full">
-          {types.map((t: any, idx: number) => (
-            <TypeBlock
-              key={t.id}
-              type={t}
-              canEdit={canEdit}
-              onChange={onChange}
-              canMoveUp={idx > 0}
-              canMoveDown={idx < types.length - 1}
-              onMoveUp={() => move(idx, -1)}
-              onMoveDown={() => move(idx, 1)}
-            />
-          ))}
-        </Accordion>
+        {types.length > 0 && (
+          <>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={types.map((t: any) => t.id)} strategy={horizontalListSortingStrategy}>
+                <div className="mb-4 flex flex-wrap gap-1.5 border-b pb-2">
+                  {types.map((t: any) => (
+                    <TypeTab key={t.id} type={t} active={t.id === activeId} canEdit={canEdit}
+                      onClick={() => setActiveId(t.id)} onChange={onChange} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            {active && (
+              <div className="rounded-lg border bg-background/40 p-3">
+                <ComponentsList group={active} parentKind="component_type" canEdit={canEdit} onChange={onChange} />
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function TypeBlock({ type, canEdit, onChange, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
+function TypeTab({ type, active, canEdit, onClick, onChange }: any) {
+  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit });
+  const style = {
+    transform: CSS.Transform.toString(sortableArgs.transform),
+    transition: sortableArgs.transition,
+    opacity: sortableArgs.isDragging ? 0.5 : 1,
+  };
+
   const items = (type.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .flatMap((c: any) => c.checklist_items ?? []);
   const prog = calcProgress(items);
+
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
 
@@ -119,70 +155,52 @@ function TypeBlock({ type, canEdit, onChange, canMoveUp, canMoveDown, onMoveUp, 
   };
 
   return (
-    <AccordionItem value={type.id}>
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex w-full items-center justify-between gap-3 pr-2">
-          {editing ? (
-            <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") rename(); }} />
-              <Button size="icon" variant="ghost" onClick={rename}><Check className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(type.name); }}><X className="h-4 w-4" /></Button>
-            </div>
-          ) : (
-            <span className="flex flex-1 items-center gap-2 text-left font-medium">
-              <Layers className="h-4 w-4 text-muted-foreground" />
-              {type.name}
-              {canEdit && (
-                <span role="button" className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditing(true); }}>
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                </span>
-              )}
-            </span>
-          )}
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <>
-                <span role="button" aria-disabled={!canMoveUp}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveUp ? "pointer-events-none opacity-30" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveUp?.(); }}>
-                  <ArrowUp className="h-3 w-3 text-muted-foreground" />
-                </span>
-                <span role="button" aria-disabled={!canMoveDown}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveDown ? "pointer-events-none opacity-30" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveDown?.(); }}>
-                  <ArrowDown className="h-3 w-3 text-muted-foreground" />
-                </span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <span role="button" className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </span>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete "{type.name}"?</AlertDialogTitle>
-                      <AlertDialogDescription>All components and checklists inside will be hidden across every line.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            )}
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-            <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
-            <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
-          </div>
-        </div>
-      </AccordionTrigger>
-      <AccordionContent>
-        <ComponentsList group={type} parentKind="component_type" canEdit={canEdit} onChange={onChange} />
-      </AccordionContent>
-    </AccordionItem>
+    <div ref={sortableArgs.setNodeRef} style={style}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm ${active
+        ? "border-primary bg-primary/10 text-foreground"
+        : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
+      {canEdit && (
+        <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+          className="cursor-grab touch-none active:cursor-grabbing">
+          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      )}
+      {editing ? (
+        <>
+          <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-6 w-32 text-xs" />
+          <button onClick={rename} className="p-0.5"><Check className="h-3 w-3" /></button>
+          <button onClick={() => { setEditing(false); setName(type.name); }} className="p-0.5"><X className="h-3 w-3" /></button>
+        </>
+      ) : (
+        <button onClick={onClick} className="flex items-center gap-1.5">
+          <Layers className="h-3.5 w-3.5" />
+          <span className="font-medium">{type.name}</span>
+          <span className="font-mono text-[10px] tabular-nums opacity-70">{prog.done}/{prog.total}</span>
+        </button>
+      )}
+      {canEdit && !editing && (
+        <>
+          <button onClick={() => setEditing(true)} className="p-0.5 text-muted-foreground hover:text-foreground">
+            <Pencil className="h-3 w-3" />
+          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="p-0.5"><Trash2 className="h-3 w-3 text-destructive" /></button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{type.name}"?</AlertDialogTitle>
+                <AlertDialogDescription>All components and checklists inside will be hidden across every line.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+    </div>
   );
 }
