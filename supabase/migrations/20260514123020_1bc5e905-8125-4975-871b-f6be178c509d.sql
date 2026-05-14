@@ -1,0 +1,1 @@
+ALTER TABLE public.plant_equipment ADD CONSTRAINT plant_equipment_line_id_fkey FOREIGN KEY (line_id) REFERENCES public.lines(id) ON DELETE CASCADE;
