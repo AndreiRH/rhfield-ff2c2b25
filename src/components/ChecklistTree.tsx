@@ -204,7 +204,25 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
       </button>
       <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
-      <span className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}>{item.label}</span>
+      {editingLabel && canEdit ? (
+        <Input
+          value={label}
+          autoFocus
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={saveLabel}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); saveLabel(); }
+            else if (e.key === "Escape") { setLabel(item.label); setEditingLabel(false); }
+          }}
+          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
+        />
+      ) : (
+        <span
+          onDoubleClick={() => canEdit && setEditingLabel(true)}
+          title={canEdit ? "Double-click to rename" : undefined}
+          className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""} ${canEdit ? "cursor-text" : ""}`}
+        >{item.label}</span>
+      )}
       {canEdit && (
         <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
