@@ -9,6 +9,10 @@ import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
   StickyNote, ListPlus, X,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -209,9 +213,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
       <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
       <span className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}>{item.label}</span>
       {canEdit && (
-        <button onClick={remove} className="p-1 opacity-60 hover:opacity-100">
-          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-        </button>
+        <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
     </div>
   );
@@ -341,5 +343,45 @@ function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; onRemove
         </button>
       )}
     </div>
+  );
+}
+
+function DeleteItemButton({ itemLabel, onConfirm }: { itemLabel: string; onConfirm: () => void | Promise<void> }) {
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const close = () => setStep(0);
+  return (
+    <>
+      <button onClick={() => setStep(1)} className="p-1 opacity-60 hover:opacity-100">
+        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+      </button>
+      <AlertDialog open={step === 1} onOpenChange={(o) => !o && close()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{itemLabel}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This checklist item is shared across all 10 lines. Deleting it here will remove it from every line in the project.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); setStep(2); }}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={step === 2} onOpenChange={(o) => !o && close()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Final confirmation: "{itemLabel}" will be permanently deleted from all 10 lines. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { await onConfirm(); close(); }}>Delete from all lines</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
