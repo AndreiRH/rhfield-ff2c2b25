@@ -33,15 +33,12 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   const [newName, setNewName] = useState("");
   const [deleteMode, setDeleteMode] = useState(false);
   const [search, setSearch] = useState("");
-  const [openIds, setOpenIds] = useState<Set<string>>(
-    () => new Set(types.map((t: any) => t.id)),
-  );
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setOpenIds((prev) => {
       const next = new Set<string>();
       for (const t of types) if (prev.has(t.id)) next.add(t.id);
-      for (const t of types) if (!prev.has(t.id) && prev.size === 0) next.add(t.id);
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
