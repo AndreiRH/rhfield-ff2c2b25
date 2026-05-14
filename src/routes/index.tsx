@@ -64,9 +64,9 @@ function ProjectsPage() {
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
                     <Card className="transition-all hover:border-primary/40 hover:shadow-md">
                       <CardContent className="p-5">
-                        <div className="mb-3 flex items-center justify-between">
+                        <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                          <span className="text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
+                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-9" : ""}`}>{prog.done}/{prog.total}</span>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
                         <ProgressBar value={prog.pct} size="md" />
