@@ -50,14 +50,14 @@ function EquipmentDetail() {
           components(
             id, name, sort_order, deleted_at,
             checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-              item_photos(id, storage_path))
+              item_photos(id, storage_path), item_files(id, storage_path, file_name))
           ),
           component_types(
             id, name, sort_order, deleted_at,
             components(
               id, name, sort_order, deleted_at,
               checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-                item_photos(id, storage_path))
+                item_photos(id, storage_path), item_files(id, storage_path, file_name))
             )
           )
         `)
