@@ -166,8 +166,11 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     created_at: r.created_at || new Date().toISOString(),
   }));
 
-  // Skip soft-deleted items
+  // Skip soft-deleted items. IMPORTANT: filter children against these live
+  // sets (not the *Map maps, which include deleted parent IDs) — otherwise
+  // children of soft-deleted parents leak through and cause FK violations.
   const livePe = peRows.filter((r) => !r.deleted_at);
+  const livePeIds = new Set(livePe.map((r) => r.id));
   const plant_equipment = livePe.map((r) => ({
     id: peMap.get(r.id),
     line_id: lineMap.get(r.line_id),
@@ -182,7 +185,8 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     updated_at: r.updated_at || new Date().toISOString(),
   }));
 
-  const liveEg = egRows.filter((r) => !r.deleted_at);
+  const liveEg = egRows.filter((r) => !r.deleted_at && lineMap.has(r.line_id) && (!r.plant_equipment_id || livePeIds.has(r.plant_equipment_id)));
+  const liveEgIds = new Set(liveEg.map((r) => r.id));
   const equipment_groups = liveEg.map((r) => ({
     id: egMap.get(r.id),
     line_id: lineMap.get(r.line_id),
@@ -195,7 +199,8 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     created_at: r.created_at || new Date().toISOString(),
   }));
 
-  const liveCt = ctRows.filter((r) => !r.deleted_at && egMap.has(r.equipment_group_id));
+  const liveCt = ctRows.filter((r) => !r.deleted_at && liveEgIds.has(r.equipment_group_id));
+  const liveCtIds = new Set(liveCt.map((r) => r.id));
   const component_types = liveCt.map((r) => ({
     id: ctMap.get(r.id),
     equipment_group_id: egMap.get(r.equipment_group_id),
@@ -207,20 +212,21 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   }));
 
   const liveComp = compRows.filter((r) => !r.deleted_at && (
-    (r.equipment_id && egMap.has(r.equipment_id)) ||
-    (r.component_type_id && ctMap.has(r.component_type_id))
+    (r.equipment_id && liveEgIds.has(r.equipment_id)) ||
+    (r.component_type_id && liveCtIds.has(r.component_type_id))
   ));
+  const liveCompIds = new Set(liveComp.map((r) => r.id));
   const components = liveComp.map((r) => ({
     id: compMap.get(r.id),
-    equipment_id: r.equipment_id ? egMap.get(r.equipment_id) : null,
-    component_type_id: r.component_type_id ? ctMap.get(r.component_type_id) : null,
+    equipment_id: r.equipment_id && liveEgIds.has(r.equipment_id) ? egMap.get(r.equipment_id) : null,
+    component_type_id: r.component_type_id && liveCtIds.has(r.component_type_id) ? ctMap.get(r.component_type_id) : null,
     name: r.name,
     sort_order: parseInt(r.sort_order || "0", 10),
     template_id: r.template_id || null,
     created_at: r.created_at || new Date().toISOString(),
   }));
 
-  const liveCi = ciRows.filter((r) => !r.deleted_at && compMap.has(r.component_id));
+  const liveCi = ciRows.filter((r) => !r.deleted_at && liveCompIds.has(r.component_id));
   const checklist_items = liveCi.map((r) => ({
     id: ciMap.get(r.id),
     component_id: compMap.get(r.component_id),
@@ -274,7 +280,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     };
   });
 
-  const equipment_notes = enRows.filter((r) => peMap.has(r.equipment_id)).map((r) => {
+  const equipment_notes = enRows.filter((r) => livePeIds.has(r.equipment_id)).map((r) => {
     const id = newId();
     const photoPath = r.photo_path ? remapStoragePath(r.photo_path) : null;
     const filePath = r.file_path ? remapStoragePath(r.file_path) : null;
@@ -297,7 +303,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     };
   });
 
-  const equipment_photos = epRows.filter((r) => peMap.has(r.equipment_id)).map((r) => {
+  const equipment_photos = epRows.filter((r) => livePeIds.has(r.equipment_id)).map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
     if (r.storage_path) mediaJobs.push({ table: "equipment_photos", oldPath: r.storage_path, newPath, bucket: "photos", rowId: id, field: "storage_path" });
