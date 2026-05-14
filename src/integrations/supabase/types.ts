@@ -191,6 +191,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["equipment_kind"]
           line_id: string
           name: string
+          plant_equipment_id: string | null
           sort_order: number
         }
         Insert: {
@@ -201,6 +202,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["equipment_kind"]
           line_id: string
           name: string
+          plant_equipment_id?: string | null
           sort_order?: number
         }
         Update: {
@@ -211,6 +213,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["equipment_kind"]
           line_id?: string
           name?: string
+          plant_equipment_id?: string | null
           sort_order?: number
         }
         Relationships: [
@@ -219,6 +222,13 @@ export type Database = {
             columns: ["line_id"]
             isOneToOne: false
             referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_groups_plant_equipment_id_fkey"
+            columns: ["plant_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "plant_equipment"
             referencedColumns: ["id"]
           },
         ]
@@ -330,6 +340,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plant_equipment: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["equipment_kind"]
+          line_id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["equipment_kind"]
+          line_id: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["equipment_kind"]
+          line_id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
