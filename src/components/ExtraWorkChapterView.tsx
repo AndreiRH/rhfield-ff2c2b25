@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Pencil, Check, X, GripVertical, ChevronDown, ChevronRight,
-  StickyNote, Camera, Paperclip,
+  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
@@ -35,6 +35,28 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(components.map((c: any) => c.id)));
+
+  // Auto-include freshly-added components in open set, drop removed ones
+  useEffect(() => {
+    setOpenIds((prev) => {
+      const next = new Set<string>();
+      for (const c of components) if (prev.has(c.id)) next.add(c.id);
+      // newly created (not in prev) → default open
+      for (const c of components) if (!prev.has(c.id) && prev.size === 0) next.add(c.id);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [components.map((c: any) => c.id).join(",")]);
+
+  const allOpen = components.length > 0 && components.every((c: any) => openIds.has(c.id));
+  const collapseAll = () => setOpenIds(new Set());
+  const expandAll = () => setOpenIds(new Set(components.map((c: any) => c.id)));
+  const toggleOne = (id: string) => setOpenIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const addComponent = async () => {
     if (!newName.trim()) return;
@@ -63,13 +85,24 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
-        {canEdit && !adding && (
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Add component
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {components.length > 0 && (
+            <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
+              {allOpen ? (
+                <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
+              ) : (
+                <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
+              )}
+            </Button>
+          )}
+          {canEdit && !adding && (
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Add component
+            </Button>
+          )}
+        </div>
       </div>
       {adding && (
         <div className="flex max-w-md gap-2">
@@ -87,7 +120,8 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         <SortableContext items={components.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {components.map((c: any) => (
-              <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange} />
+              <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
             ))}
           </div>
         </SortableContext>
@@ -116,7 +150,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange }: any) {
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
   const sortableArgs = useSortable({ id: component.id, disabled: !canEdit });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
@@ -127,7 +161,9 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
 
-  const [open, setOpen] = useState(true);
+  const [internalOpen, setInternalOpen] = useState(true);
+  const open = openProp ?? internalOpen;
+  const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
 
@@ -188,7 +224,7 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <button onClick={() => setOpen((o) => !o)} className="text-muted-foreground hover:text-foreground">
+        <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {editingName ? (

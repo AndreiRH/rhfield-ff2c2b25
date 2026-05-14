@@ -58,11 +58,11 @@ export function equipmentProgress(pe: any): { mech: number; wiring: number; cold
   const byCh = (ch: string) => groups.find((g: any) => g.chapter === ch);
 
   const wiringGroup = byCh("wiring");
-  const coldGroup = byCh("cold_comm");
   const assemblyGroup = byCh("assembly");
 
   const wiring = calcProgress(itemsFromGroup(wiringGroup)).pct;
-  const cold = calcProgress(itemsFromGroup(coldGroup)).pct;
+  // cold_comm has been merged into wiring/electrical — kept as 0 for back-compat
+  const cold = 0;
 
   let mech = 0;
   if (pe.mech_mode === "checklist") {
@@ -71,6 +71,6 @@ export function equipmentProgress(pe: any): { mech: number; wiring: number; cold
     mech = Math.max(0, Math.min(100, pe.mech_manual_pct ?? 0));
   }
 
-  const overall = Math.round((mech + wiring + cold) / 3);
+  const overall = Math.round((mech + wiring) / 2);
   return { mech, wiring, cold, overall };
 }

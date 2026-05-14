@@ -172,11 +172,10 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
             Provisional Acceptance
           </Link>
         </div>
-        {/* 3 chapters in one line */}
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        {/* 2 chapters in one line */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <ChapterTile label="Assembly" pct={avgMech} />
-          <ChapterTile label="Wiring" pct={avgWiring} />
-          <ChapterTile label="Cold comm." pct={avgCold} />
+          <ChapterTile label="Electrical" pct={avgWiring} />
         </div>
       </div>
 
@@ -349,10 +348,9 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
             </div>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <MiniStat label="Assembly" pct={mech} />
-          <MiniStat label="Wiring" pct={wiring} />
-          <MiniStat label="Cold comm." pct={cold} />
+          <MiniStat label="Electrical" pct={wiring} />
         </div>
       </CardContent>
     </Card>
