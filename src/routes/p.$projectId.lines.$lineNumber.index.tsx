@@ -3,15 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, CHAPTER_LABELS, CHAPTER_ORDER } from "@/lib/progress";
+import { calcProgress, equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Plus, Cog } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight, Plus, Cog, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
+import { HotCalendar } from "@/components/HotCalendar";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/")({ component: LineOverview });
 
@@ -29,13 +31,20 @@ function LineOverview() {
       const { data: line, error } = await supabase
         .from("lines")
         .select(`
-          id, number, name, project_id,
-          equipment_groups(
-            id, chapter, kind, name, sort_order, deleted_at,
-            components(
-              id, deleted_at,
-              checklist_items(id, done, deleted_at)
+          id, number, name, project_id, hot_planned_start, hot_planned_end,
+          plant_equipment(
+            id, name, kind, sort_order, deleted_at, mech_mode, mech_manual_pct,
+            equipment_groups(
+              id, chapter, deleted_at,
+              component_types(
+                id, deleted_at,
+                components(id, deleted_at, checklist_items(id, done, deleted_at))
+              )
             )
+          ),
+          equipment_groups(
+            id, chapter, kind, name, sort_order, deleted_at, plant_equipment_id,
+            components(id, deleted_at, checklist_items(id, done, deleted_at))
           )
         `)
         .eq("project_id", projectId)
@@ -48,41 +57,25 @@ function LineOverview() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["line-overview", projectId, lineNumber] });
 
-  const allItems = useMemo(() => {
-    return (data?.equipment_groups ?? []).filter((eg: any) => !eg.deleted_at).flatMap((eg: any) =>
-      (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
-    );
-  }, [data]);
-  const lineProgress = calcProgress(allItems);
-
-  const chapterProgress = useMemo(() => {
-    const out: Record<string, ReturnType<typeof calcProgress>> = {};
-    for (const ch of CHAPTER_ORDER) {
-      const items = (data?.equipment_groups ?? [])
-        .filter((eg: any) => eg.chapter === ch && !eg.deleted_at)
-        .flatMap((eg: any) =>
-          (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
-        );
-      out[ch] = calcProgress(items);
-    }
-    return out;
-  }, [data]);
-
-  // Group equipment_groups by kind (kiln, shs) — aggregated across chapters
+  // Group plant_equipment by kind (kiln, shs)
   const equipmentByKind = useMemo(() => {
-    const map = new Map<string, { kind: string; name: string; items: any[] }>();
-    for (const eg of (data?.equipment_groups ?? [])) {
-      if (eg.deleted_at) continue;
-      if (eg.kind === "extra_work") continue;
-      const cur = map.get(eg.kind) ?? { kind: eg.kind, name: kindLabel(eg.kind), items: [] };
-      const items = (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? []);
-      cur.items.push(...items);
-      map.set(eg.kind, cur);
+    const map = new Map<string, { kind: string; name: string; equipment: any[] }>();
+    for (const pe of (data?.plant_equipment ?? [])) {
+      if (pe.deleted_at) continue;
+      const cur = map.get(pe.kind) ?? { kind: pe.kind, name: kindLabel(pe.kind), equipment: [] };
+      cur.equipment.push(pe);
+      map.set(pe.kind, cur);
     }
     const order = ["kiln", "shs"];
-    return Array.from(map.values()).sort(
-      (a, b) => order.indexOf(a.kind) - order.indexOf(b.kind),
-    );
+    return Array.from(map.values()).sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  }, [data]);
+
+  // Line overall = average of every plant_equipment's overall%
+  const lineProgressPct = useMemo(() => {
+    const peList = (data?.plant_equipment ?? []).filter((p: any) => !p.deleted_at);
+    if (peList.length === 0) return 0;
+    const total = peList.reduce((s: number, pe: any) => s + equipmentProgress(pe).overall, 0);
+    return Math.round(total / peList.length);
   }, [data]);
 
   const extraWorks = (data?.equipment_groups ?? []).filter((eg: any) => eg.kind === "extra_work" && !eg.deleted_at);
@@ -107,30 +100,24 @@ function LineOverview() {
                   <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line</span>
                   <h1 className="text-3xl font-semibold tabular-nums">
                     {data.number.toString().padStart(2, "0")}
-                    <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgress.pct}%</span>
+                    <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgressPct}%</span>
                   </h1>
                 </div>
-                <div className="min-w-[240px] flex-1 sm:max-w-md">
-                  <ProgressBar value={lineProgress.pct} size="md" />
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {CHAPTER_ORDER.map((ch) => (
-                  <div key={ch} className="rounded-md border bg-card p-3">
-                    <div className="mb-1 flex items-baseline justify-between">
-                      <span className="text-xs text-muted-foreground">{CHAPTER_LABELS[ch]}</span>
-                      <span className="font-mono text-xs tabular-nums">{chapterProgress[ch].pct}%</span>
-                    </div>
-                    <ProgressBar value={chapterProgress[ch].pct} size="sm" />
+                <div className="flex items-center gap-3">
+                  <div className="min-w-[200px] sm:min-w-[280px]">
+                    <ProgressBar value={lineProgressPct} size="md" />
                   </div>
-                ))}
+                  <HotCommissioningButton line={data} canEdit={canEdit} onChange={invalidate} />
+                </div>
               </div>
             </div>
 
             <h2 className="mb-3 text-lg font-semibold">Plants</h2>
             <div className="grid gap-4 md:grid-cols-2">
               {equipmentByKind.map((eq) => {
-                const prog = calcProgress(eq.items);
+                const overallPct = eq.equipment.length === 0
+                  ? 0
+                  : Math.round(eq.equipment.reduce((s: number, pe: any) => s + equipmentProgress(pe).overall, 0) / eq.equipment.length);
                 return (
                   <Link
                     key={eq.kind}
@@ -148,10 +135,10 @@ function LineOverview() {
                           <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
                         </div>
                         <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
-                          <span>{prog.done}/{prog.total} items</span>
-                          <span className="font-mono tabular-nums">{prog.pct}%</span>
+                          <span>{eq.equipment.length} equipment</span>
+                          <span className="font-mono tabular-nums">{overallPct}%</span>
                         </div>
-                        <ProgressBar value={prog.pct} size="sm" />
+                        <ProgressBar value={overallPct} size="sm" />
                       </CardContent>
                     </Card>
                   </Link>
@@ -176,6 +163,34 @@ function kindLabel(kind: string) {
   if (kind === "kiln") return "Kiln";
   if (kind === "shs") return "SHS";
   return kind;
+}
+
+function HotCommissioningButton({ line, canEdit, onChange }: any) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <CalendarDays className="h-4 w-4" />
+          Hot commissioning
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Hot commissioning · Line {String(line.number).padStart(2, "0")}</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[75vh] overflow-y-auto">
+          <HotCalendar
+            lineId={line.id}
+            plannedStart={line.hot_planned_start}
+            plannedEnd={line.hot_planned_end}
+            canEdit={canEdit}
+            onChange={onChange}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function ExtraWorksSection({ line, works, canEdit, onChange }: any) {

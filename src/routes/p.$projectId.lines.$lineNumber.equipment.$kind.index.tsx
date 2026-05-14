@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress } from "@/lib/progress";
+import { equipmentProgress, CHAPTER_LABELS } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -47,12 +47,12 @@ function PlantEquipmentList() {
         const { data: pe, error: pErr } = await supabase
           .from("plant_equipment")
           .select(`
-            id, name, sort_order, deleted_at,
+            id, name, sort_order, deleted_at, mech_mode, mech_manual_pct,
             equipment_groups(
-              id, deleted_at,
-              components(
+              id, chapter, deleted_at,
+              component_types(
                 id, deleted_at,
-                checklist_items(id, done, deleted_at)
+                components(id, deleted_at, checklist_items(id, done, deleted_at))
               )
             )
           `)
@@ -115,12 +115,19 @@ function PlantEquipmentList() {
 }
 
 function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, lineNumber }: any) {
-  const allItems = equipment.flatMap((pe: any) =>
-    (pe.equipment_groups ?? []).filter((eg: any) => !eg.deleted_at).flatMap((eg: any) =>
-      (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
-    )
+  const totals = equipment.reduce(
+    (acc: any, pe: any) => {
+      const p = equipmentProgress(pe);
+      acc.mech += p.mech; acc.wiring += p.wiring; acc.cold += p.cold; acc.n += 1;
+      return acc;
+    },
+    { mech: 0, wiring: 0, cold: 0, n: 0 },
   );
-  const overall = calcProgress(allItems);
+  const avgMech = totals.n ? Math.round(totals.mech / totals.n) : 0;
+  const avgWiring = totals.n ? Math.round(totals.wiring / totals.n) : 0;
+  const avgCold = totals.n ? Math.round(totals.cold / totals.n) : 0;
+  const overall = Math.round((avgMech + avgWiring + avgCold) / 3);
+
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
 
@@ -143,12 +150,15 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {lineNumber} · Plant</span>
             <h1 className="text-3xl font-semibold">
               {title}
-              <span className="ml-3 text-base font-normal text-muted-foreground">{overall.pct}%</span>
+              <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
             </h1>
           </div>
-          <div className="min-w-[240px] flex-1 sm:max-w-md">
-            <ProgressBar value={overall.pct} size="md" />
-          </div>
+        </div>
+        {/* 3 chapters in one line */}
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <ChapterTile label={CHAPTER_LABELS.assembly} pct={avgMech} />
+          <ChapterTile label={CHAPTER_LABELS.wiring} pct={avgWiring} />
+          <ChapterTile label={CHAPTER_LABELS.cold_comm} pct={avgCold} />
         </div>
       </div>
 
@@ -163,13 +173,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
 
       {adding && (
         <div className="mb-4 flex max-w-md items-center gap-2">
-          <Input
-            value={newName}
-            autoFocus
-            onChange={(e) => setNewName(e.target.value)}
+          <Input value={newName} autoFocus onChange={(e) => setNewName(e.target.value)}
             placeholder="Equipment name (e.g. Burner, Fan)"
-            onKeyDown={(e) => e.key === "Enter" && addEquipment()}
-          />
+            onKeyDown={(e) => e.key === "Enter" && addEquipment()} />
           <Button size="sm" onClick={addEquipment}>Add</Button>
           <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setNewName(""); }}>Cancel</Button>
         </div>
@@ -210,11 +216,20 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
-  const items = (pe.equipment_groups ?? []).filter((eg: any) => !eg.deleted_at).flatMap((eg: any) =>
-    (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
+function ChapterTile({ label, pct }: { label: string; pct: number }) {
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="mb-1 flex items-baseline justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="font-mono text-xs tabular-nums">{pct}%</span>
+      </div>
+      <ProgressBar value={pct} size="sm" />
+    </div>
   );
-  const prog = calcProgress(items);
+}
+
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
+  const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
 
@@ -249,6 +264,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
             >
               <Cog className="h-5 w-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold group-hover:underline">{pe.name}</h3>
+              <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
             </Link>
           )}
@@ -272,7 +288,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete "{pe.name}"?</AlertDialogTitle>
-                    <AlertDialogDescription>All sections and items inside will be hidden.</AlertDialogDescription>
+                    <AlertDialogDescription>This removes the equipment on every line of the project.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -283,12 +299,24 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
             </div>
           )}
         </div>
-        <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
-          <span>{prog.done}/{prog.total} items</span>
-          <span className="font-mono tabular-nums">{prog.pct}%</span>
+        <div className="grid grid-cols-3 gap-2">
+          <MiniStat label="Assembly" pct={mech} />
+          <MiniStat label="Wiring" pct={wiring} />
+          <MiniStat label="Cold comm." pct={cold} />
         </div>
-        <ProgressBar value={prog.pct} size="sm" />
       </CardContent>
     </Card>
+  );
+}
+
+function MiniStat({ label, pct }: { label: string; pct: number }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between text-[11px] text-muted-foreground">
+        <span>{label}</span>
+        <span className="font-mono tabular-nums">{pct}%</span>
+      </div>
+      <ProgressBar value={pct} size="sm" />
+    </div>
   );
 }

@@ -150,35 +150,86 @@ export type Database = {
           },
         ]
       }
-      components: {
+      component_types: {
         Row: {
           created_at: string
           deleted_at: string | null
-          equipment_id: string
+          equipment_group_id: string
+          id: string
+          name: string
+          sort_order: number
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          equipment_group_id: string
+          id?: string
+          name: string
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          equipment_group_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "component_types_equipment_group_id_fkey"
+            columns: ["equipment_group_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      components: {
+        Row: {
+          component_type_id: string | null
+          created_at: string
+          deleted_at: string | null
+          equipment_id: string | null
           id: string
           name: string
           sort_order: number
           template_id: string | null
         }
         Insert: {
+          component_type_id?: string | null
           created_at?: string
           deleted_at?: string | null
-          equipment_id: string
+          equipment_id?: string | null
           id?: string
           name: string
           sort_order?: number
           template_id?: string | null
         }
         Update: {
+          component_type_id?: string | null
           created_at?: string
           deleted_at?: string | null
-          equipment_id?: string
+          equipment_id?: string | null
           id?: string
           name?: string
           sort_order?: number
           template_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "components_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "components_equipment_id_fkey"
             columns: ["equipment_id"]
@@ -236,6 +287,38 @@ export type Database = {
           {
             foreignKeyName: "equipment_groups_plant_equipment_id_fkey"
             columns: ["plant_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "plant_equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_photos: {
+        Row: {
+          equipment_id: string
+          id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          equipment_id: string
+          id?: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          equipment_id?: string
+          id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_photos_equipment_id_fkey"
+            columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "plant_equipment"
             referencedColumns: ["id"]
@@ -357,6 +440,9 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["equipment_kind"]
           line_id: string
+          mech_manual_pct: number | null
+          mech_mode: string
+          mech_notes: string | null
           name: string
           sort_order: number
           template_id: string | null
@@ -368,6 +454,9 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["equipment_kind"]
           line_id: string
+          mech_manual_pct?: number | null
+          mech_mode?: string
+          mech_notes?: string | null
           name: string
           sort_order?: number
           template_id?: string | null
@@ -379,6 +468,9 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["equipment_kind"]
           line_id?: string
+          mech_manual_pct?: number | null
+          mech_mode?: string
+          mech_notes?: string | null
           name?: string
           sort_order?: number
           template_id?: string | null
