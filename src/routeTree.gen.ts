@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
 import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
+import { Route as PProjectIdLinesLineNumberEquipmentKindRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -41,20 +42,28 @@ const PProjectIdLinesLineNumberRoute =
     path: '/p/$projectId/lines/$lineNumber',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PProjectIdLinesLineNumberEquipmentKindRoute =
+  PProjectIdLinesLineNumberEquipmentKindRouteImport.update({
+    id: '/equipment/$kind',
+    path: '/equipment/$kind',
+    getParentRoute: () => PProjectIdLinesLineNumberRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
-  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
-  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,7 +71,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
-  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -72,6 +82,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/common'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -79,6 +90,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/common'
     | '/p/$projectId'
     | '/p/$projectId/lines/$lineNumber'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind'
   id:
     | '__root__'
     | '/'
@@ -86,6 +98,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/common'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,7 +106,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PProjectIdCommonRoute: typeof PProjectIdCommonRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
-  PProjectIdLinesLineNumberRoute: typeof PProjectIdLinesLineNumberRoute
+  PProjectIdLinesLineNumberRoute: typeof PProjectIdLinesLineNumberRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -133,16 +146,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdLinesLineNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$projectId/lines/$lineNumber/equipment/$kind': {
+      id: '/p/$projectId/lines/$lineNumber/equipment/$kind'
+      path: '/equipment/$kind'
+      fullPath: '/p/$projectId/lines/$lineNumber/equipment/$kind'
+      preLoaderRoute: typeof PProjectIdLinesLineNumberEquipmentKindRouteImport
+      parentRoute: typeof PProjectIdLinesLineNumberRoute
+    }
   }
 }
+
+interface PProjectIdLinesLineNumberRouteChildren {
+  PProjectIdLinesLineNumberEquipmentKindRoute: typeof PProjectIdLinesLineNumberEquipmentKindRoute
+}
+
+const PProjectIdLinesLineNumberRouteChildren: PProjectIdLinesLineNumberRouteChildren =
+  {
+    PProjectIdLinesLineNumberEquipmentKindRoute:
+      PProjectIdLinesLineNumberEquipmentKindRoute,
+  }
+
+const PProjectIdLinesLineNumberRouteWithChildren =
+  PProjectIdLinesLineNumberRoute._addFileChildren(
+    PProjectIdLinesLineNumberRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   PProjectIdCommonRoute: PProjectIdCommonRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,
-  PProjectIdLinesLineNumberRoute: PProjectIdLinesLineNumberRoute,
+  PProjectIdLinesLineNumberRoute: PProjectIdLinesLineNumberRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
