@@ -213,9 +213,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
       <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
       <span className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}>{item.label}</span>
       {canEdit && (
-        <button onClick={remove} className="p-1 opacity-60 hover:opacity-100">
-          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-        </button>
+        <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
     </div>
   );
