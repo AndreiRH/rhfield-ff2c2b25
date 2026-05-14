@@ -152,7 +152,6 @@ function EquipmentDetail() {
               <TabsContent value="electrical" className="mt-4">
                 <ElectricalView
                   wiring={data.wiring}
-                  cold={data.cold}
                   canEdit={canEdit}
                   onChange={invalidate}
                 />
@@ -166,7 +165,7 @@ function EquipmentDetail() {
 }
 
 function EquipmentHeader({ pe, lineNumber, plantLabel }: any) {
-  const { mech, wiring, cold, overall } = equipmentProgress(pe);
+  const { mech, wiring, overall } = equipmentProgress(pe);
   return (
     <div className="border-b pb-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -178,10 +177,9 @@ function EquipmentHeader({ pe, lineNumber, plantLabel }: any) {
           </h1>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Mini label="Assembly" pct={mech} />
-        <Mini label="Wiring" pct={wiring} />
-        <Mini label="Cold comm." pct={cold} />
+        <Mini label="Electrical" pct={wiring} />
       </div>
     </div>
   );
@@ -254,21 +252,9 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
   );
 }
 
-function ElectricalView({ wiring, cold, canEdit, onChange }: any) {
+function ElectricalView({ wiring, canEdit, onChange }: any) {
   return (
-    <Tabs defaultValue="wiring">
-      <TabsList>
-        <TabsTrigger value="wiring">Wiring</TabsTrigger>
-        <TabsTrigger value="cold">Cold commissioning</TabsTrigger>
-      </TabsList>
-      <TabsContent value="wiring" className="mt-3">
-        <ComponentTypesTree group={wiring} canEdit={canEdit} onChange={onChange}
-          emptyHint="No wiring types yet. Add categories like 'Sensors', 'Cabling', 'Junction boxes'…" />
-      </TabsContent>
-      <TabsContent value="cold" className="mt-3">
-        <ComponentTypesTree group={cold} canEdit={canEdit} onChange={onChange}
-          emptyHint="No cold-commissioning types yet. Add categories like 'Loops', 'Interlocks'…" />
-      </TabsContent>
-    </Tabs>
+    <ComponentTypesTree group={wiring} canEdit={canEdit} onChange={onChange}
+      emptyHint="No electrical types yet. Add categories like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
   );
 }
