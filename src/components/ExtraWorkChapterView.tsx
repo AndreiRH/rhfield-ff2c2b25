@@ -150,7 +150,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange }: any) {
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
   const sortableArgs = useSortable({ id: component.id, disabled: !canEdit });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
@@ -161,7 +161,9 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
 
-  const [open, setOpen] = useState(true);
+  const [internalOpen, setInternalOpen] = useState(true);
+  const open = openProp ?? internalOpen;
+  const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
 
@@ -222,7 +224,7 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <button onClick={() => setOpen((o) => !o)} className="text-muted-foreground hover:text-foreground">
+        <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {editingName ? (
