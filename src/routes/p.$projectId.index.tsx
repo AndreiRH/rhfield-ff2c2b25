@@ -4,11 +4,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { calcProgress, equipmentProgress } from "@/lib/progress";
-import { ProgressBar, ProgressRing } from "@/components/ProgressBar";
+import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Folder, ChevronLeft } from "lucide-react";
+import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
 
