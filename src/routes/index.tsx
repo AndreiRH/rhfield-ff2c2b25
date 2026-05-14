@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportProjectButton } from "@/components/ImportProjectButton";
+import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 
