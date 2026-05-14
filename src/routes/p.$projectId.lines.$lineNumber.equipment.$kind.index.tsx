@@ -14,9 +14,17 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Cog, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Cog, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/")({
   component: PlantEquipmentList,
@@ -193,8 +201,47 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
       {equipment.length === 0 && !adding ? (
         <p className="text-sm text-muted-foreground">No equipment yet. Add the first one to start tracking.</p>
       ) : (
+        <EquipmentSortable
+          equipment={equipment}
+          canEdit={canEdit}
+          onChange={onChange}
+          projectId={projectId}
+          lineNumber={lineNumber}
+          kind={kind}
+        />
+      )}
+    </>
+  );
+}
+
+function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind }: any) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+  const [items, setItems] = useState(equipment);
+  useEffect(() => { setItems(equipment); }, [equipment]);
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = items.findIndex((x: any) => x.id === active.id);
+    const newIdx = items.findIndex((x: any) => x.id === over.id);
+    const next = arrayMove(items, oldIdx, newIdx);
+    setItems(next);
+    await Promise.all(
+      next.map((n: any, i: number) =>
+        supabase.from("plant_equipment").update({ sort_order: i }).eq("id", n.id),
+      ),
+    );
+    onChange();
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={items.map((x: any) => x.id)} strategy={verticalListSortingStrategy}>
         <div className="grid gap-3 md:grid-cols-2">
-          {equipment.map((pe: any, idx: number) => (
+          {items.map((pe: any) => (
             <EquipmentCard
               key={pe.id}
               pe={pe}
@@ -203,25 +250,11 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
-              canMoveUp={idx > 0}
-              canMoveDown={idx < equipment.length - 1}
-              onMoveUp={async () => {
-                const a = equipment[idx]; const b = equipment[idx - 1];
-                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
-                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
-                onChange();
-              }}
-              onMoveDown={async () => {
-                const a = equipment[idx]; const b = equipment[idx + 1];
-                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
-                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
-                onChange();
-              }}
             />
           ))}
         </div>
-      )}
-    </>
+      </SortableContext>
+    </DndContext>
   );
 }
 
@@ -237,10 +270,12 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: any) {
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pe.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
   const save = async () => {
     if (!name.trim()) return;
@@ -256,9 +291,20 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
   };
 
   return (
-    <Card className="transition hover:border-primary/40">
+    <Card ref={setNodeRef} style={style} className="transition hover:border-primary/40">
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
+          {canEdit && !editing && (
+            <button
+              type="button"
+              className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
+              title="Drag to reorder"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
           {editing ? (
             <div className="flex flex-1 items-center gap-2">
               <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
@@ -279,12 +325,6 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
           )}
           {canEdit && !editing && (
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" disabled={!canMoveUp} onClick={onMoveUp} title="Move up">
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" disabled={!canMoveDown} onClick={onMoveDown} title="Move down">
-                <ArrowDown className="h-4 w-4" />
-              </Button>
               <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
                 <Pencil className="h-4 w-4" />
               </Button>
