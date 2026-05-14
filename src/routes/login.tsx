@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
-import { HardHat } from "lucide-react";
+import riedhammerLogo from "@/assets/riedhammer-logo.png";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -54,12 +54,12 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="mb-2 flex items-center gap-2 text-primary">
-            <HardHat className="h-6 w-6" />
-            <span className="font-mono text-xs uppercase tracking-widest">Commissioning</span>
+          <div className="mb-3 flex items-center gap-2">
+            <img src={riedhammerLogo} alt="Riedhammer" className="h-8 w-auto" />
+            <span className="font-mono text-sm font-semibold uppercase tracking-widest">Riedhammer Field</span>
           </div>
-          <CardTitle>BlueW1 Commissioning</CardTitle>
-          <CardDescription>Sign in to track project progress.</CardDescription>
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>Track project commissioning progress.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin">
