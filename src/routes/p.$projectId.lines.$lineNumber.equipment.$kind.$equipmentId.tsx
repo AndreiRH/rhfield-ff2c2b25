@@ -43,9 +43,7 @@ function EquipmentDetail() {
         .eq("id", equipmentId).single();
       if (peErr) throw peErr;
 
-      const { data: groups, error: gErr } = await supabase
-        .from("equipment_groups")
-        .select(`
+      const groupsSelect = `
           id, chapter, name, plant_equipment_id,
           components(
             id, name, sort_order, deleted_at,
@@ -60,10 +58,37 @@ function EquipmentDetail() {
                 item_photos(id, storage_path), item_files(id, storage_path, file_name))
             )
           )
-        `)
+        `;
+      let { data: groups, error: gErr } = await supabase
+        .from("equipment_groups")
+        .select(groupsSelect)
         .eq("plant_equipment_id", equipmentId)
         .is("deleted_at", null);
       if (gErr) throw gErr;
+
+      // Backfill any missing default chapters (assembly/wiring/cold_comm)
+      const chapters = ["assembly", "wiring", "cold_comm"] as const;
+      const missing = chapters.filter((ch) => !(groups ?? []).some((g: any) => g.chapter === ch));
+      if (missing.length > 0) {
+        const { error: insErr } = await supabase.from("equipment_groups").insert(
+          missing.map((ch) => ({
+            line_id: line.id,
+            chapter: ch,
+            kind: pe.kind,
+            name: pe.name,
+            sort_order: 0,
+            plant_equipment_id: equipmentId,
+          })),
+        );
+        if (insErr) throw insErr;
+        const refetched = await supabase
+          .from("equipment_groups")
+          .select(groupsSelect)
+          .eq("plant_equipment_id", equipmentId)
+          .is("deleted_at", null);
+        if (refetched.error) throw refetched.error;
+        groups = refetched.data;
+      }
 
       const { data: photos, error: phErr } = await supabase
         .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
