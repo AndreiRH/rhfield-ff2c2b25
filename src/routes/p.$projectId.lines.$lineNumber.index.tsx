@@ -221,22 +221,56 @@ function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
           const items = (w.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? []);
           const prog = calcProgress(items);
           return (
-            <Link
-              key={w.id}
-              to="/p/$projectId/lines/$lineNumber/equipment/$kind"
-              params={{ projectId, lineNumber, kind: w.id }}
-              className="block"
-            >
-              <Card className="transition hover:border-primary/40">
-                <CardContent className="p-4">
+            <Card key={w.id} className="relative transition hover:border-primary/40">
+              <Link
+                to="/p/$projectId/lines/$lineNumber/equipment/$kind"
+                params={{ projectId, lineNumber, kind: w.id }}
+                className="block"
+              >
+                <CardContent className="p-4 pr-12">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="font-medium">{w.name}</h3>
                     <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.pct}%</span>
                   </div>
                   <ProgressBar value={prog.pct} size="sm" />
                 </CardContent>
-              </Card>
-            </Link>
+              </Link>
+              {canEdit && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute right-2 top-2 h-8 w-8"
+                      title="Delete extra work"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete "{w.name}"?</AlertDialogTitle>
+                      <AlertDialogDescription>This removes the extra work and all its tasks from this line.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          const { error } = await supabase
+                            .from("equipment_groups")
+                            .update({ deleted_at: new Date().toISOString() })
+                            .eq("id", w.id);
+                          if (error) toast.error(error.message);
+                          else { toast.success("Extra work deleted"); onChange(); }
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </Card>
           );
         })}
       </div>
