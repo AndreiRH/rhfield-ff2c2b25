@@ -141,6 +141,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [deleteMode, setDeleteMode] = useState(false);
 
   const title = kind === "kiln" ? "Kiln" : "SHS";
 
