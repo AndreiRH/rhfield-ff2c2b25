@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Users } from "lucide-react";
 import riedhammerLogo from "@/assets/riedhammer-logo.png";
 
 export function AppHeader() {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, isAdmin, signOut } = useAuth();
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
@@ -19,6 +19,11 @@ export function AppHeader() {
               <span className="hidden text-xs text-muted-foreground sm:block">
                 {user.email} · <span className="font-mono uppercase">{roles.join(",") || "no role"}</span>
               </span>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin/users"><Users className="mr-1 h-4 w-4" />Users</Link>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="mr-1 h-4 w-4" /> Sign out
               </Button>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
 import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
@@ -28,6 +29,11 @@ const LoginRoute = LoginRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
@@ -80,6 +86,7 @@ const PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/admin/users'
     | '/p/$projectId/common'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/admin/users'
     | '/p/$projectId/common'
     | '/p/$projectId'
     | '/p/$projectId/lines/$lineNumber'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/admin/users'
     | '/p/$projectId/common'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   PProjectIdCommonRoute: typeof PProjectIdCommonRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
   PProjectIdLinesLineNumberRoute: typeof PProjectIdLinesLineNumberRouteWithChildren
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$projectId/': {
@@ -273,6 +293,7 @@ const PProjectIdLinesLineNumberRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  AdminUsersRoute: AdminUsersRoute,
   PProjectIdCommonRoute: PProjectIdCommonRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,
   PProjectIdLinesLineNumberRoute: PProjectIdLinesLineNumberRouteWithChildren,
