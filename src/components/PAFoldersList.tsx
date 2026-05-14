@@ -115,7 +115,7 @@ export function PAFoldersList({
               onToggle={() => setOpenId(openId === f.id ? null : f.id)}
               canEdit={canEdit}
               userId={userId}
-              onRename={(name) => renameFolder(f.id, name)}
+              onRename={(name: string) => renameFolder(f.id, name)}
               onDelete={() => deleteFolder(f.id)}
             />
           ))}
