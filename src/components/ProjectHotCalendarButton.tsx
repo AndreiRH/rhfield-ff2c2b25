@@ -92,25 +92,9 @@ function CombinedCalendar({ projectId }: { projectId: string }) {
         month={month}
         onMonthChange={setMonth}
         selected={undefined}
+        modifiers={{ milestone: milestones.map((m) => parseISO(m.date)) }}
+        modifiersClassNames={{ milestone: "ring-2 ring-primary ring-offset-1 rounded-md" }}
         className={cn("rounded-md border p-3 pointer-events-auto")}
-        components={{
-          DayButton: ({ day, modifiers, ...btnProps }: any) => {
-            const dateStr = format(day.date, "yyyy-MM-dd");
-            const list = byDate.get(dateStr) ?? [];
-            return (
-              <button {...btnProps} className={cn(btnProps.className, "relative")}>
-                {day.date.getDate()}
-                {list.length > 0 && (
-                  <span className="absolute inset-x-1 bottom-0.5 flex flex-wrap justify-center gap-0.5">
-                    {list.slice(0, 4).map((m) => (
-                      <span key={m.id} className="h-1.5 w-1.5 rounded-full" style={{ background: colorByLine.get(m.line_id) }} />
-                    ))}
-                  </span>
-                )}
-              </button>
-            );
-          },
-        }}
       />
 
       {/* Listing */}
