@@ -9,38 +9,102 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
+import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
+import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
+  id: '/p/$projectId/',
+  path: '/p/$projectId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PProjectIdCommonRoute = PProjectIdCommonRouteImport.update({
+  id: '/p/$projectId/common',
+  path: '/p/$projectId/common',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PProjectIdLinesLineNumberRoute =
+  PProjectIdLinesLineNumberRouteImport.update({
+    id: '/p/$projectId/lines/$lineNumber',
+    path: '/p/$projectId/lines/$lineNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId/': typeof PProjectIdIndexRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId': typeof PProjectIdIndexRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId/': typeof PProjectIdIndexRoute
+  '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/p/$projectId/common'
+    | '/p/$projectId/'
+    | '/p/$projectId/lines/$lineNumber'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/p/$projectId/common'
+    | '/p/$projectId'
+    | '/p/$projectId/lines/$lineNumber'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/p/$projectId/common'
+    | '/p/$projectId/'
+    | '/p/$projectId/lines/$lineNumber'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  PProjectIdCommonRoute: typeof PProjectIdCommonRoute
+  PProjectIdIndexRoute: typeof PProjectIdIndexRoute
+  PProjectIdLinesLineNumberRoute: typeof PProjectIdLinesLineNumberRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +112,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$projectId/': {
+      id: '/p/$projectId/'
+      path: '/p/$projectId'
+      fullPath: '/p/$projectId/'
+      preLoaderRoute: typeof PProjectIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$projectId/common': {
+      id: '/p/$projectId/common'
+      path: '/p/$projectId/common'
+      fullPath: '/p/$projectId/common'
+      preLoaderRoute: typeof PProjectIdCommonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$projectId/lines/$lineNumber': {
+      id: '/p/$projectId/lines/$lineNumber'
+      path: '/p/$projectId/lines/$lineNumber'
+      fullPath: '/p/$projectId/lines/$lineNumber'
+      preLoaderRoute: typeof PProjectIdLinesLineNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  PProjectIdCommonRoute: PProjectIdCommonRoute,
+  PProjectIdIndexRoute: PProjectIdIndexRoute,
+  PProjectIdLinesLineNumberRoute: PProjectIdLinesLineNumberRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
