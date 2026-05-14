@@ -292,10 +292,11 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: any) {
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pe.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
@@ -309,14 +310,19 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
   const remove = async () => {
     const { error } = await supabase.from("plant_equipment").update({ deleted_at: new Date().toISOString() }).eq("id", pe.id);
     if (error) toast.error(error.message);
-    else { toast.success("Equipment removed"); onChange(); }
+    else { toast.success("Equipment removed"); onChange(); setConfirmDelete(false); }
   };
 
   return (
-    <Card ref={setNodeRef} style={style} className="transition hover:border-primary/40">
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`transition ${deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : "hover:border-primary/40"}`}
+      onClick={deleteMode ? () => setConfirmDelete(true) : undefined}
+    >
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          {canEdit && !editing && (
+          {canEdit && !editing && !deleteMode && (
             <button
               type="button"
               className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
@@ -333,6 +339,12 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
               <Button size="icon" variant="ghost" onClick={save}><Check className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(pe.name); }}><X className="h-4 w-4" /></Button>
             </div>
+          ) : deleteMode ? (
+            <div className="flex flex-1 items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              <h3 className="text-lg font-semibold">{pe.name}</h3>
+              <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
+            </div>
           ) : (
             <Link
               to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId"
@@ -345,29 +357,10 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
             </Link>
           )}
-          {canEdit && !editing && (
-            <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" title="Delete">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete "{pe.name}"?</AlertDialogTitle>
-                    <AlertDialogDescription>This removes the equipment on every line of the project.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+          {canEdit && !editing && !deleteMode && (
+            <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
+              <Pencil className="h-4 w-4" />
+            </Button>
           )}
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -376,6 +369,18 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
           <MiniStat label="Cold comm." pct={cold} />
         </div>
       </CardContent>
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{pe.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>This removes the equipment on every line of the project.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
