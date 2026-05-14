@@ -270,10 +270,12 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: any) {
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pe.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
   const save = async () => {
     if (!name.trim()) return;
@@ -289,9 +291,9 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, can
   };
 
   return (
-    <Card className="transition hover:border-primary/40">
+    <Card ref={setNodeRef} style={style} className="transition hover:border-primary/40">
       <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3 flex items-center justify-between gap-2"></div>
           {editing ? (
             <div className="flex flex-1 items-center gap-2">
               <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
