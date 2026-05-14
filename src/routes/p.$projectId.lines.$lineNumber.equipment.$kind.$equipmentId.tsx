@@ -197,6 +197,8 @@ function SectionTab({ label, pct, active, onClick }: { label: string; pct: numbe
     </button>
   );
 }
+
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
   const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
@@ -249,12 +251,5 @@ function SectionTab({ label, pct, active, onClick }: { label: string; pct: numbe
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} />
     </div>
-  );
-}
-
-function ElectricalView({ wiring, canEdit, onChange }: any) {
-  return (
-    <ComponentTypesTree group={wiring} canEdit={canEdit} onChange={onChange}
-      emptyHint="No electrical types yet. Add categories like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
   );
 }
