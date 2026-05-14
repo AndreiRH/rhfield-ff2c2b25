@@ -373,6 +373,33 @@ export type Database = {
           },
         ]
       }
+      item_files: {
+        Row: {
+          file_name: string
+          id: string
+          item_id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          item_id: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          item_id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       item_photos: {
         Row: {
           id: string
