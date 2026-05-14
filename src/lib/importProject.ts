@@ -244,7 +244,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
 
   // Media row maps — keep original storage_path in payload so the trigger
   // sees it; we'll re-upload to NEW path then update each row.
-  type MediaJob = { table: string; oldPath: string; newPath: string; bucket: "photos" | "files"; rowId: string; field: string };
+  type MediaJob = { table: string; oldPath: string; oldFileName?: string | null; newPath: string; bucket: "photos" | "files"; rowId: string; field: string };
   const mediaJobs: MediaJob[] = [];
 
   const remapStoragePath = (oldPath: string) => {
