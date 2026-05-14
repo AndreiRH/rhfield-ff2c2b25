@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
@@ -237,21 +237,36 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const photos = atts.filter((a) => a.kind === "photo");
   const files = atts.filter((a) => a.kind === "file");
 
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  const SectionHeader = ({ open, onToggle, label, count, action }: any) => (
+    <div className="flex items-center justify-between">
+      <button onClick={onToggle} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {label} <span className="font-mono normal-case tracking-normal">({count})</span>
+      </button>
+      {action}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* Photos */}
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Photos</h3>
-          {canEdit && (
+        <SectionHeader
+          open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)}
+          label="Photos" count={photos.length}
+          action={canEdit && (
             <PhotoPicker onPick={(f) => uploadAttachment(f, "photo")}>
               <button className="inline-flex cursor-pointer items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
                 <Camera className="h-3 w-3" /> Add photo
               </button>
             </PhotoPicker>
           )}
-        </div>
-        {photos.length === 0 ? (
+        />
+        {photosOpen && (photos.length === 0 ? (
           <p className="text-xs text-muted-foreground">No photos.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -259,22 +274,23 @@ function FolderContents({ folder, canEdit, userId }: any) {
               <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} />
             ))}
           </div>
-        )}
+        ))}
       </section>
 
       {/* Files */}
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Files</h3>
-          {canEdit && (
+        <SectionHeader
+          open={filesOpen} onToggle={() => setFilesOpen((o) => !o)}
+          label="Files" count={files.length}
+          action={canEdit && (
             <label className="inline-flex cursor-pointer items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
               <Paperclip className="h-3 w-3" /> Add file
               <input type="file" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAttachment(f, "file"); e.target.value = ""; }} />
             </label>
           )}
-        </div>
-        {files.length === 0 ? (
+        />
+        {filesOpen && (files.length === 0 ? (
           <p className="text-xs text-muted-foreground">No files.</p>
         ) : (
           <ul className="space-y-1">
@@ -282,21 +298,22 @@ function FolderContents({ folder, canEdit, userId }: any) {
               <AttFile key={f.id} att={f} canEdit={canEdit} onRemove={() => removeAttachment(f)} />
             ))}
           </ul>
-        )}
+        ))}
       </section>
 
       {/* Notes */}
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</h3>
-          {canEdit && (
+        <SectionHeader
+          open={notesOpen} onToggle={() => setNotesOpen((o) => !o)}
+          label="Notes" count={notes.length}
+          action={canEdit && (
             <button onClick={addNote}
               className="inline-flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
               <FileText className="h-3 w-3" /> Add note
             </button>
           )}
-        </div>
-        {notes.length === 0 ? (
+        />
+        {notesOpen && (notes.length === 0 ? (
           <p className="text-xs text-muted-foreground">No notes.</p>
         ) : (
           <ul className="space-y-2">
@@ -306,7 +323,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
                 onDelete={() => deleteNote(n)} onReload={load} />
             ))}
           </ul>
-        )}
+        ))}
       </section>
     </div>
   );
