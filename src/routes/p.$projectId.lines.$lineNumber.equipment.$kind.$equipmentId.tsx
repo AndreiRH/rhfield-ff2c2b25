@@ -47,6 +47,10 @@ function EquipmentDetail() {
         .from("equipment_groups")
         .select(`
           id, chapter, name, plant_equipment_id,
+          components(
+            id, name, sort_order, deleted_at,
+            checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id)
+          ),
           component_types(
             id, name, sort_order, deleted_at,
             components(
