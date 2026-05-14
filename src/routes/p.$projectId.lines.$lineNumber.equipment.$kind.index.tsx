@@ -181,26 +181,22 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
         </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Equipment</h2>
-        {canEdit && !adding && (
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add equipment
-            </Button>
-            {equipment.length > 0 && (
-              <Button
-                size="sm"
-                variant={deleteMode ? "destructive" : "outline"}
-                onClick={() => setDeleteMode((d) => !d)}
-              >
-                <Trash2 className="mr-1 h-4 w-4" />
-                {deleteMode ? "Done" : "Delete"}
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+      {canEdit && !adding && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <Button size="sm" onClick={() => setAdding(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Add equipment
+          </Button>
+          <Button
+            size="sm"
+            variant={deleteMode ? "destructive" : "outline"}
+            disabled={equipment.length === 0}
+            onClick={() => setDeleteMode((d) => !d)}
+          >
+            <Trash2 className="mr-1 h-4 w-4" />
+            {deleteMode ? "Done" : "Delete"}
+          </Button>
+        </div>
+      )}
 
       {adding && (
         <div className="mb-4 flex max-w-md items-center gap-2">
