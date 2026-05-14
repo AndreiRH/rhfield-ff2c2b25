@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import {
@@ -33,6 +33,7 @@ interface Note {
   photo_path: string | null;
   file_path: string | null;
   file_name: string | null;
+  is_shared: boolean;
 }
 
 export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: string; canEdit: boolean; userId?: string }) {
@@ -40,12 +41,23 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
   const [open, setOpen] = useState(false);
 
   const load = async () => {
+    // Resolve template_id for this equipment to find sibling equipment across lines
+    const { data: pe } = await supabase
+      .from("plant_equipment").select("template_id").eq("id", equipmentId).single();
+    let siblingIds: string[] = [];
+    if (pe?.template_id) {
+      const { data: sibs } = await supabase
+        .from("plant_equipment").select("id")
+        .eq("template_id", pe.template_id).neq("id", equipmentId);
+      siblingIds = (sibs ?? []).map((s: any) => s.id);
+    }
+    const orFilter = siblingIds.length > 0
+      ? `equipment_id.eq.${equipmentId},and(is_shared.eq.true,equipment_id.in.(${siblingIds.join(",")}))`
+      : `equipment_id.eq.${equipmentId}`;
     const { data } = await supabase
-      .from("equipment_notes")
-      .select("*")
-      .eq("equipment_id", equipmentId)
-      .order("sort_order")
-      .order("created_at");
+      .from("equipment_notes").select("*")
+      .or(orFilter)
+      .order("sort_order").order("created_at");
     setNotes((data ?? []) as Note[]);
   };
   useEffect(() => { load(); }, [equipmentId]);
@@ -204,6 +216,15 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
                 <Paperclip className="h-3 w-3" /> 1
               </span>
             )}
+          </button>
+        )}
+        {canEdit && (
+          <button
+            onClick={() => onUpdate({ is_shared: !note.is_shared })}
+            title={note.is_shared ? "Shared across all lines — click to make local" : "Local to this line — click to share across all lines"}
+            className={`p-1 ${note.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {note.is_shared ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
           </button>
         )}
         {canEdit && (

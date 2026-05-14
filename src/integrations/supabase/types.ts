@@ -372,6 +372,7 @@ export type Database = {
           file_name: string | null
           file_path: string | null
           id: string
+          is_shared: boolean
           photo_path: string | null
           position_x: number
           position_y: number
@@ -387,6 +388,7 @@ export type Database = {
           file_name?: string | null
           file_path?: string | null
           id?: string
+          is_shared?: boolean
           photo_path?: string | null
           position_x?: number
           position_y?: number
@@ -402,6 +404,7 @@ export type Database = {
           file_name?: string | null
           file_path?: string | null
           id?: string
+          is_shared?: boolean
           photo_path?: string | null
           position_x?: number
           position_y?: number
@@ -636,6 +639,7 @@ export type Database = {
           line_id: string
           name: string
           sort_order: number
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -646,6 +650,7 @@ export type Database = {
           line_id: string
           name?: string
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -656,6 +661,7 @@ export type Database = {
           line_id?: string
           name?: string
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -669,6 +675,7 @@ export type Database = {
           file_path: string | null
           folder_id: string | null
           id: string
+          is_shared: boolean
           kind: Database["public"]["Enums"]["plant_kind"]
           line_id: string
           photo_path: string | null
@@ -684,6 +691,7 @@ export type Database = {
           file_path?: string | null
           folder_id?: string | null
           id?: string
+          is_shared?: boolean
           kind: Database["public"]["Enums"]["plant_kind"]
           line_id: string
           photo_path?: string | null
@@ -699,6 +707,7 @@ export type Database = {
           file_path?: string | null
           folder_id?: string | null
           id?: string
+          is_shared?: boolean
           kind?: Database["public"]["Enums"]["plant_kind"]
           line_id?: string
           photo_path?: string | null
