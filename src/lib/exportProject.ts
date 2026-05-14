@@ -290,7 +290,8 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
     for (const p of ifScoped) {
       const item = ciById.get(p.item_id);
       const label = safe(item?.label ?? p.item_id);
-      jobs.push({ bucket: "files", path: p.storage_path, outPath: `files/checklist/${label}/${safe(p.file_name) || "file"}` });
+      const fname = p.storage_path.split("/").pop() ?? `${p.id}`;
+      jobs.push({ bucket: "files", path: p.storage_path, outPath: `files/checklist/${label}/${fname}` });
     }
     for (const p of epScoped) {
       const pe = peById.get(p.equipment_id);
@@ -306,7 +307,8 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
         jobs.push({ bucket: "photos", path: n.photo_path, outPath: `photos/equipment-notes/${label}/${fname}` });
       }
       if (n.file_path) {
-        jobs.push({ bucket: "files", path: n.file_path, outPath: `files/equipment-notes/${label}/${safe(n.file_name) || "file"}` });
+        const fname = n.file_path.split("/").pop() ?? `${n.id}`;
+        jobs.push({ bucket: "files", path: n.file_path, outPath: `files/equipment-notes/${label}/${fname}` });
       }
     }
     const folderById = new Map(paFolders.map((f) => [f.id, f]));
@@ -316,7 +318,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
       const label = `${line ? `line${line.number}-` : ""}${safe(f?.kind)}-${safe(f?.name)}`;
       const fname = a.storage_path.split("/").pop() ?? `${a.id}`;
       const dir = a.kind === "photo" ? "photos/pa" : "files/pa";
-      jobs.push({ bucket: a.kind === "photo" ? "photos" : "files", path: a.storage_path, outPath: `${dir}/${label}/${safe(a.file_name) || fname}` });
+      jobs.push({ bucket: a.kind === "photo" ? "photos" : "files", path: a.storage_path, outPath: `${dir}/${label}/${fname}` });
     }
     for (const n of paNotes) {
       const f = n.folder_id ? folderById.get(n.folder_id) : null;
@@ -327,11 +329,13 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
         jobs.push({ bucket: "photos", path: n.photo_path, outPath: `photos/pa-notes/${label}/${fname}` });
       }
       if (n.file_path) {
-        jobs.push({ bucket: "files", path: n.file_path, outPath: `files/pa-notes/${label}/${safe(n.file_name) || "file"}` });
+        const fname = n.file_path.split("/").pop() ?? `${n.id}`;
+        jobs.push({ bucket: "files", path: n.file_path, outPath: `files/pa-notes/${label}/${fname}` });
       }
     }
     for (const cf of commonFiles) {
-      jobs.push({ bucket: "files", path: cf.storage_path, outPath: `files/common/${safe(cf.name) || "file"}` });
+      const fname = cf.storage_path.split("/").pop() ?? `${cf.id}`;
+      jobs.push({ bucket: "files", path: cf.storage_path, outPath: `files/common/${fname}` });
     }
 
     let done = 0;
