@@ -235,7 +235,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
   );
 }
 
-function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind }: any) {
+function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -271,6 +271,7 @@ function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
+              deleteMode={deleteMode}
             />
           ))}
         </div>
