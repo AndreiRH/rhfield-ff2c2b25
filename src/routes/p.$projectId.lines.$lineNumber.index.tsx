@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Plus, Cog } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/p/$projectId/lines/$lineNumber")({ component: LineOverview });
+export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/")({ component: LineOverview });
 
 function LineOverview() {
   const { projectId, lineNumber } = Route.useParams();
