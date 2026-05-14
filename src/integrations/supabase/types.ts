@@ -27,6 +27,7 @@ export type Database = {
           note: string | null
           parent_item_id: string | null
           sort_order: number
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           note?: string | null
           parent_item_id?: string | null
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -55,6 +57,7 @@ export type Database = {
           note?: string | null
           parent_item_id?: string | null
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -155,6 +158,7 @@ export type Database = {
           id: string
           name: string
           sort_order: number
+          template_id: string | null
         }
         Insert: {
           created_at?: string
@@ -163,6 +167,7 @@ export type Database = {
           id?: string
           name: string
           sort_order?: number
+          template_id?: string | null
         }
         Update: {
           created_at?: string
@@ -171,6 +176,7 @@ export type Database = {
           id?: string
           name?: string
           sort_order?: number
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -193,6 +199,7 @@ export type Database = {
           name: string
           plant_equipment_id: string | null
           sort_order: number
+          template_id: string | null
         }
         Insert: {
           chapter: Database["public"]["Enums"]["chapter_kind"]
@@ -204,6 +211,7 @@ export type Database = {
           name: string
           plant_equipment_id?: string | null
           sort_order?: number
+          template_id?: string | null
         }
         Update: {
           chapter?: Database["public"]["Enums"]["chapter_kind"]
@@ -215,6 +223,7 @@ export type Database = {
           name?: string
           plant_equipment_id?: string | null
           sort_order?: number
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -350,6 +359,7 @@ export type Database = {
           line_id: string
           name: string
           sort_order: number
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -360,6 +370,7 @@ export type Database = {
           line_id: string
           name: string
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -370,6 +381,7 @@ export type Database = {
           line_id?: string
           name?: string
           sort_order?: number
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: []

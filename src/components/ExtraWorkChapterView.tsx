@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Camera, X, CornerDownRight } from "lucide-react";
+import { Plus, Trash2, Camera, X, CornerDownRight, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export function ChapterGroupCard({ group, canEdit, onChange }: any) {
@@ -84,6 +84,15 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
 
   const prog = calcProgress(allItems);
   const [newItem, setNewItem] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [name, setName] = useState(component.name);
+
+  const renameComponent = async () => {
+    if (!name.trim() || name === component.name) { setEditingName(false); return; }
+    const { error } = await supabase.from("components").update({ name: name.trim() }).eq("id", component.id);
+    if (error) toast.error(error.message);
+    else { setEditingName(false); onChange(); }
+  };
 
   const addItem = async () => {
     if (!newItem.trim()) return;
@@ -104,7 +113,26 @@ function ComponentBlock({ component, canEdit, onChange }: any) {
     <AccordionItem value={component.id}>
       <AccordionTrigger className="hover:no-underline">
         <div className="flex w-full items-center justify-between gap-3 pr-2">
-          <span className="text-left font-medium">{component.name}</span>
+          {editingName ? (
+            <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }} />
+              <Button size="icon" variant="ghost" onClick={renameComponent}><Check className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setName(component.name); }}><X className="h-4 w-4" /></Button>
+            </div>
+          ) : (
+            <span className="flex flex-1 items-center gap-2 text-left font-medium">
+              {component.name}
+              {canEdit && (
+                <span
+                  role="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditingName(true); }}
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </span>
+              )}
+            </span>
+          )}
           <div className="flex items-center gap-3">
             <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
             <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
