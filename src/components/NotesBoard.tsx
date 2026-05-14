@@ -72,7 +72,7 @@ export function NotesBoard({ equipmentId, canEdit, userId }: { equipmentId: stri
             canEdit={canEdit}
             userId={userId}
             boardRef={boardRef}
-            onUpdate={(patch) => update(n.id, patch)}
+            onUpdate={(patch: Partial<Note>) => update(n.id, patch)}
             onDelete={() => remove(n)}
             onReload={load}
           />
