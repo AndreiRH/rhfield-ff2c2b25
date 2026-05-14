@@ -25,6 +25,7 @@ export type Database = {
           id: string
           label: string
           note: string | null
+          parent_item_id: string | null
           sort_order: number
           updated_at: string
         }
@@ -38,6 +39,7 @@ export type Database = {
           id?: string
           label: string
           note?: string | null
+          parent_item_id?: string | null
           sort_order?: number
           updated_at?: string
         }
@@ -51,6 +53,7 @@ export type Database = {
           id?: string
           label?: string
           note?: string | null
+          parent_item_id?: string | null
           sort_order?: number
           updated_at?: string
         }
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["component_id"]
             isOneToOne: false
             referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
             referencedColumns: ["id"]
           },
         ]
