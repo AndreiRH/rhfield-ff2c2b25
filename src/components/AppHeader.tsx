@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Users } from "lucide-react";
 import riedhammerLogo from "@/assets/riedhammer-logo.png";
 
 export function AppHeader() {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, isAdmin, signOut } = useAuth();
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
