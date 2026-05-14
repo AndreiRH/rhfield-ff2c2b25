@@ -124,7 +124,7 @@ function LineOverview() {
               </div>
             </div>
 
-            <h2 className="mb-3 text-lg font-semibold">Equipment</h2>
+            <h2 className="mb-3 text-lg font-semibold">Plants</h2>
             <div className="grid gap-4 md:grid-cols-2">
               {equipmentByKind.map((eq) => {
                 const prog = calcProgress(eq.items);
