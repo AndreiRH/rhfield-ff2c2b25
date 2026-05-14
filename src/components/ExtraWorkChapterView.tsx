@@ -13,13 +13,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Camera, X, CornerDownRight, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, Camera, X, CornerDownRight, Pencil, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
-export function ChapterGroupCard({ group, canEdit, onChange }: any) {
-  const components = (group.components ?? []).filter((c: any) => !c.deleted_at).sort((a: any, b: any) => a.sort_order - b.sort_order);
-  const allItems = components.flatMap((c: any) => c.checklist_items ?? []);
-  const prog = calcProgress(allItems);
+export function ComponentsList({ group, canEdit, onChange }: any) {
+  const components = (group.components ?? [])
+    .filter((c: any) => !c.deleted_at)
+    .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -33,6 +33,62 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
     else { setNewName(""); setAdding(false); onChange(); }
   };
 
+  const move = async (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= components.length) return;
+    const a = components[idx];
+    const b = components[target];
+    const { error: e1 } = await supabase.from("components").update({ sort_order: b.sort_order }).eq("id", a.id);
+    const { error: e2 } = await supabase.from("components").update({ sort_order: a.sort_order }).eq("id", b.id);
+    if (e1 || e2) toast.error((e1 ?? e2)!.message);
+    else onChange();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Components</h2>
+        {canEdit && !adding && (
+          <Button size="sm" onClick={() => setAdding(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Add component
+          </Button>
+        )}
+      </div>
+      {adding && (
+        <div className="flex max-w-md gap-2">
+          <Input value={newName} autoFocus onChange={(e) => setNewName(e.target.value)}
+            placeholder="Component name" onKeyDown={(e) => e.key === "Enter" && addComponent()} />
+          <Button size="sm" onClick={addComponent}>Add</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setNewName(""); }}>Cancel</Button>
+        </div>
+      )}
+      {components.length === 0 && !adding && (
+        <p className="text-sm text-muted-foreground">No components yet. Add the first one to start tracking checks.</p>
+      )}
+      <Accordion type="multiple" className="w-full">
+        {components.map((c: any, idx: number) => (
+          <ComponentBlock
+            key={c.id}
+            component={c}
+            canEdit={canEdit}
+            onChange={onChange}
+            canMoveUp={idx > 0}
+            canMoveDown={idx < components.length - 1}
+            onMoveUp={() => move(idx, -1)}
+            onMoveDown={() => move(idx, 1)}
+          />
+        ))}
+      </Accordion>
+    </div>
+  );
+}
+
+// Kept for after-sales / extra-works pages that still use a single-group shell
+export function ChapterGroupCard({ group, canEdit, onChange }: any) {
+  const allItems = (group.components ?? [])
+    .filter((c: any) => !c.deleted_at)
+    .flatMap((c: any) => c.checklist_items ?? []);
+  const prog = calcProgress(allItems);
   return (
     <Card>
       <CardContent className="p-4">
@@ -41,26 +97,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
           <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total} · {prog.pct}%</span>
         </div>
         <ProgressBar value={prog.pct} size="sm" className="mb-4" />
-        <Accordion type="multiple" className="w-full">
-          {components.map((c: any) => (
-            <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange} />
-          ))}
-        </Accordion>
-        {canEdit && (
-          <div className="mt-3">
-            {adding ? (
-              <div className="flex gap-2">
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Component name" autoFocus />
-                <Button size="sm" onClick={addComponent}>Add</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setNewName(""); }}>Cancel</Button>
-              </div>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Add component
-              </Button>
-            )}
-          </div>
-        )}
+        <ComponentsList group={group} canEdit={canEdit} onChange={onChange} />
       </CardContent>
     </Card>
   );
