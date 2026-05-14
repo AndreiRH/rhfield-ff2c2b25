@@ -516,6 +516,51 @@ export type Database = {
           },
         ]
       }
+      pa_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          kind: Database["public"]["Enums"]["plant_kind"]
+          line_id: string
+          photo_path: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["plant_kind"]
+          line_id: string
+          photo_path?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["plant_kind"]
+          line_id?: string
+          photo_path?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plant_equipment: {
         Row: {
           created_at: string
@@ -655,6 +700,7 @@ export type Database = {
         | "hot_comm"
         | "after_sales"
       equipment_kind: "kiln" | "shs" | "extra_work"
+      plant_kind: "kiln" | "shs"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -791,6 +837,7 @@ export const Constants = {
         "after_sales",
       ],
       equipment_kind: ["kiln", "shs", "extra_work"],
+      plant_kind: ["kiln", "shs"],
     },
   },
 } as const
