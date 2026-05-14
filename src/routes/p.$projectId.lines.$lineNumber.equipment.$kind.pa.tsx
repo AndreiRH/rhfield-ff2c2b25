@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
-import { PANotesList } from "@/components/PANotesList";
+import { PAFoldersList } from "@/components/PAFoldersList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/pa")({
   component: PAPage,
@@ -61,7 +61,7 @@ function PAPage() {
                 Photos, files and notes from PA measurements.
               </p>
             </div>
-            <PANotesList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            <PAFoldersList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
           </>
         )}
       </main>
