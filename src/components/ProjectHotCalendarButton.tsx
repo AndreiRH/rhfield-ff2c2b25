@@ -64,16 +64,7 @@ function CombinedCalendar({ projectId }: { projectId: string }) {
     return m;
   }, [lines]);
 
-  // Group milestones by date string
-  const byDate = useMemo(() => {
-    const m = new Map<string, Milestone[]>();
-    for (const ms of milestones) {
-      const arr = m.get(ms.date) ?? [];
-      arr.push(ms);
-      m.set(ms.date, arr);
-    }
-    return m;
-  }, [milestones]);
+  // (date map no longer needed — listing below shows per-line color)
 
   return (
     <div className="space-y-4 p-1">
