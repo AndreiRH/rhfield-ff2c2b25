@@ -201,8 +201,47 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
       {equipment.length === 0 && !adding ? (
         <p className="text-sm text-muted-foreground">No equipment yet. Add the first one to start tracking.</p>
       ) : (
+        <EquipmentSortable
+          equipment={equipment}
+          canEdit={canEdit}
+          onChange={onChange}
+          projectId={projectId}
+          lineNumber={lineNumber}
+          kind={kind}
+        />
+      )}
+    </>
+  );
+}
+
+function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind }: any) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+  const [items, setItems] = useState(equipment);
+  useEffect(() => { setItems(equipment); }, [equipment]);
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = items.findIndex((x: any) => x.id === active.id);
+    const newIdx = items.findIndex((x: any) => x.id === over.id);
+    const next = arrayMove(items, oldIdx, newIdx);
+    setItems(next);
+    await Promise.all(
+      next.map((n: any, i: number) =>
+        supabase.from("plant_equipment").update({ sort_order: i }).eq("id", n.id),
+      ),
+    );
+    onChange();
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={items.map((x: any) => x.id)} strategy={verticalListSortingStrategy}>
         <div className="grid gap-3 md:grid-cols-2">
-          {equipment.map((pe: any, idx: number) => (
+          {items.map((pe: any) => (
             <EquipmentCard
               key={pe.id}
               pe={pe}
@@ -211,25 +250,11 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
-              canMoveUp={idx > 0}
-              canMoveDown={idx < equipment.length - 1}
-              onMoveUp={async () => {
-                const a = equipment[idx]; const b = equipment[idx - 1];
-                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
-                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
-                onChange();
-              }}
-              onMoveDown={async () => {
-                const a = equipment[idx]; const b = equipment[idx + 1];
-                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
-                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
-                onChange();
-              }}
             />
           ))}
         </div>
-      )}
-    </>
+      </SortableContext>
+    </DndContext>
   );
 }
 
