@@ -219,9 +219,9 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
 
 function ChapterTile({ label, pct }: { label: string; pct: number }) {
   return (
-    <div className="rounded-md border bg-card p-3">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="min-w-0 rounded-md border bg-card p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-1">
+        <span className="truncate text-xs text-muted-foreground">{label}</span>
         <span className="font-mono text-xs tabular-nums">{pct}%</span>
       </div>
       <ProgressBar value={pct} size="sm" />
