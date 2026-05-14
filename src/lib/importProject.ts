@@ -280,7 +280,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     };
   });
 
-  const equipment_notes = enRows.filter((r) => peMap.has(r.equipment_id)).map((r) => {
+  const equipment_notes = enRows.filter((r) => livePeIds.has(r.equipment_id)).map((r) => {
     const id = newId();
     const photoPath = r.photo_path ? remapStoragePath(r.photo_path) : null;
     const filePath = r.file_path ? remapStoragePath(r.file_path) : null;
