@@ -129,73 +129,74 @@ function EquipmentDetail() {
         {isLoading || !data ? (
           <Skeleton className="h-40" />
         ) : (
-          <>
-            <EquipmentHeader pe={data.peWithGroups} lineNumber={data.line.number} plantLabel={plantLabel} />
-
-            <Tabs defaultValue="mechanical" className="mt-6">
-              <TabsList>
-                <TabsTrigger value="mechanical">Mechanical</TabsTrigger>
-                <TabsTrigger value="electrical">Electrical</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="mechanical" className="mt-4">
-                <MechanicalView
-                  pe={data.pe}
-                  assemblyGroup={data.assembly}
-                  canEdit={canEdit}
-                  userId={user?.id}
-                  onChange={invalidate}
-                />
-              </TabsContent>
-
-              <TabsContent value="electrical" className="mt-4">
-                <ElectricalView
-                  wiring={data.wiring}
-                  canEdit={canEdit}
-                  onChange={invalidate}
-                />
-              </TabsContent>
-            </Tabs>
-          </>
+          <EquipmentBody data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
         )}
       </main>
     </div>
   );
 }
 
-function EquipmentHeader({ pe, lineNumber, plantLabel }: any) {
-  const { mech, wiring, overall } = equipmentProgress(pe);
+type Section = "assembly" | "wiring" | "cold_comm";
+
+function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
+  const [section, setSection] = useState<Section>("assembly");
+  const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
+
   return (
-    <div className="border-b pb-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {lineNumber} · {plantLabel}</span>
-          <h1 className="text-3xl font-semibold">
-            {pe.name}
-            <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
-          </h1>
+    <>
+      <div className="border-b pb-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {data.line.number} · {plantLabel}</span>
+            <h1 className="text-3xl font-semibold">
+              {data.pe.name}
+              <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
+            </h1>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <SectionTab label="Assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
+          <SectionTab label="Wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
+          <SectionTab label="Cold commissioning" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Mini label="Assembly" pct={mech} />
-        <Mini label="Electrical" pct={wiring} />
+
+      <div className="mt-6">
+        {section === "assembly" && (
+          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} />
+        )}
+        {section === "wiring" && (
+          <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange}
+            emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
+        )}
+        {section === "cold_comm" && (
+          <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange}
+            emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
+        )}
       </div>
-    </div>
-  );
-}
-function Mini({ label, pct }: { label: string; pct: number }) {
-  return (
-    <div className="min-w-0 rounded-md border bg-card p-2">
-      <div className="mb-1 flex items-baseline justify-between gap-1">
-        <span className="truncate text-[11px] text-muted-foreground">{label}</span>
-        <span className="font-mono text-[11px] tabular-nums">{pct}%</span>
-      </div>
-      <ProgressBar value={pct} size="sm" />
-    </div>
+    </>
   );
 }
 
-function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
+function SectionTab({ label, pct, active, onClick }: { label: string; pct: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${
+        active
+          ? "border-primary bg-primary/10"
+          : "border-border bg-muted/40 hover:bg-muted hover:border-muted-foreground/40"
+      }`}
+    >
+      <div className="mb-1 flex items-baseline justify-between gap-1">
+        <span className="truncate text-[11px] font-medium text-foreground">{label}</span>
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
+      </div>
+      <ProgressBar value={pct} size="sm" />
+    </button>
+  );
+}
   const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
