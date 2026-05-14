@@ -305,6 +305,7 @@ export type Database = {
           photo_path: string | null
           position_x: number
           position_y: number
+          sort_order: number
           title: string
           updated_at: string
         }
@@ -319,6 +320,7 @@ export type Database = {
           photo_path?: string | null
           position_x?: number
           position_y?: number
+          sort_order?: number
           title?: string
           updated_at?: string
         }
@@ -333,6 +335,7 @@ export type Database = {
           photo_path?: string | null
           position_x?: number
           position_y?: number
+          sort_order?: number
           title?: string
           updated_at?: string
         }
