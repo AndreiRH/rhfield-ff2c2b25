@@ -128,6 +128,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
 
   useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
 
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [label, setLabel] = useState(item.label);
+  useEffect(() => { setLabel(item.label); }, [item.label]);
+  const saveLabel = async () => {
+    const trimmed = label.trim();
+    setEditingLabel(false);
+    if (!trimmed || trimmed === item.label) { setLabel(item.label); return; }
+    const { error } = await supabase.from("checklist_items").update({ label: trimmed }).eq("id", item.id);
+    if (error) toast.error(error.message); else onChange();
+  };
+
   const toggle = async () => {
     const { error } = await supabase.from("checklist_items")
       .update({ done: !item.done, completed_at: !item.done ? new Date().toISOString() : null })
