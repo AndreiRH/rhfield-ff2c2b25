@@ -1,21 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Camera, X, CornerDownRight, Pencil, Check, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, Check, X, GripVertical, ChevronDown, ChevronRight,
+  StickyNote, Camera, Paperclip,
+} from "lucide-react";
 import { toast } from "sonner";
+import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
+import { PhotoPicker } from "@/components/PhotoPicker";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
+// Renders the list of components inside an equipment_group (or component_type).
+// Each component is a strongly-styled card with its own checklist + notes/files.
 export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group" }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
@@ -34,21 +46,25 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     else { setNewName(""); setAdding(false); onChange(); }
   };
 
-  const move = async (idx: number, dir: -1 | 1) => {
-    const target = idx + dir;
-    if (target < 0 || target >= components.length) return;
-    const a = components[idx];
-    const b = components[target];
-    const { error: e1 } = await supabase.from("components").update({ sort_order: b.sort_order }).eq("id", a.id);
-    const { error: e2 } = await supabase.from("components").update({ sort_order: a.sort_order }).eq("id", b.id);
-    if (e1 || e2) toast.error((e1 ?? e2)!.message);
-    else onChange();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = components.findIndex((c: any) => c.id === active.id);
+    const newIdx = components.findIndex((c: any) => c.id === over.id);
+    const next = arrayMove(components, oldIdx, newIdx);
+    await Promise.all(next.map((c: any, i: number) =>
+      supabase.from("components").update({ sort_order: i }).eq("id", c.id)));
+    onChange();
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Components</h2>
+        <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
         {canEdit && !adding && (
           <Button size="sm" onClick={() => setAdding(true)}>
             <Plus className="mr-1 h-4 w-4" /> Add component
@@ -66,25 +82,21 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
       {components.length === 0 && !adding && (
         <p className="text-sm text-muted-foreground">No components yet. Add the first one to start tracking checks.</p>
       )}
-      <Accordion type="multiple" className="w-full">
-        {components.map((c: any, idx: number) => (
-          <ComponentBlock
-            key={c.id}
-            component={c}
-            canEdit={canEdit}
-            onChange={onChange}
-            canMoveUp={idx > 0}
-            canMoveDown={idx < components.length - 1}
-            onMoveUp={() => move(idx, -1)}
-            onMoveDown={() => move(idx, 1)}
-          />
-        ))}
-      </Accordion>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={components.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {components.map((c: any) => (
+              <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
 
-// Kept for after-sales / extra-works pages that still use a single-group shell
+// Kept for after-sales / extra-works pages
 export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   const allItems = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
@@ -104,26 +116,26 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
-  const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
-  const topLevel = allItems.filter((i: any) => !i.parent_item_id).sort((a: any, b: any) => a.sort_order - b.sort_order);
-  const childrenByParent = useMemo(() => {
-    const map = new Map<string, any[]>();
-    for (const i of allItems) {
-      if (i.parent_item_id) {
-        const arr = map.get(i.parent_item_id) ?? [];
-        arr.push(i);
-        map.set(i.parent_item_id, arr);
-      }
-    }
-    for (const arr of map.values()) arr.sort((a: any, b: any) => a.sort_order - b.sort_order);
-    return map;
-  }, [allItems]);
+function ComponentBlock({ component, canEdit, onChange }: any) {
+  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit });
+  const style = {
+    transform: CSS.Transform.toString(sortableArgs.transform),
+    transition: sortableArgs.transition,
+    opacity: sortableArgs.isDragging ? 0.6 : 1,
+  };
 
+  const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
-  const [newItem, setNewItem] = useState("");
+
+  const [open, setOpen] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
+
+  const photos = component.component_photos ?? [];
+  const files = component.component_files ?? [];
+  const [showNoteEditor, setShowNoteEditor] = useState(!!component.note);
+  const [note, setNote] = useState(component.note ?? "");
+  useEffect(() => { setNote(component.note ?? ""); }, [component.note]);
 
   const renameComponent = async () => {
     if (!name.trim() || name === component.name) { setEditingName(false); return; }
@@ -131,263 +143,151 @@ function ComponentBlock({ component, canEdit, onChange, canMoveUp, canMoveDown, 
     if (error) toast.error(error.message);
     else { setEditingName(false); onChange(); }
   };
-
-  const addItem = async () => {
-    if (!newItem.trim()) return;
-    const { error } = await supabase.from("checklist_items").insert({
-      component_id: component.id, label: newItem.trim(), sort_order: topLevel.length,
-    });
-    if (error) toast.error(error.message);
-    else { setNewItem(""); onChange(); }
-  };
-
   const deleteComponent = async () => {
     const { error } = await supabase.from("components").update({ deleted_at: new Date().toISOString() }).eq("id", component.id);
     if (error) toast.error(error.message);
     else { toast.success("Component removed"); onChange(); }
   };
-
-  return (
-    <AccordionItem value={component.id}>
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex w-full items-center justify-between gap-3 pr-2">
-          {editingName ? (
-            <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }} />
-              <Button size="icon" variant="ghost" onClick={renameComponent}><Check className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setName(component.name); }}><X className="h-4 w-4" /></Button>
-            </div>
-          ) : (
-            <span className="flex flex-1 items-center gap-2 text-left font-medium">
-              {component.name}
-              {canEdit && (
-                <span
-                  role="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditingName(true); }}
-                >
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                </span>
-              )}
-            </span>
-          )}
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <>
-                <span role="button" aria-disabled={!canMoveUp}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveUp ? "pointer-events-none opacity-30" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveUp?.(); }}>
-                  <ArrowUp className="h-3 w-3 text-muted-foreground" />
-                </span>
-                <span role="button" aria-disabled={!canMoveDown}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent ${!canMoveDown ? "pointer-events-none opacity-30" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveDown?.(); }}>
-                  <ArrowDown className="h-3 w-3 text-muted-foreground" />
-                </span>
-              </>
-            )}
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-            <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
-            <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
-          </div>
-        </div>
-      </AccordionTrigger>
-      <AccordionContent>
-        <ul className="space-y-1">
-          {topLevel.map((it: any) => (
-            <ChecklistRow
-              key={it.id}
-              item={it}
-              componentId={component.id}
-              childrenByParent={childrenByParent}
-              depth={0}
-              canEdit={canEdit}
-              onChange={onChange}
-            />
-          ))}
-        </ul>
-        {canEdit && (
-          <div className="mt-3 flex items-center gap-2 border-t pt-3">
-            <Input
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="New item"
-              onKeyDown={(e) => e.key === "Enter" && addItem()}
-            />
-            <Button size="sm" onClick={addItem}><Plus className="h-4 w-4" /></Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete "{component.name}"?</AlertDialogTitle>
-                  <AlertDialogDescription>All items inside will be hidden.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={deleteComponent}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
-      </AccordionContent>
-    </AccordionItem>
-  );
-}
-
-function ChecklistRow({ item, componentId, childrenByParent, depth, canEdit, onChange }: any) {
-  const { user } = useAuth();
-  const [showNote, setShowNote] = useState(false);
-  const [note, setNote] = useState(item.note ?? "");
-  const [busy, setBusy] = useState(false);
-  const [photos, setPhotos] = useState<any[]>(item.item_photos ?? []);
-  const [addingChild, setAddingChild] = useState(false);
-  const [childLabel, setChildLabel] = useState("");
-  const children = childrenByParent.get(item.id) ?? [];
-
-  const toggleDone = async (val: boolean) => {
-    const { error } = await supabase.from("checklist_items").update({
-      done: val,
-      completed_at: val ? new Date().toISOString() : null,
-      completed_by: val ? user?.id : null,
-    }).eq("id", item.id);
-    if (error) toast.error(error.message);
-    else onChange();
-  };
-
   const saveNote = async () => {
-    const { error } = await supabase.from("checklist_items").update({ note }).eq("id", item.id);
-    if (error) toast.error(error.message);
-    else { setShowNote(false); onChange(); }
+    if (note === (component.note ?? "")) return;
+    const { error } = await supabase.from("components").update({ note: note || null }).eq("id", component.id);
+    if (error) toast.error(error.message); else onChange();
   };
-
-  const softDelete = async () => {
-    const { error } = await supabase.from("checklist_items").update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    if (error) toast.error(error.message);
-    else {
-      toast("Item removed", {
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            await supabase.from("checklist_items").update({ deleted_at: null }).eq("id", item.id);
-            onChange();
-          },
-        },
-      });
-      onChange();
-    }
-  };
-
   const uploadPhoto = async (file: File) => {
-    setBusy(true);
-    const path = `${item.id}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from("photos").upload(path, file);
-    if (upErr) { toast.error(upErr.message); setBusy(false); return; }
-    const { data: ins, error: insErr } = await supabase.from("item_photos").insert({
-      item_id: item.id, storage_path: path, uploaded_by: user?.id,
-    }).select().single();
-    setBusy(false);
-    if (insErr) toast.error(insErr.message);
-    else { setPhotos([...photos, ins]); onChange(); }
+    const path = `component/${component.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("photos").upload(path, file);
+    if (error) { toast.error(error.message); return; }
+    await supabase.from("component_photos").insert({ component_id: component.id, storage_path: path });
+    onChange();
   };
-
-  const addChild = async () => {
-    if (!childLabel.trim()) return;
-    const { error } = await supabase.from("checklist_items").insert({
-      component_id: componentId, parent_item_id: item.id,
-      label: childLabel.trim(), sort_order: children.length,
-    });
-    if (error) toast.error(error.message);
-    else { setChildLabel(""); setAddingChild(false); onChange(); }
+  const uploadFile = async (file: File) => {
+    const path = `component/${component.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("files").upload(path, file);
+    if (error) { toast.error(error.message); return; }
+    await supabase.from("component_files").insert({ component_id: component.id, storage_path: path, file_name: file.name });
+    onChange();
+  };
+  const removePhoto = async (p: any) => {
+    await supabase.storage.from("photos").remove([p.storage_path]);
+    await supabase.from("component_photos").delete().eq("id", p.id);
+    onChange();
+  };
+  const removeFile = async (f: any) => {
+    await supabase.storage.from("files").remove([f.storage_path]);
+    await supabase.from("component_files").delete().eq("id", f.id);
+    onChange();
   };
 
   return (
-    <li className="flex flex-col gap-1 rounded-md px-2 py-1.5 hover:bg-muted/40" style={{ marginLeft: depth * 20 }}>
-      <div className="flex items-start gap-3">
-        {depth > 0 && <CornerDownRight className="mt-1 h-3 w-3 text-muted-foreground" />}
-        <Checkbox
-          checked={item.done}
-          disabled={!canEdit}
-          onCheckedChange={(v) => toggleDone(!!v)}
-          className="mt-1"
-        />
-        <div className="flex-1">
-          <div className={`text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}>{item.label}</div>
-          {item.note && !showNote && <div className="text-xs text-muted-foreground">{item.note}</div>}
-        </div>
+    <div ref={sortableArgs.setNodeRef} style={style}
+      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
         {canEdit && (
-          <div className="flex items-center gap-1">
-            <button title="Add subtask" className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent" onClick={() => setAddingChild((s) => !s)}>
-              <Plus className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <label className="cursor-pointer">
-              <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent">
-                <Camera className="h-4 w-4 text-muted-foreground" />
-              </span>
-            </label>
-            <button className="inline-flex h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => setShowNote((s) => !s)}>note</button>
-            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent" onClick={softDelete}>
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
+          <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+            className="cursor-grab touch-none p-1 active:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+        <button onClick={() => setOpen((o) => !o)} className="text-muted-foreground hover:text-foreground">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {editingName ? (
+          <div className="flex flex-1 items-center gap-2">
+            <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }}
+              className="h-7" />
+            <Button size="icon" variant="ghost" onClick={renameComponent}><Check className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setName(component.name); }}><X className="h-4 w-4" /></Button>
           </div>
+        ) : (
+          <span className="flex flex-1 items-center gap-2 font-semibold">
+            {component.name}
+            {canEdit && (
+              <button onClick={() => setEditingName(true)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent">
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
+          </span>
+        )}
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
+        <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
+        <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        {canEdit && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{component.name}"?</AlertDialogTitle>
+                <AlertDialogDescription>All items inside will be hidden.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteComponent}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
-      {showNote && (
-        <div className="ml-7 flex gap-2">
-          <Textarea value={note} onChange={(e) => setNote(e.target.value)} className="min-h-[60px] flex-1" />
-          <Button size="sm" onClick={saveNote}>Save</Button>
-        </div>
-      )}
-      {photos.length > 0 && (
-        <div className="ml-7 flex flex-wrap gap-2">
-          {photos.map((p) => <PhotoThumb key={p.id} path={p.storage_path} />)}
-        </div>
-      )}
-      {addingChild && (
-        <div className="ml-7 flex gap-2">
-          <Input
-            value={childLabel}
-            onChange={(e) => setChildLabel(e.target.value)}
-            placeholder="Subtask"
-            autoFocus
-            onKeyDown={(e) => e.key === "Enter" && addChild()}
-          />
-          <Button size="sm" onClick={addChild}>Add</Button>
-          <Button size="sm" variant="ghost" onClick={() => { setAddingChild(false); setChildLabel(""); }}>Cancel</Button>
-        </div>
-      )}
-      {children.length > 0 && (
-        <ul className="space-y-1">
-          {children.map((c: any) => (
-            <ChecklistRow
-              key={c.id}
-              item={c}
-              componentId={componentId}
-              childrenByParent={childrenByParent}
-              depth={depth + 1}
+
+      {open && (
+        <div className="space-y-3 p-3">
+          {canEdit && (
+            <div className="flex flex-wrap gap-1">
+              <button onClick={() => setShowNoteEditor(true)}
+                className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                <StickyNote className="h-3 w-3" /> Note
+              </button>
+              <PhotoPicker onPick={uploadPhoto}>
+                <button className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                  <Camera className="h-3 w-3" /> Photo
+                </button>
+              </PhotoPicker>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                <Paperclip className="h-3 w-3" /> File
+                <input type="file" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+              </label>
+            </div>
+          )}
+
+          {(showNoteEditor || component.note) && (
+            <Textarea value={note} disabled={!canEdit}
+              onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
+              placeholder="Component note…" className="min-h-[50px] text-xs" />
+          )}
+
+          {photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+              {photos.map((p: any) => (
+                <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+              ))}
+            </div>
+          )}
+          {files.length > 0 && (
+            <div className="space-y-1">
+              {files.map((f: any) => (
+                <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
+              ))}
+            </div>
+          )}
+
+          <div className="rounded-md border border-dashed bg-background p-2">
+            <ChecklistTree
+              componentId={component.id}
+              items={allItems}
               canEdit={canEdit}
               onChange={onChange}
             />
-          ))}
-        </ul>
+          </div>
+        </div>
       )}
-    </li>
+    </div>
   );
-}
-
-function PhotoThumb({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
-  if (!url) return <div className="h-12 w-12 animate-pulse rounded bg-muted" />;
-  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="h-12 w-12 rounded border object-cover" /></a>;
 }
 
 export default function ExtraWorkChapterView({ group, canEdit, onChange }: any) {
