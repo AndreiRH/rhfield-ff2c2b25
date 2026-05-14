@@ -128,9 +128,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
+
+  const hasPhoto = !!note.photo_path;
+  const hasFile = !!note.file_name;
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
@@ -167,45 +171,75 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <Input
-          value={title}
-          disabled={!canEdit}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => title !== note.title && onUpdate({ title })}
-          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
-        />
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="p-1 text-muted-foreground hover:text-foreground"
+          title={open ? "Collapse" : "Expand"}
+        >
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {open ? (
+          <Input
+            value={title}
+            disabled={!canEdit}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => title !== note.title && onUpdate({ title })}
+            className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium"
+          >
+            <span className="truncate">{note.title || "Untitled"}</span>
+            {hasPhoto && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                <Camera className="h-3 w-3" /> 1
+              </span>
+            )}
+            {hasFile && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                <Paperclip className="h-3 w-3" /> 1
+              </span>
+            )}
+          </button>
+        )}
         {canEdit && (
           <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80">
             <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="space-y-2 p-3">
-        <Textarea
-          value={body}
-          disabled={!canEdit}
-          onChange={(e) => setBody(e.target.value)}
-          onBlur={() => body !== note.body && onUpdate({ body })}
-          placeholder="Write something…"
-          className="min-h-[60px] resize-y text-sm"
-        />
-        {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
-        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
-        {canEdit && (
-          <div className="flex gap-2">
-            <PhotoPicker onPick={uploadPhoto}>
-              <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Camera className="h-3 w-3" /> Photo
-              </button>
-            </PhotoPicker>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-              <Paperclip className="h-3 w-3" /> File
-              <input type="file" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-            </label>
-          </div>
-        )}
-      </div>
+      {open && (
+        <div className="space-y-2 p-3">
+          <Textarea
+            value={body}
+            disabled={!canEdit}
+            onChange={(e) => setBody(e.target.value)}
+            onBlur={() => body !== note.body && onUpdate({ body })}
+            placeholder="Write something…"
+            className="min-h-[60px] resize-y text-sm"
+          />
+          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+          {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
+          {canEdit && (
+            <div className="flex gap-2">
+              <PhotoPicker onPick={uploadPhoto}>
+                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                  <Camera className="h-3 w-3" /> Photo
+                </button>
+              </PhotoPicker>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                <Paperclip className="h-3 w-3" /> File
+                <input type="file" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }
