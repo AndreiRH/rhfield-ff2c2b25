@@ -19,6 +19,11 @@ export function AppHeader() {
               <span className="hidden text-xs text-muted-foreground sm:block">
                 {user.email} · <span className="font-mono uppercase">{roles.join(",") || "no role"}</span>
               </span>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin/users"><Users className="mr-1 h-4 w-4" />Users</Link>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="mr-1 h-4 w-4" /> Sign out
               </Button>
