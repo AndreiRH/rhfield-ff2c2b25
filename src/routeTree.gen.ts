@@ -16,6 +16,7 @@ import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.comm
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
 import { Route as PProjectIdLinesLineNumberIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.index'
 import { Route as PProjectIdLinesLineNumberEquipmentKindRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind'
+import { Route as PProjectIdLinesLineNumberEquipmentKindIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.index'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -55,6 +56,12 @@ const PProjectIdLinesLineNumberEquipmentKindRoute =
     path: '/equipment/$kind',
     getParentRoute: () => PProjectIdLinesLineNumberRoute,
   } as any)
+const PProjectIdLinesLineNumberEquipmentKindIndexRoute =
+  PProjectIdLinesLineNumberEquipmentKindIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PProjectIdLinesLineNumberEquipmentKindRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -63,7 +70,8 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
-  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -71,7 +79,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberIndexRoute
-  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -81,7 +89,8 @@ export interface FileRoutesById {
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
-  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -93,6 +102,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,19 +182,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdLinesLineNumberEquipmentKindRouteImport
       parentRoute: typeof PProjectIdLinesLineNumberRoute
     }
+    '/p/$projectId/lines/$lineNumber/equipment/$kind/': {
+      id: '/p/$projectId/lines/$lineNumber/equipment/$kind/'
+      path: '/'
+      fullPath: '/p/$projectId/lines/$lineNumber/equipment/$kind/'
+      preLoaderRoute: typeof PProjectIdLinesLineNumberEquipmentKindIndexRouteImport
+      parentRoute: typeof PProjectIdLinesLineNumberEquipmentKindRoute
+    }
   }
 }
 
+interface PProjectIdLinesLineNumberEquipmentKindRouteChildren {
+  PProjectIdLinesLineNumberEquipmentKindIndexRoute: typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
+}
+
+const PProjectIdLinesLineNumberEquipmentKindRouteChildren: PProjectIdLinesLineNumberEquipmentKindRouteChildren =
+  {
+    PProjectIdLinesLineNumberEquipmentKindIndexRoute:
+      PProjectIdLinesLineNumberEquipmentKindIndexRoute,
+  }
+
+const PProjectIdLinesLineNumberEquipmentKindRouteWithChildren =
+  PProjectIdLinesLineNumberEquipmentKindRoute._addFileChildren(
+    PProjectIdLinesLineNumberEquipmentKindRouteChildren,
+  )
+
 interface PProjectIdLinesLineNumberRouteChildren {
   PProjectIdLinesLineNumberIndexRoute: typeof PProjectIdLinesLineNumberIndexRoute
-  PProjectIdLinesLineNumberEquipmentKindRoute: typeof PProjectIdLinesLineNumberEquipmentKindRoute
+  PProjectIdLinesLineNumberEquipmentKindRoute: typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
 }
 
 const PProjectIdLinesLineNumberRouteChildren: PProjectIdLinesLineNumberRouteChildren =
   {
     PProjectIdLinesLineNumberIndexRoute: PProjectIdLinesLineNumberIndexRoute,
     PProjectIdLinesLineNumberEquipmentKindRoute:
-      PProjectIdLinesLineNumberEquipmentKindRoute,
+      PProjectIdLinesLineNumberEquipmentKindRouteWithChildren,
   }
 
 const PProjectIdLinesLineNumberRouteWithChildren =
@@ -201,3 +234,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
