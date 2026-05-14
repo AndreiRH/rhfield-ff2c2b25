@@ -15,7 +15,7 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
-import { NotesBoard } from "@/components/NotesBoard";
+import { NotesList } from "@/components/NotesList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId")({
   component: EquipmentDetail,
