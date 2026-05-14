@@ -244,7 +244,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
 
   // Media row maps — keep original storage_path in payload so the trigger
   // sees it; we'll re-upload to NEW path then update each row.
-  type MediaJob = { table: string; oldPath: string; newPath: string; bucket: "photos" | "files"; rowId: string; field: string };
+  type MediaJob = { table: string; oldPath: string; oldFileName?: string | null; newPath: string; bucket: "photos" | "files"; rowId: string; field: string };
   const mediaJobs: MediaJob[] = [];
 
   const remapStoragePath = (oldPath: string) => {
@@ -269,7 +269,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   const item_files = ifRows.filter((r) => ciMap.has(r.item_id)).map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "item_files", oldPath: r.storage_path, newPath, bucket: "files", rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "item_files", oldPath: r.storage_path, oldFileName: r.file_name, newPath, bucket: "files", rowId: id, field: "storage_path" });
     return {
       id,
       item_id: ciMap.get(r.item_id),
@@ -285,7 +285,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     const photoPath = r.photo_path ? remapStoragePath(r.photo_path) : null;
     const filePath = r.file_path ? remapStoragePath(r.file_path) : null;
     if (r.photo_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.photo_path, newPath: photoPath!, bucket: "photos", rowId: id, field: "photo_path" });
-    if (r.file_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.file_path, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
+    if (r.file_path) mediaJobs.push({ table: "equipment_notes", oldPath: r.file_path, oldFileName: r.file_name, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
     return {
       id,
       equipment_id: peMap.get(r.equipment_id),
@@ -331,7 +331,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     const id = newId();
     const bucket: "photos" | "files" = r.kind === "photo" ? "photos" : "files";
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "pa_attachments", oldPath: r.storage_path, newPath, bucket, rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "pa_attachments", oldPath: r.storage_path, oldFileName: r.file_name, newPath, bucket, rowId: id, field: "storage_path" });
     return {
       id,
       folder_id: folderMap.get(r.folder_id),
@@ -349,7 +349,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     const photoPath = r.photo_path ? remapStoragePath(r.photo_path) : null;
     const filePath = r.file_path ? remapStoragePath(r.file_path) : null;
     if (r.photo_path) mediaJobs.push({ table: "pa_notes", oldPath: r.photo_path, newPath: photoPath!, bucket: "photos", rowId: id, field: "photo_path" });
-    if (r.file_path) mediaJobs.push({ table: "pa_notes", oldPath: r.file_path, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
+    if (r.file_path) mediaJobs.push({ table: "pa_notes", oldPath: r.file_path, oldFileName: r.file_name, newPath: filePath!, bucket: "files", rowId: id, field: "file_path" });
     return {
       id,
       line_id: lineMap.get(r.line_id),
@@ -388,7 +388,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   const common_files = cfRows.map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "common_files", oldPath: r.storage_path, newPath, bucket: "files", rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "common_files", oldPath: r.storage_path, oldFileName: r.name, newPath, bucket: "files", rowId: id, field: "storage_path" });
     return {
       id,
       project_id: newProjectId,
@@ -437,15 +437,27 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   if (mediaJobs.length > 0) {
     report({ phase: "media", message: "Uploading photos & files…", current: 0, total: mediaJobs.length });
 
-    // Try multiple plausible locations inside the ZIP for each oldPath
-    const findInZip = (oldPath: string, bucket: "photos" | "files"): JSZip.JSZipObject | null => {
-      const fname = oldPath.split("/").pop()!;
-      // Walk all files in the bucket-letter top folder
+    // Try multiple plausible locations inside the ZIP for each oldPath.
+    // Prefer the storage-path basename (current export format), but fall back
+    // to the original file_name and a sanitized variant of it (legacy export).
+    const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
+    const findInZip = (oldPath: string, oldFileName: string | null | undefined, bucket: "photos" | "files"): JSZip.JSZipObject | null => {
+      const candidates = new Set<string>();
+      const baseFromPath = oldPath.split("/").pop();
+      if (baseFromPath) candidates.add(baseFromPath);
+      if (oldFileName) {
+        candidates.add(oldFileName);
+        candidates.add(sanitize(oldFileName));
+      }
       const prefix = bucket === "photos" ? "photos/" : "files/";
       for (const k of Object.keys(zip.files)) {
+        if (zip.files[k].dir) continue;
         const rel = root && k.startsWith(root) ? k.slice(root.length) : k;
-        if (rel.startsWith(prefix) && rel.endsWith("/" + fname)) return zip.files[k];
-        if (rel.startsWith(prefix) && rel.endsWith(fname) && !zip.files[k].dir) return zip.files[k];
+        if (!rel.startsWith(prefix)) continue;
+        const relBase = rel.split("/").pop() ?? "";
+        for (const c of candidates) {
+          if (relBase === c) return zip.files[k];
+        }
       }
       return null;
     };
@@ -456,7 +468,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
         if (signal?.aborted) throw new Error("Import cancelled");
         const idx = i++;
         const job = mediaJobs[idx];
-        const entry = findInZip(job.oldPath, job.bucket);
+        const entry = findInZip(job.oldPath, job.oldFileName, job.bucket);
         if (!entry) {
           mediaMissing++;
         } else {

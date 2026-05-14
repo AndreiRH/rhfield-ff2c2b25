@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportProjectButton } from "@/components/ImportProjectButton";
+import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 
@@ -59,19 +60,26 @@ function ProjectsPage() {
               );
               const prog = calcProgress(items);
               return (
-                <Link key={p.id} to="/p/$projectId" params={{ projectId: p.id }}>
-                  <Card className="transition-all hover:border-primary/40 hover:shadow-md">
-                    <CardContent className="p-5">
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                        <span className="text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-                      </div>
-                      <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
-                      <ProgressBar value={prog.pct} size="md" />
-                      <div className="mt-2 text-sm tabular-nums">{prog.pct}% complete</div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <div key={p.id} className="relative">
+                  <Link to="/p/$projectId" params={{ projectId: p.id }}>
+                    <Card className="transition-all hover:border-primary/40 hover:shadow-md">
+                      <CardContent className="p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
+                        </div>
+                        <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
+                        <ProgressBar value={prog.pct} size="md" />
+                        <div className="mt-2 text-sm tabular-nums">{prog.pct}% complete</div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                  {isAdmin && (
+                    <div className="absolute right-2 top-2">
+                      <DeleteProjectButton projectId={p.id} projectName={p.name} />
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
