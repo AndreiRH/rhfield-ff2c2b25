@@ -1,37 +1,68 @@
-## Problem
+## Goal
+A single "Export project" button on the project page that downloads a ZIP containing every piece of data for that project — checklists, notes, progress, photos, files — in a format you can open in Excel and a folder structure you can hand to a client.
 
-Two issues are stopping the dashboard from showing anything:
+## What's in the ZIP
 
-1. **403 on every query**: `permission denied for function has_any_role`. The RLS policies use `has_role` / `has_any_role`, but the `authenticated` Postgres role was never granted EXECUTE on those functions, so every SELECT against `projects`, `lines`, etc. is rejected.
-2. **No BlueW1 row exists**: the previous migration created the schema but didn't actually insert the `BlueW1` project + 10 lines + equipment scaffold. So even once RLS is fixed, the list will still be empty.
-
-## Fix (one migration)
-
-```sql
--- 1. Allow signed-in users to execute the role-check helpers
-grant execute on function public.has_role(uuid, public.app_role) to authenticated;
-grant execute on function public.has_any_role(uuid, public.app_role[]) to authenticated;
-
--- 2. Seed BlueW1 if it doesn't exist
-insert into public.projects (name) values ('BlueW1')
-on conflict do nothing;
-
--- 3. Seed lines 1..10 for BlueW1
--- 4. Seed Kiln + SHS equipment groups per chapter (Assembly, Wiring, Cold Comm, Hot Comm)
--- 5. Seed placeholder components + a few starter checklist items
--- (engineers can edit/extend in the UI)
+```text
+riedhammer-<project-name>-<YYYY-MM-DD>.zip
+├── README.txt                       (what each file contains)
+├── summary/
+│   ├── checklist_full.csv           ← the "readable" master sheet
+│   ├── progress_by_line.csv         ← % per chapter per line
+│   └── progress_by_equipment.csv
+├── tables/                          ← raw export, one CSV per table
+│   ├── lines.csv
+│   ├── plant_equipment.csv
+│   ├── equipment_groups.csv
+│   ├── component_types.csv
+│   ├── components.csv
+│   ├── checklist_items.csv
+│   ├── equipment_notes.csv
+│   ├── pa_folders.csv
+│   ├── pa_attachments.csv
+│   ├── pa_notes.csv
+│   ├── milestones.csv
+│   ├── common_notes.csv
+│   └── common_files.csv
+├── photos/                          ← all images, original filenames preserved
+│   ├── checklist/<item-id>/...
+│   ├── equipment/<equipment-id>/...
+│   └── pa/<folder-name>/...
+└── files/                           ← all uploaded files, same structure
+    ├── checklist/...
+    ├── pa/...
+    └── common/...
 ```
 
-The seed steps will be idempotent (guarded by `not exists` / `on conflict`) so re-running is safe.
+The star of the export is **`summary/checklist_full.csv`** — one row per checklist item, fully flattened so a non-technical reader gets everything in one sheet:
 
-## After the migration
+| Line | Plant | Equipment | Chapter | Component type | Component | Task | Done | Completed at | Note | Photos | Files |
+|------|-------|-----------|---------|----------------|-----------|------|------|--------------|------|--------|-------|
 
-- Reload the dashboard — you'll see BlueW1 with 10 lines at 0% progress.
-- You can start ticking checklist items, uploading photos, adding milestones.
+## How it works (technical section)
 
-## Out of scope for this fix
+- New route `src/routes/p.$projectId.export.tsx` + a button on the project page (`p.$projectId.index.tsx`).
+- Client-side build, no server function needed:
+  - Query all project-scoped tables in parallel via the Supabase browser client (RLS already restricts to admin/engineer/pm).
+  - Build CSVs in memory with a tiny CSV writer (proper escaping for commas, quotes, newlines).
+  - Build the flattened "checklist_full.csv" by joining the in-memory data.
+  - For every `storage_path` referenced, download the blob via `supabase.storage.from(...).download(path)` and add it to the ZIP under a human-readable folder path.
+  - Use **JSZip** (small, browser-only, no native deps) to assemble the archive and trigger a download via a Blob URL.
+- Progress UI: a modal showing "Exporting tables… Downloading photos (12 / 87)… Packaging…" with a cancel button. Photos/files are fetched in parallel with a concurrency cap of ~6 to avoid hammering storage.
+- Size guard: if the total exceeds ~300 MB, warn the user and offer "Skip media" or "Continue".
+- Permission: only visible to `canEdit` (admin/engineer); PM also gets it but read-only is fine since RLS allows them to read everything.
 
-- Promoting your account to `admin` (you're currently `engineer`, which can read/write everything except create new projects). Tell me when you want admin and I'll add a one-line grant for your user id.
-- Offline sync, project-creation UI — still planned for later as discussed.
+## Out of scope (can add later if you want)
+- Scheduled automatic backups by email.
+- Server-generated PDF report of the same content.
+- Restore-from-ZIP (the export is one-way; ZIP is for archival/handover, not import).
 
-Approve and I'll apply the migration.
+## Dependencies
+- Add `jszip` (~30 KB gzip, pure JS, no native bindings).
+
+## Files to add / change
+- **add** `src/lib/exportProject.ts` — query, CSV builders, ZIP assembly.
+- **add** `src/components/ExportProjectButton.tsx` — button + progress modal.
+- **edit** `src/routes/p.$projectId.index.tsx` — mount the button in the project header.
+
+Shall I implement this?
