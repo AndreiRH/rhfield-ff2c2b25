@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Folder, ChevronLeft } from "lucide-react";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
-import { ExportProjectButton } from "@/components/ExportProjectButton";
+
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
 
@@ -96,7 +96,6 @@ function ProjectDashboard() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <ProjectHotCalendarButton projectId={projectId} />
-                <ExportProjectButton projectId={projectId} />
               </div>
             </CardContent>
           </Card>
