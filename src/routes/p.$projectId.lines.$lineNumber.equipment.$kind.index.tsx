@@ -156,7 +156,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
   return (
     <>
       <div className="mb-6 border-b pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {lineNumber} · Plant</span>
             <h1 className="flex items-center gap-3 text-3xl font-semibold">
@@ -167,9 +167,10 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
           <Link
             to="/p/$projectId/lines/$lineNumber/equipment/$kind/pa"
             params={{ projectId, lineNumber, kind }}
-            className="inline-flex items-center rounded-md border bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+            className="flex h-24 w-24 flex-col items-center justify-center rounded-md bg-amber-500 px-2 py-2 text-center text-xs font-semibold uppercase leading-tight tracking-wide text-white shadow-sm hover:bg-amber-600"
           >
-            Provisional Acceptance
+            <span>Provisional</span>
+            <span>Acceptance</span>
           </Link>
         </div>
         {/* 3 chapters in one line */}
