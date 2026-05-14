@@ -49,7 +49,8 @@ function EquipmentDetail() {
           id, chapter, name, plant_equipment_id,
           components(
             id, name, sort_order, deleted_at,
-            checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id)
+            checklist_items(id, label, done, note, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+              item_photos(id, storage_path))
           ),
           component_types(
             id, name, sort_order, deleted_at,
