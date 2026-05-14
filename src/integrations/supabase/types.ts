@@ -293,6 +293,51 @@ export type Database = {
           },
         ]
       }
+      equipment_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          equipment_id: string
+          file_name: string | null
+          file_path: string | null
+          id: string
+          photo_path: string | null
+          position_x: number
+          position_y: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          equipment_id: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          photo_path?: string | null
+          position_x?: number
+          position_y?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          equipment_id?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          photo_path?: string | null
+          position_x?: number
+          position_y?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipment_photos: {
         Row: {
           equipment_id: string
