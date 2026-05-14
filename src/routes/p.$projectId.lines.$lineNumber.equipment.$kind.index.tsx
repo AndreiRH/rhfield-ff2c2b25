@@ -289,6 +289,7 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
 }
 
 function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
+  const navigate = useNavigate();
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
@@ -326,8 +327,17 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
     <Card
       ref={setNodeRef}
       style={style}
-      className={`transition ${deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : "hover:border-primary/40"}`}
-      onClick={deleteMode ? () => setConfirmDelete(true) : undefined}
+      className={`transition ${deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
+      onClick={(e) => {
+        if (deleteMode) { setConfirmDelete(true); return; }
+        if (editing) return;
+        const target = e.target as HTMLElement;
+        if (target.closest("button, a, input, textarea, [role='button'], [data-no-nav]")) return;
+        navigate({
+          to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
+          params: { projectId, lineNumber, kind, equipmentId: pe.id },
+        });
+      }}
     >
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -336,6 +346,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
               type="button"
               className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
               title="Drag to reorder"
+              onClick={(e) => e.stopPropagation()}
               {...attributes}
               {...listeners}
             >
@@ -343,7 +354,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
             </button>
           )}
           {editing ? (
-            <div className="flex flex-1 items-center gap-2">
+            <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
               <Button size="icon" variant="ghost" onClick={save}><Check className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(pe.name); }}><X className="h-4 w-4" /></Button>
@@ -358,19 +369,13 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
             <div className="flex flex-1 items-center gap-2">
               <Cog className="h-5 w-5 text-muted-foreground" />
               <h3
-                onDoubleClick={() => canEdit && setEditing(true)}
+                data-no-nav
+                onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditing(true); } }}
                 title={canEdit ? "Double-click to rename" : undefined}
                 className={`text-lg font-semibold ${canEdit ? "cursor-text" : ""}`}
               >{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
-              <Link
-                to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId"
-                params={{ projectId, lineNumber, kind, equipmentId: pe.id }}
-                aria-label="Open"
-                className="group ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              </Link>
+              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </div>
           )}
         </div>
