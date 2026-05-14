@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Pencil, Check, X, GripVertical, ChevronDown, ChevronRight,
-  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown,
+  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
