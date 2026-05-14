@@ -140,6 +140,16 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     await supabase.from("equipment_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
     onReload();
   };
+  const removePhoto = async () => {
+    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
+    await supabase.from("equipment_notes").update({ photo_path: null }).eq("id", note.id);
+    onReload();
+  };
+  const removeFile = async () => {
+    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
+    await supabase.from("equipment_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
+    onReload();
+  };
 
   return (
     <li ref={setNodeRef} style={style} className="rounded-md border bg-card">
@@ -171,15 +181,15 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
           placeholder="Write something…"
           className="min-h-[60px] resize-y text-sm"
         />
-        {note.photo_path && <NotePhoto path={note.photo_path} />}
-        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} />}
+        {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
         {canEdit && (
           <div className="flex gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-              <Camera className="h-3 w-3" /> Photo
-              <input type="file" accept="image/*" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
-            </label>
+            <PhotoPicker onPick={uploadPhoto}>
+              <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                <Camera className="h-3 w-3" /> Photo
+              </button>
+            </PhotoPicker>
             <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
               <Paperclip className="h-3 w-3" /> File
               <input type="file" className="hidden"
@@ -192,26 +202,48 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   );
 }
 
-function NotePhoto({ path }: { path: string }) {
+function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
       if (data?.signedUrl) setUrl(data.signedUrl);
     });
   }, [path]);
-  if (!url) return <div className="h-24 animate-pulse rounded bg-muted" />;
-  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="max-h-40 w-full rounded border object-cover" /></a>;
+  return (
+    <div className="relative">
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer">
+          <img src={url} alt="" className="max-h-40 w-full rounded border object-cover" />
+        </a>
+      ) : (
+        <div className="h-24 animate-pulse rounded bg-muted" />
+      )}
+      {canEdit && (
+        <button onClick={onRemove}
+          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
 }
 
-function NoteFile({ path, name }: { path: string | null; name: string }) {
+function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
   const open = async () => {
     if (!path) return;
     const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
     if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
   return (
-    <button onClick={open} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-xs hover:bg-accent">
-      <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-    </button>
+    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
+        <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
+      </button>
+      {canEdit && (
+        <button onClick={onRemove} className="text-destructive hover:opacity-80">
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
   );
 }
