@@ -9,6 +9,10 @@ import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
   StickyNote, ListPlus, X,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
