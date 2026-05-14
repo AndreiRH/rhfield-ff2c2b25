@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Cog } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Cog, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 
@@ -179,7 +179,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
         <p className="text-sm text-muted-foreground">No equipment yet. Add the first one to start tracking.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {equipment.map((pe: any) => (
+          {equipment.map((pe: any, idx: number) => (
             <EquipmentCard
               key={pe.id}
               pe={pe}
@@ -188,6 +188,20 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < equipment.length - 1}
+              onMoveUp={async () => {
+                const a = equipment[idx]; const b = equipment[idx - 1];
+                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
+                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
+                onChange();
+              }}
+              onMoveDown={async () => {
+                const a = equipment[idx]; const b = equipment[idx + 1];
+                await supabase.from("plant_equipment").update({ sort_order: b.sort_order }).eq("id", a.id);
+                await supabase.from("plant_equipment").update({ sort_order: a.sort_order }).eq("id", b.id);
+                onChange();
+              }}
             />
           ))}
         </div>
@@ -196,7 +210,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: any) {
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: any) {
   const items = (pe.equipment_groups ?? []).filter((eg: any) => !eg.deleted_at).flatMap((eg: any) =>
     (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? [])
   );
@@ -240,6 +254,12 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind }: a
           )}
           {canEdit && !editing && (
             <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" disabled={!canMoveUp} onClick={onMoveUp} title="Move up">
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" disabled={!canMoveDown} onClick={onMoveDown} title="Move down">
+                <ArrowDown className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setEditing(true)} title="Rename">
                 <Pencil className="h-4 w-4" />
               </Button>
