@@ -305,8 +305,21 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
 
   const remove = async () => {
     const { error } = await supabase.from("plant_equipment").update({ deleted_at: new Date().toISOString() }).eq("id", pe.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Equipment removed"); onChange(); setConfirmDelete(false); }
+    if (error) { toast.error(error.message); return; }
+    setConfirmDelete(false);
+    onChange();
+    toast.success(`"${pe.name}" deleted`, {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase
+            .from("plant_equipment").update({ deleted_at: null }).eq("id", pe.id);
+          if (undoErr) toast.error(undoErr.message);
+          else { toast.success("Restored"); onChange(); }
+        },
+      },
+    });
   };
 
   return (
