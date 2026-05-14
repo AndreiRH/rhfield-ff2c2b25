@@ -388,7 +388,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   const common_files = cfRows.map((r) => {
     const id = newId();
     const newPath = remapStoragePath(r.storage_path);
-    if (r.storage_path) mediaJobs.push({ table: "common_files", oldPath: r.storage_path, newPath, bucket: "files", rowId: id, field: "storage_path" });
+    if (r.storage_path) mediaJobs.push({ table: "common_files", oldPath: r.storage_path, oldFileName: r.name, newPath, bucket: "files", rowId: id, field: "storage_path" });
     return {
       id,
       project_id: newProjectId,
