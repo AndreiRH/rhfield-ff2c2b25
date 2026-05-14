@@ -36,7 +36,7 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
       .from("pa_notes")
       .select("*")
       .eq("line_id", lineId)
-      .eq("kind", kind)
+      .eq("kind", kind as any)
       .order("sort_order")
       .order("created_at");
     setNotes((data ?? []) as Note[]);
@@ -53,7 +53,7 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
 
   const update = (id: string, patch: Partial<Note>) => {
     setNotes((n) => n.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-    supabase.from("pa_notes").update(patch).eq("id", id).then();
+    supabase.from("pa_notes").update(patch as any).eq("id", id).then();
   };
 
   const remove = async (n: Note) => {
