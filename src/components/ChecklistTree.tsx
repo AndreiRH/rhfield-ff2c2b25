@@ -128,6 +128,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
 
   useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
 
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [label, setLabel] = useState(item.label);
+  useEffect(() => { setLabel(item.label); }, [item.label]);
+  const saveLabel = async () => {
+    const trimmed = label.trim();
+    setEditingLabel(false);
+    if (!trimmed || trimmed === item.label) { setLabel(item.label); return; }
+    const { error } = await supabase.from("checklist_items").update({ label: trimmed }).eq("id", item.id);
+    if (error) toast.error(error.message); else onChange();
+  };
+
   const toggle = async () => {
     const { error } = await supabase.from("checklist_items")
       .update({ done: !item.done, completed_at: !item.done ? new Date().toISOString() : null })
@@ -193,7 +204,25 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
       </button>
       <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
-      <span className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}>{item.label}</span>
+      {editingLabel && canEdit ? (
+        <Input
+          value={label}
+          autoFocus
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={saveLabel}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); saveLabel(); }
+            else if (e.key === "Escape") { setLabel(item.label); setEditingLabel(false); }
+          }}
+          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
+        />
+      ) : (
+        <span
+          onDoubleClick={() => canEdit && setEditingLabel(true)}
+          title={canEdit ? "Double-click to rename" : undefined}
+          className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""} ${canEdit ? "cursor-text" : ""}`}
+        >{item.label}</span>
+      )}
       {canEdit && (
         <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
