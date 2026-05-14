@@ -7,7 +7,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Pencil, Check, X, GripVertical, Layers } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, Check, X, GripVertical, ChevronDown, ChevronRight,
+  ChevronsDownUp, ChevronsUpDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
@@ -17,12 +20,13 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, arrayMove, useSortable, horizontalListSortingStrategy,
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Tree: equipment_group -> component_types (as TABS) -> components -> checklist_items
-// Used for wiring and cold_commissioning.
+// Stacked sections: each component_type renders as its own collapsible block
+// (titled with the type name, renamable, draggable, deletable). All components
+// of that type are listed inside that block.
 export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any) {
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
@@ -30,14 +34,29 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    () => new Set(types.map((t: any) => t.id)),
+  );
 
+  // Auto-open newly added types; drop removed ones
   useEffect(() => {
-    if (types.length === 0) { setActiveId(null); return; }
-    if (!activeId || !types.some((t: any) => t.id === activeId)) {
-      setActiveId(types[0].id);
-    }
-  }, [types, activeId]);
+    setOpenIds((prev) => {
+      const next = new Set<string>();
+      for (const t of types) if (prev.has(t.id)) next.add(t.id);
+      for (const t of types) if (!prev.has(t.id) && prev.size === 0) next.add(t.id);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [types.map((t: any) => t.id).join(",")]);
+
+  const allOpen = types.length > 0 && types.every((t: any) => openIds.has(t.id));
+  const collapseAll = () => setOpenIds(new Set());
+  const expandAll = () => setOpenIds(new Set(types.map((t: any) => t.id)));
+  const toggleOne = (id: string) => setOpenIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const addType = async () => {
     if (!newName.trim() || !group) return;
@@ -47,7 +66,11 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
       sort_order: types.length,
     }).select("id").single();
     if (error) toast.error(error.message);
-    else { setNewName(""); setAdding(false); if (data?.id) setActiveId(data.id); onChange(); }
+    else {
+      setNewName(""); setAdding(false);
+      if (data?.id) setOpenIds((prev) => new Set(prev).add(data.id));
+      onChange();
+    }
   };
 
   const sensors = useSensors(
@@ -66,23 +89,33 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   };
 
   const overall = calcProgress(itemsFromGroup(group));
-  const active = types.find((t: any) => t.id === activeId) ?? null;
 
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-3">
             <h3 className="text-lg font-semibold">Component types</h3>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
               {overall.done}/{overall.total} · {overall.pct}%
             </span>
           </div>
-          {canEdit && !adding && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add type
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {types.length > 0 && (
+              <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
+                {allOpen ? (
+                  <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
+                ) : (
+                  <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
+                )}
+              </Button>
+            )}
+            {canEdit && !adding && (
+              <Button size="sm" onClick={() => setAdding(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Add type
+              </Button>
+            )}
+          </div>
         </div>
         <ProgressBar value={overall.pct} size="sm" className="mb-4" />
 
@@ -101,31 +134,29 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
         )}
 
         {types.length > 0 && (
-          <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={types.map((t: any) => t.id)} strategy={horizontalListSortingStrategy}>
-                <div className="mb-4 flex flex-wrap gap-1.5 border-b pb-2">
-                  {types.map((t: any) => (
-                    <TypeTab key={t.id} type={t} active={t.id === activeId} canEdit={canEdit}
-                      onClick={() => setActiveId(t.id)} onChange={onChange} />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-
-            {active && (
-              <div className="rounded-lg border bg-background/40 p-3">
-                <ComponentsList group={active} parentKind="component_type" canEdit={canEdit} onChange={onChange} />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={types.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {types.map((t: any) => (
+                  <TypeSection
+                    key={t.id}
+                    type={t}
+                    canEdit={canEdit}
+                    onChange={onChange}
+                    open={openIds.has(t.id)}
+                    onToggleOpen={() => toggleOne(t.id)}
+                  />
+                ))}
               </div>
-            )}
-          </>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function TypeTab({ type, active, canEdit, onClick, onChange }: any) {
+function TypeSection({ type, canEdit, onChange, open, onToggleOpen }: any) {
   const sortableArgs = useSortable({ id: type.id, disabled: !canEdit });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
@@ -150,48 +181,73 @@ function TypeTab({ type, active, canEdit, onClick, onChange }: any) {
 
   const remove = async () => {
     const { error } = await supabase.from("component_types").update({ deleted_at: new Date().toISOString() }).eq("id", type.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Type removed"); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    onChange();
+    toast.success(`"${type.name}" deleted`, {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase
+            .from("component_types").update({ deleted_at: null }).eq("id", type.id);
+          if (undoErr) toast.error(undoErr.message);
+          else { toast.success("Restored"); onChange(); }
+        },
+      },
+    });
   };
 
   return (
-    <div ref={sortableArgs.setNodeRef} style={style}
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm ${active
-        ? "border-primary bg-primary/10 text-foreground"
-        : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
-      {canEdit && (
-        <button {...sortableArgs.attributes} {...sortableArgs.listeners}
-          className="cursor-grab touch-none active:cursor-grabbing">
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      )}
-      {editing ? (
-        <>
-          <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-6 w-32 text-xs" />
-          <button onClick={rename} className="p-0.5"><Check className="h-3 w-3" /></button>
-          <button onClick={() => { setEditing(false); setName(type.name); }} className="p-0.5"><X className="h-3 w-3" /></button>
-        </>
-      ) : (
-        <button onClick={onClick} className="flex items-center gap-1.5">
-          <Layers className="h-3.5 w-3.5" />
-          <span className="font-medium">{type.name}</span>
-          <span className="font-mono text-[10px] tabular-nums opacity-70">{prog.done}/{prog.total}</span>
-        </button>
-      )}
-      {canEdit && !editing && (
-        <>
-          <button onClick={() => setEditing(true)} className="p-0.5 text-muted-foreground hover:text-foreground">
-            <Pencil className="h-3 w-3" />
+    <div
+      ref={sortableArgs.setNodeRef}
+      style={style}
+      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+    >
+      <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2">
+        {canEdit && (
+          <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+            className="cursor-grab touch-none p-1 active:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
+        )}
+        <button onClick={onToggleOpen} className="text-muted-foreground hover:text-foreground">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {editing ? (
+          <div className="flex flex-1 items-center gap-2">
+            <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-7" />
+            <Button size="icon" variant="ghost" onClick={rename}><Check className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(type.name); }}><X className="h-4 w-4" /></Button>
+          </div>
+        ) : (
+          <button onClick={onToggleOpen} className="flex flex-1 items-center gap-2 text-left">
+            <span className="text-base font-semibold">{type.name}</span>
+            {canEdit && (
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </span>
+            )}
+          </button>
+        )}
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
+        <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
+        <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        {canEdit && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-0.5"><Trash2 className="h-3 w-3 text-destructive" /></button>
+              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete "{type.name}"?</AlertDialogTitle>
-                <AlertDialogDescription>All components and checklists inside will be hidden across every line.</AlertDialogDescription>
+                <AlertDialogDescription>All components and checklists inside will be hidden. You can undo right after.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -199,7 +255,13 @@ function TypeTab({ type, active, canEdit, onClick, onChange }: any) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </>
+        )}
+      </div>
+
+      {open && (
+        <div className="p-3">
+          <ComponentsList group={type} parentKind="component_type" canEdit={canEdit} onChange={onChange} />
+        </div>
       )}
     </div>
   );
