@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste,
+  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
 } from "lucide-react";
 import { useClipboard, buildTypeClip, pasteType } from "@/lib/clipboard";
 import { toast } from "sonner";
