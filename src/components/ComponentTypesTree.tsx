@@ -293,6 +293,22 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
           </DndContext>
         )}
       </CardContent>
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {action.count} {Array.from(action.selection.values())[0]?.kind ?? "item"}{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the selected items and everything inside them. You can undo from the toast for a few seconds.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
