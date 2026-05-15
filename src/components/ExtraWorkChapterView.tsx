@@ -66,9 +66,9 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
   // Auto-expand all components when entering copy/delete mode, or when defaultOpen flips on.
   useEffect(() => {
-    if (inMode || defaultOpen) setOpenIds(new Set(components.map((c: any) => c.id)));
+    if (inSelectMode || defaultOpen) setOpenIds(new Set(components.map((c: any) => c.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode, defaultOpen]);
+  }, [inSelectMode, defaultOpen]);
 
   const toggleOne = (id: string) => setOpenIds((prev) => {
     const next = new Set(prev);
