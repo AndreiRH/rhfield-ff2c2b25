@@ -180,7 +180,7 @@ export function CommonFoldersList({
 
   const renderFolder = (f: FolderRow, depth: number) => {
     const kids = childrenOf.get(f.id) ?? [];
-    const isOpen = openIds.has(f.id) && !deleteMode;
+    const isOpen = openIds.has(f.id) || deleteMode;
     return (
       <FolderItem
         key={f.id}
