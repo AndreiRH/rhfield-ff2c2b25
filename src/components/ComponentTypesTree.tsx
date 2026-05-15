@@ -148,7 +148,16 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
       } else if (kind === "component") {
         setClipTop(buildComponentClipMany(entries.map((e) => e.payload)));
       } else if (kind === "item") {
-        setClipTop(buildItemClipMany(entries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
+        const selectedIds = new Set(entries.map((e) => e.payload.item.id));
+        const topLevelEntries = entries.filter((e) => {
+          let parentId = e.payload.item.parent_item_id;
+          while (parentId) {
+            if (selectedIds.has(parentId)) return false;
+            parentId = e.payload.allItems.find((i: any) => i.id === parentId)?.parent_item_id;
+          }
+          return true;
+        });
+        setClipTop(buildItemClipMany(topLevelEntries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
       }
       action.setMode("none");
     }
