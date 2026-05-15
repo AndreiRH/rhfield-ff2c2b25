@@ -196,14 +196,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_photos").insert({ item_id: item.id, storage_path: path });
-    setOpen(true); onChange();
+    setOpen(true); setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_files").insert({ item_id: item.id, storage_path: path, file_name: file.name });
-    setOpen(true); onChange();
+    setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
