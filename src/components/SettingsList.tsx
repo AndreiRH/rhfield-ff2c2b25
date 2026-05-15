@@ -466,18 +466,38 @@ function SettingRow({
             </div>
           )}
           {canEdit && (
-            <div className="flex items-center gap-2">
-              <PhotoPicker onPick={uploadPhoto}>
+            <div className="flex flex-wrap items-center gap-1">
+              {photos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPhotos((v) => !v)}
+                  title={showPhotos ? "Hide photos" : "Show photos"}
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${showPhotos ? "border-primary text-primary" : "border-primary/50 text-primary/80"}`}
+                >
+                  <Camera className="h-3 w-3" /> Photos {photos.length}
+                </button>
+              )}
+              <PhotoPicker onPick={(f) => { setShowPhotos(true); uploadPhoto(f); }}>
                 <button title="Add photo"
-                  className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <Camera className="h-4 w-4" />
+                  className="inline-flex items-center gap-1 rounded border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3 w-3" /><Camera className="h-3 w-3" />
                 </button>
               </PhotoPicker>
+              {files.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowFiles((v) => !v)}
+                  title={showFiles ? "Hide files" : "Show files"}
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${showFiles ? "border-primary text-primary" : "border-primary/50 text-primary/80"}`}
+                >
+                  <Paperclip className="h-3 w-3" /> Files {files.length}
+                </button>
+              )}
               <label title="Add file"
-                className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
-                <Paperclip className="h-4 w-4" />
+                className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                <Plus className="h-3 w-3" /><Paperclip className="h-3 w-3" />
                 <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) { setShowFiles(true); uploadFile(f); } e.target.value = ""; }} />
               </label>
             </div>
           )}
