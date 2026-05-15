@@ -172,8 +172,17 @@ function SettingsListInner({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        {canEdit && (
-          <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {logHref && !inMode && (
+            <Button asChild size="sm" variant="outline" title="View log" aria-label="View log">
+              <Link to={logHref} params={logParams}>
+                <ScrollText className="h-4 w-4" />
+                <span className="ml-1 text-xs">Log</span>
+              </Link>
+            </Button>
+          )}
+          {canEdit && (
+          <>
             {clip?.kind === "setting" && !inMode && (
               <Button size="sm" variant="outline" onClick={pasteHere}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
@@ -234,8 +243,9 @@ function SettingsListInner({
                 <X className="h-4 w-4" />
               </Button>
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
 
         {(action.mode === "delete" || action.mode === "copy") && (
           <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
@@ -266,6 +276,8 @@ function SettingsListInner({
                     onTitle={(t: string) => updateTitle(s.id, t)}
                     onBody={(b: string) => updateBody(s.id, b)}
                     onReload={load}
+                    plantEquipmentId={equipmentId}
+                    userId={userId}
                   />
                 ))}
               </ul>
