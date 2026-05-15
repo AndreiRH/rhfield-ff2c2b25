@@ -397,12 +397,12 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     <div
       ref={sortableArgs.setNodeRef}
       style={style}
-      className={`overflow-hidden rounded-lg border bg-card shadow-sm transition ${
+      className={`overflow-hidden rounded-lg border-l-4 border-y border-r bg-card shadow-md transition ${
         mode === "delete"
-          ? `cursor-pointer ${selected ? "border-destructive bg-destructive/15" : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"}`
+          ? `cursor-pointer ${selected ? "border-destructive border-l-destructive bg-destructive/15" : "border-destructive/40 border-l-destructive/60 bg-destructive/5 hover:bg-destructive/10"}`
           : mode === "copy"
-          ? `cursor-pointer ${selected ? "border-primary bg-primary/15" : "border-primary/40 bg-primary/5 hover:bg-primary/10"}`
-          : prog.pct === 100 ? "border-success/40 bg-success/10" : "border-border"
+          ? `cursor-pointer ${selected ? "border-primary border-l-primary bg-primary/15" : "border-primary/40 border-l-primary/60 bg-primary/5 hover:bg-primary/10"}`
+          : prog.pct === 100 ? "border-success/40 border-l-success bg-success/10" : "border-border border-l-primary"
       }`}
     >
       <div
