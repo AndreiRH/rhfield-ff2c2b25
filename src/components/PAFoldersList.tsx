@@ -459,12 +459,12 @@ function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean
   };
   return (
     <li className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
-      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{att.file_name ?? "file"}</span>
+      <button onClick={open} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
+        <Paperclip className="h-3 w-3 shrink-0" /> <span className="min-w-0 flex-1 truncate">{att.file_name ?? "file"}</span>
       </button>
       {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
+        <button onClick={onRemove} className="shrink-0 p-1 text-destructive hover:opacity-80" aria-label="Remove file">
+          <X className="h-4 w-4" />
         </button>
       )}
     </li>
