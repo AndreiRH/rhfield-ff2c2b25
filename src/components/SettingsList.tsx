@@ -1,14 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight,
+  Plus, Trash2, Camera, Paperclip, GripVertical, ChevronDown, ChevronRight,
+  ClipboardPaste, Check, ChevronsDownUp, ChevronsUpDown, Copy, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { PhotoTile, FileChip } from "@/components/ChecklistTree";
+import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
+import {
+  useClipboard, buildSettingClipMany, pasteSetting,
+} from "@/lib/clipboard";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -18,26 +24,39 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+interface SettingPhoto { id: string; storage_path: string }
+interface SettingFile { id: string; storage_path: string; file_name: string }
 interface Setting {
   id: string;
   plant_equipment_id: string;
   title: string;
   body: string;
   sort_order: number;
-  photo_path: string | null;
-  file_path: string | null;
-  file_name: string | null;
+  setting_photos: SettingPhoto[];
+  setting_files: SettingFile[];
 }
 
-export function SettingsList({
+export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string }) {
+  return (
+    <TreeActionProvider>
+      <SettingsListInner {...props} />
+    </TreeActionProvider>
+  );
+}
+
+function SettingsListInner({
   equipmentId, canEdit, userId,
 }: { equipmentId: string; canEdit: boolean; userId?: string }) {
   const [rows, setRows] = useState<Setting[]>([]);
-  const [deleteMode, setDeleteMode] = useState(false);
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const { clip, set: setClip, clear: clearClip } = useClipboard();
+  const action = useTreeAction()!;
+  const inMode = action.mode !== "none";
 
   const load = async () => {
     const { data } = await supabase
-      .from("equipment_settings").select("*")
+      .from("equipment_settings")
+      .select("*, setting_photos(id, storage_path), setting_files(id, storage_path, file_name)")
       .eq("plant_equipment_id", equipmentId)
       .is("deleted_at", null)
       .order("sort_order").order("created_at");
@@ -53,23 +72,24 @@ export function SettingsList({
     if (error) toast.error(error.message); else load();
   };
 
-  // Title updates propagate via DB trigger. Local-only fields update only this row.
   const updateTitle = (id: string, title: string) => {
     setRows((n) => n.map((x) => (x.id === id ? { ...x, title } : x)));
     supabase.from("equipment_settings").update({ title }).eq("id", id).then();
   };
-  const updateLocal = (id: string, patch: Partial<Setting>) => {
-    setRows((n) => n.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-    supabase.from("equipment_settings").update(patch).eq("id", id).then();
+  const updateBody = (id: string, body: string) => {
+    setRows((n) => n.map((x) => (x.id === id ? { ...x, body } : x)));
+    supabase.from("equipment_settings").update({ body }).eq("id", id).then();
   };
 
-  const remove = async (s: Setting) => {
-    if (s.photo_path) await supabase.storage.from("photos").remove([s.photo_path]);
-    if (s.file_path) await supabase.storage.from("files").remove([s.file_path]);
-    // Soft-delete; trigger propagates deleted_at to siblings.
+  const removeOne = async (s: Setting) => {
+    for (const p of s.setting_photos ?? []) {
+      await supabase.storage.from("photos").remove([p.storage_path]);
+    }
+    for (const f of s.setting_files ?? []) {
+      await supabase.storage.from("files").remove([f.storage_path]);
+    }
     await supabase.from("equipment_settings")
       .update({ deleted_at: new Date().toISOString() }).eq("id", s.id);
-    load();
   };
 
   const sensors = useSensors(
@@ -88,29 +108,98 @@ export function SettingsList({
     );
   };
 
+  const allOpen = openIds.size === rows.length && rows.length > 0;
+  const toggleAll = () => setOpenIds(allOpen ? new Set() : new Set(rows.map((r) => r.id)));
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const pasteHere = async () => {
+    if (clip?.kind !== "setting") return;
+    try {
+      await pasteSetting(clip, { plant_equipment_id: equipmentId, sort_order: rows.length, created_by: userId });
+      clearClip();
+      toast.success("Pasted"); load();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+  };
+
+  const confirmCopy = () => {
+    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+    if (selected.length === 0) { action.setMode("none"); return; }
+    setClip(buildSettingClipMany(selected));
+    action.setMode("none");
+  };
+  const confirmDelete = async () => {
+    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+    for (const s of selected) await removeOne(s);
+    action.setMode("none");
+    load();
+  };
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         {canEdit && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" onClick={addRow}>
-              <Plus className="mr-1 h-4 w-4" /> Add setting
-            </Button>
-            <Button
-              size="sm"
-              variant={deleteMode ? "destructive" : "outline"}
-              disabled={rows.length === 0}
-              onClick={() => setDeleteMode((d) => !d)}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              {deleteMode ? "Done" : "Delete"}
-            </Button>
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {clip?.kind === "setting" && !inMode && (
+              <Button size="sm" variant="outline" onClick={pasteHere}
+                title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}>
+                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+                {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+              </Button>
+            )}
+            {!inMode && (
+              <Button size="sm" onClick={addRow}>
+                <Plus className="mr-1 h-4 w-4" /> Add setting
+              </Button>
+            )}
+            {rows.length > 0 && !inMode && (
+              <Button size="sm" variant="outline" onClick={toggleAll}
+                title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
+                {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+              </Button>
+            )}
+            {rows.length > 0 && (
+              <Button size="sm"
+                variant={action.mode === "copy" ? "default" : "outline"}
+                onClick={() => {
+                  if (action.mode === "copy") confirmCopy();
+                  else action.setMode("copy");
+                }}
+                title={action.mode === "copy" ? "Copy selected" : "Copy"}
+                aria-label="Copy">
+                <Copy className="h-4 w-4" />
+                {action.mode === "copy" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+              </Button>
+            )}
+            {rows.length > 0 && (
+              <Button size="sm"
+                variant={action.mode === "delete" ? "destructive" : "outline"}
+                onClick={() => {
+                  if (action.mode === "delete") confirmDelete();
+                  else action.setMode("delete");
+                }}
+                title={action.mode === "delete" ? "Delete selected" : "Delete"}
+                aria-label="Delete">
+                <Trash2 className="h-4 w-4" />
+                {action.mode === "delete" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+              </Button>
+            )}
+            {inMode && (
+              <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
+                title="Cancel" aria-label="Cancel">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
 
-        {deleteMode && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            Tap a setting's trash icon to delete it across all lines. Tap "Done" to exit.
+        {inMode && (
+          <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
+            Tap settings to {action.mode === "delete" ? "delete" : "copy"}, then tap the {action.mode === "delete" ? "trash" : "copy"} icon again.
           </p>
         )}
 
@@ -126,10 +215,11 @@ export function SettingsList({
               <ul className="space-y-2">
                 {rows.map((s) => (
                   <SettingRow
-                    key={s.id} setting={s} canEdit={canEdit} deleteMode={deleteMode}
+                    key={s.id} setting={s} canEdit={canEdit}
+                    open={openIds.has(s.id)}
+                    onToggleOpen={() => toggleOpen(s.id)}
                     onTitle={(t: string) => updateTitle(s.id, t)}
-                    onLocal={(p: Partial<Setting>) => updateLocal(s.id, p)}
-                    onDelete={() => remove(s)}
+                    onBody={(b: string) => updateBody(s.id, b)}
                     onReload={load}
                   />
                 ))}
@@ -143,112 +233,160 @@ export function SettingsList({
 }
 
 function SettingRow({
-  setting, canEdit, deleteMode, onTitle, onLocal, onDelete, onReload,
-}: any) {
+  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload,
+}: {
+  setting: Setting; canEdit: boolean; open: boolean;
+  onToggleOpen: () => void;
+  onTitle: (t: string) => void;
+  onBody: (b: string) => void;
+  onReload: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: setting.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+  const action = useTreeAction()!;
+  const mode = action.mode;
+  const inMode = mode !== "none";
+  const selected = action.isSelected(setting.id);
 
-  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(setting.title);
   const [body, setBody] = useState(setting.body);
   useEffect(() => { setTitle(setting.title); setBody(setting.body); }, [setting.title, setting.body]);
+  const [editingTitle, setEditingTitle] = useState(false);
+
+  const photos = setting.setting_photos ?? [];
+  const files = setting.setting_files ?? [];
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    if (setting.photo_path) await supabase.storage.from("photos").remove([setting.photo_path]);
-    await supabase.from("equipment_settings").update({ photo_path: path }).eq("id", setting.id);
+    await supabase.from("setting_photos").insert({ equipment_setting_id: setting.id, storage_path: path });
     onReload();
   };
   const uploadFile = async (file: File) => {
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    if (setting.file_path) await supabase.storage.from("files").remove([setting.file_path]);
-    await supabase.from("equipment_settings").update({ file_path: path, file_name: file.name }).eq("id", setting.id);
+    await supabase.from("setting_files").insert({ equipment_setting_id: setting.id, storage_path: path, file_name: file.name });
     onReload();
   };
-  const removePhoto = async () => {
-    if (setting.photo_path) await supabase.storage.from("photos").remove([setting.photo_path]);
-    await supabase.from("equipment_settings").update({ photo_path: null }).eq("id", setting.id);
+  const removePhoto = async (p: SettingPhoto) => {
+    await supabase.storage.from("photos").remove([p.storage_path]);
+    await supabase.from("setting_photos").delete().eq("id", p.id);
     onReload();
   };
-  const removeFile = async () => {
-    if (setting.file_path) await supabase.storage.from("files").remove([setting.file_path]);
-    await supabase.from("equipment_settings").update({ file_path: null, file_name: null }).eq("id", setting.id);
+  const removeFile = async (f: SettingFile) => {
+    await supabase.storage.from("files").remove([f.storage_path]);
+    await supabase.from("setting_files").delete().eq("id", f.id);
     onReload();
   };
 
-  const hasPhoto = !!setting.photo_path;
-  const hasFile = !!setting.file_name;
+  const onRowClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (inMode) action.toggle(setting.id, { kind: "setting", payload: setting });
+    else onToggleOpen();
+  };
 
   return (
-    <li ref={setNodeRef} style={style} className="rounded-md border bg-card">
-      <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
-        {canEdit && !deleteMode && (
-          <button {...attributes} {...listeners} className="cursor-grab touch-none p-1 active:cursor-grabbing">
+    <li ref={setNodeRef} style={style}
+      className={`rounded-md border bg-card ${
+        mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
+        mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
+      }`}>
+      <div
+        className={`flex items-center gap-1 border-b bg-muted/40 px-2 py-1 cursor-pointer ${
+          mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
+          mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
+        }`}
+        onClick={onRowClick}
+      >
+        {canEdit && !inMode && (
+          <button {...attributes} {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <button type="button" onClick={() => setOpen((o) => !o)}
-          className="p-1 text-muted-foreground hover:text-foreground">
-          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {open ? (
+        {!inMode && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onToggleOpen(); }}
+            className="p-1 text-muted-foreground hover:text-foreground">
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        )}
+        {inMode && (
+          <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+            {selected && <Check className="h-2.5 w-2.5" />}
+          </span>
+        )}
+        {!inMode && open && editingTitle && canEdit ? (
           <Input
-            value={title}
-            disabled={!canEdit}
+            value={title} autoFocus
+            onClick={(e) => e.stopPropagation()}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title !== setting.title && onTitle(title)}
+            onBlur={() => { setEditingTitle(false); if (title !== setting.title) onTitle(title); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+              else if (e.key === "Escape") { setTitle(setting.title); setEditingTitle(false); }
+            }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
           />
         ) : (
-          <button type="button" onClick={() => setOpen(true)}
+          <button type="button"
+            onClick={(e) => { e.stopPropagation(); if (!inMode) onToggleOpen(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); if (!inMode && canEdit) { if (!open) onToggleOpen(); setEditingTitle(true); } }}
             className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium">
             <span className="truncate">{setting.title || "Untitled"}</span>
-            {setting.body && (
+            {!open && setting.body && (
               <span className="truncate text-xs font-normal text-muted-foreground">— {setting.body}</span>
             )}
-            {hasPhoto && (
-              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
-                <Camera className="h-3 w-3" /> 1
+            {!open && photos.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                <Camera className="h-3 w-3" /> {photos.length}
               </span>
             )}
-            {hasFile && (
-              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
-                <Paperclip className="h-3 w-3" /> 1
+            {!open && files.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                <Paperclip className="h-3 w-3" /> {files.length}
               </span>
             )}
-          </button>
-        )}
-        {canEdit && deleteMode && (
-          <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80">
-            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
-      {open && (
+      {open && !inMode && (
         <div className="space-y-2 p-3">
           <Textarea
             value={body}
             disabled={!canEdit}
             onChange={(e) => setBody(e.target.value)}
-            onBlur={() => body !== setting.body && onLocal({ body })}
+            onBlur={() => body !== setting.body && onBody(body)}
             placeholder="Value (local to this line)…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {setting.photo_path && <SettingPhoto path={setting.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
-          {setting.file_name && <SettingFile path={setting.file_path} name={setting.file_name} canEdit={canEdit} onRemove={removeFile} />}
+          {photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-1">
+              {photos.map((p) => (
+                <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+              ))}
+            </div>
+          )}
+          {files.length > 0 && (
+            <div className="space-y-1">
+              {files.map((f) => (
+                <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
+              ))}
+            </div>
+          )}
           {canEdit && (
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                  <Camera className="h-3 w-3" /> Photo
+                <button title="Add photo"
+                  className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Camera className="h-4 w-4" />
                 </button>
               </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Paperclip className="h-3 w-3" /> File
+              <label title="Add file"
+                className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <Paperclip className="h-4 w-4" />
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
@@ -257,52 +395,5 @@ function SettingRow({
         </div>
       )}
     </li>
-  );
-}
-
-function SettingPhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
-  return (
-    <div className="relative">
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" className="max-h-40 w-full rounded border object-cover" />
-        </a>
-      ) : (
-        <div className="h-24 animate-pulse rounded bg-muted" />
-      )}
-      {canEdit && (
-        <button onClick={onRemove}
-          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function SettingFile({ path, name, canEdit, onRemove }:
-  { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
-  const open = async () => {
-    if (!path) return;
-    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
-  return (
-    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-      </button>
-      {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
   );
 }
