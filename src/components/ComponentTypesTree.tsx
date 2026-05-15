@@ -298,7 +298,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {action.count} {Array.from(action.selection.values())[0]?.kind ?? "item"}{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the selected items and everything inside them. You can undo from the toast for a few seconds.
+              This will remove the selected items and everything inside them.
+              {lineCount && lineCount > 1 ? (
+                <> This is shared content and will be deleted from <strong>all {lineCount} project lines</strong>.</>
+              ) : null}
+              {" "}You can undo from the toast for a few seconds.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
