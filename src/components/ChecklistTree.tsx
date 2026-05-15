@@ -493,8 +493,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         </div>
       )}
 
-      {/* Render subs even in modes so they're targetable */}
-      {inMode && subs.length > 0 && (
+      {/* Render subs even in select modes so they're targetable */}
+      {inSelectMode && subs.length > 0 && (
         <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
           {subs.map((s: any) => (
             <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
