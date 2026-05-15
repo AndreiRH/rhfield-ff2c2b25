@@ -75,8 +75,10 @@ async function pageTable(table: string): Promise<Record<string, unknown>[]> {
 }
 
 function postToServiceWorker(type: string, payload: Record<string, unknown> = {}) {
-  if (typeof navigator === "undefined" || !navigator.serviceWorker?.controller) return;
-  navigator.serviceWorker.controller.postMessage({ type, ...payload });
+  if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+  const msg = { type, ...payload };
+  if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(msg);
+  else navigator.serviceWorker.ready.then((reg) => reg.active?.postMessage(msg)).catch(() => {});
 }
 
 function buildOfflineRoutes(results: Array<readonly [string, Record<string, unknown>[]]>) {
