@@ -451,14 +451,14 @@ function SettingRow({
             placeholder="Value (local to this production line)…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {photos.length > 0 && (
+          {photos.length > 0 && showPhotos && (
             <div className="grid grid-cols-3 gap-1">
               {photos.map((p) => (
                 <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
               ))}
             </div>
           )}
-          {files.length > 0 && (
+          {files.length > 0 && showFiles && (
             <div className="space-y-1">
               {files.map((f) => (
                 <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
