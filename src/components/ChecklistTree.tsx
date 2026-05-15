@@ -131,14 +131,16 @@ export function ChecklistTree({
 }
 
 function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
-  const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
+  const action = useTreeAction();
+  const mode = action?.mode ?? "none";
+  const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
+  const sortableArgs = useSortable({ id: item.id, disabled: !sortable || !inReorder });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
   const { clip, clear: clearClip } = useClipboard();
-  const action = useTreeAction();
-  const mode = action?.mode ?? "none";
-  const inMode = mode !== "none";
   const selected = !!action?.isSelected(item.id);
 
   const subs = allItems
