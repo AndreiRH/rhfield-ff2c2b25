@@ -5,6 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus, Trash2, Camera, Paperclip, GripVertical, ChevronDown, ChevronRight,
   ClipboardPaste, Check, ChevronsDownUp, ChevronsUpDown, Copy, X,
 } from "lucide-react";
@@ -25,8 +29,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
-import { Link } from "@tanstack/react-router";
-import { ScrollText } from "lucide-react";
 
 interface SettingPhoto { id: string; storage_path: string }
 interface SettingFile { id: string; storage_path: string; file_name: string }
@@ -40,7 +42,7 @@ interface Setting {
   setting_files: SettingFile[];
 }
 
-export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
+export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; lineCount?: number }) {
   return (
     <TreeActionProvider>
       <SettingsListInner {...props} />
@@ -49,14 +51,15 @@ export function SettingsList(props: { equipmentId: string; canEdit: boolean; use
 }
 
 function SettingsListInner({
-  equipmentId, canEdit, userId, logHref, logParams,
-}: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
+  equipmentId, canEdit, userId, lineCount,
+}: { equipmentId: string; canEdit: boolean; userId?: string; lineCount?: number }) {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const { clip, set: setClip, clear: clearClip } = useClipboard();
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
