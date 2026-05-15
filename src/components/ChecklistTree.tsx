@@ -143,6 +143,24 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState<boolean>(!!defaultOpen);
+
+  // Recursive content stats (subs + own attachments).
+  const descendants = (() => {
+    const out: any[] = [];
+    const stack = allItems.filter((i: any) => i.parent_item_id === item.id);
+    while (stack.length) {
+      const n = stack.pop()!;
+      out.push(n);
+      for (const c of allItems) if (c.parent_item_id === n.id) stack.push(c);
+    }
+    return out;
+  })();
+  const subsTotal = descendants.length;
+  const subsDone = descendants.filter((d: any) => d.done).length;
+  const descNotes = descendants.filter((d: any) => (d.note ?? "").trim() !== "").length;
+  const notesCount = descNotes + (ownNote ? 1 : 0);
+  const photosCount = descendants.reduce((s: number, d: any) => s + (d.item_photos?.length ?? 0), 0) + photos.length;
+  const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -269,12 +287,27 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
       )}
-      {/* compact indicators when collapsed */}
-      {!inMode && !open && (
-        <span className="flex items-center gap-1.5">
-          {ownNote && <StickyNote className="h-3 w-3 text-primary" aria-label="has note" />}
-          {photos.length > 0 && <Camera className="h-3 w-3 text-primary" aria-label="has photos" />}
-          {files.length > 0 && <Paperclip className="h-3 w-3 text-primary" aria-label="has files" />}
+      {/* Always-visible content indicators */}
+      {!inMode && (
+        <span className="flex items-center gap-2">
+          {subsTotal > 0 && (
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
+          )}
+          {notesCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
+              <StickyNote className="h-3 w-3" /> {notesCount}
+            </span>
+          )}
+          {photosCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
+              <Camera className="h-3 w-3" /> {photosCount}
+            </span>
+          )}
+          {filesCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
+              <Paperclip className="h-3 w-3" /> {filesCount}
+            </span>
+          )}
         </span>
       )}
     </div>

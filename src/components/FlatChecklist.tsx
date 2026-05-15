@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
@@ -32,6 +33,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expandAll, setExpandAll] = useState(false);
   const [treeKey, setTreeKey] = useState(0);
+  const [search, setSearch] = useState("");
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const { clip, set: setClip, clear: clearClip } = useClipboard();
@@ -40,6 +42,28 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
     setExpandAll((v) => !v);
     setTreeKey((k) => k + 1);
   };
+
+  // Filter items by search (include matched items + their ancestors + descendants).
+  const q = search.trim().toLowerCase();
+  const filteredItems = q
+    ? (() => {
+        const matches = allItems.filter((i: any) => (i.label ?? "").toLowerCase().includes(q));
+        const include = new Set<string>(matches.map((i: any) => i.id));
+        for (const m of matches) {
+          let cur: any = m;
+          while (cur?.parent_item_id) {
+            include.add(cur.parent_item_id);
+            cur = allItems.find((i: any) => i.id === cur.parent_item_id);
+          }
+        }
+        const stack = matches.map((m: any) => m.id);
+        while (stack.length) {
+          const id = stack.pop()!;
+          for (const c of allItems) if (c.parent_item_id === id) { include.add(c.id); stack.push(c.id); }
+        }
+        return allItems.filter((i: any) => include.has(i.id));
+      })()
+    : allItems;
 
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
@@ -156,6 +180,18 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           </p>
         )}
 
+        {bucket && allItems.length > 0 && !inMode && (
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search items…"
+              className="h-8 pl-7 text-sm"
+            />
+          </div>
+        )}
+
         {!bucket ? (
           canEdit ? (
             <Button size="sm" onClick={ensureBucket} disabled={creating}>Start checklist</Button>
@@ -164,13 +200,14 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           )
         ) : (
           <ChecklistTree
-            key={treeKey}
+            key={`${treeKey}-${q ? "search" : "all"}`}
             componentId={bucket.id}
-            items={allItems}
+            items={filteredItems}
             canEdit={canEdit}
             onChange={onChange}
             showLabels
-            defaultOpen={expandAll}
+            defaultOpen={expandAll || !!q}
+            emptyHint={q ? "No matching items." : "No items yet."}
           />
         )}
       </CardContent>
