@@ -28,6 +28,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { useAuth } from "@/hooks/use-auth";
+
 export function ComponentTypesTree(props: any) {
   return (
     <TreeActionProvider>
@@ -37,6 +39,7 @@ export function ComponentTypesTree(props: any) {
 }
 
 function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount }: any) {
+  const { isAdmin } = useAuth();
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -198,17 +201,19 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 <Copy className="h-4 w-4" />
                 {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
-              <Button
-                size="sm"
-                variant={action.mode === "delete" ? "destructive" : "outline"}
-                onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
-                disabled={action.mode === "delete" && !action.hasSelection}
-                title="Delete"
-                aria-label="Delete"
-              >
-                <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
-              </Button>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant={action.mode === "delete" ? "destructive" : "outline"}
+                  onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
+                  disabled={action.mode === "delete" && !action.hasSelection}
+                  title="Delete"
+                  aria-label="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                </Button>
+              )}
             </>
           )}
           {inMode && (
@@ -398,9 +403,9 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
           </div>
         ) : (
           <button
-            onClick={inMode ? undefined : onToggleOpen}
+            onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => { if (canEdit && !inMode) { e.stopPropagation(); setEditing(true); } }}
-            className="flex flex-1 items-center gap-2 text-left"
+            className="flex flex-1 items-center gap-2 text-left cursor-default"
             title={canEdit && !inMode ? "Double-click to rename" : undefined}
           >
             <span className="text-base font-semibold">{type.name}</span>

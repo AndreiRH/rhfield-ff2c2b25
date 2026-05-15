@@ -23,6 +23,7 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAuth } from "@/hooks/use-auth";
 
 interface SettingPhoto { id: string; storage_path: string }
 interface SettingFile { id: string; storage_path: string; file_name: string }
@@ -47,6 +48,7 @@ export function SettingsList(props: { equipmentId: string; canEdit: boolean; use
 function SettingsListInner({
   equipmentId, canEdit, userId,
 }: { equipmentId: string; canEdit: boolean; userId?: string }) {
+  const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const { clip, set: setClip, clear: clearClip } = useClipboard();
@@ -176,7 +178,7 @@ function SettingsListInner({
                 {action.mode === "copy" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
-            {rows.length > 0 && (
+            {rows.length > 0 && isAdmin && (
               <Button size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={() => {
@@ -333,9 +335,9 @@ function SettingRow({
           />
         ) : (
           <button type="button"
-            onClick={(e) => { e.stopPropagation(); if (!inMode) onToggleOpen(); }}
+            onClick={(e) => { e.stopPropagation(); }}
             onDoubleClick={(e) => { e.stopPropagation(); if (!inMode && canEdit) { if (!open) onToggleOpen(); setEditingTitle(true); } }}
-            className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium">
+            className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium cursor-default">
             <span className="truncate">{setting.title || "Untitled"}</span>
             {!open && setting.body && (
               <span className="truncate text-xs font-normal text-muted-foreground">— {setting.body}</span>
