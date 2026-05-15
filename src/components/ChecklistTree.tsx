@@ -143,6 +143,24 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState<boolean>(!!defaultOpen);
+
+  // Recursive content stats (subs + own attachments).
+  const descendants = (() => {
+    const out: any[] = [];
+    const stack = allItems.filter((i: any) => i.parent_item_id === item.id);
+    while (stack.length) {
+      const n = stack.pop()!;
+      out.push(n);
+      for (const c of allItems) if (c.parent_item_id === n.id) stack.push(c);
+    }
+    return out;
+  })();
+  const subsTotal = descendants.length;
+  const subsDone = descendants.filter((d: any) => d.done).length;
+  const descNotes = descendants.filter((d: any) => (d.note ?? "").trim() !== "").length;
+  const notesCount = descNotes + (ownNote ? 1 : 0);
+  const photosCount = descendants.reduce((s: number, d: any) => s + (d.item_photos?.length ?? 0), 0) + photos.length;
+  const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
