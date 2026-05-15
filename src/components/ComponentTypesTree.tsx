@@ -181,12 +181,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
         {/* Top action bar — single global controls. */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           {types.length > 0 && !inMode && (
-            <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
-              {allOpen ? (
-                <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
-              ) : (
-                <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
-              )}
+            <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll} title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
+              {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
             </Button>
           )}
           {canEdit && !adding && types.length > 0 && (
@@ -196,18 +192,22 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
                 disabled={action.mode === "copy" && !action.hasSelection}
+                title="Copy"
+                aria-label="Copy"
               >
-                <Copy className="mr-1 h-4 w-4" />
-                {action.mode === "copy" ? `Done${action.count ? ` (${action.count})` : ""}` : "Copy"}
+                <Copy className="h-4 w-4" />
+                {action.mode === "copy" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
               <Button
                 size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
                 disabled={action.mode === "delete" && !action.hasSelection}
+                title="Delete"
+                aria-label="Delete"
               >
-                <Trash2 className="mr-1 h-4 w-4" />
-                {action.mode === "delete" ? `Done${action.count ? ` (${action.count})` : ""}` : "Delete"}
+                <Trash2 className="h-4 w-4" />
+                {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
             </>
           )}
