@@ -98,15 +98,28 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   const performDelete = async () => {
     const entries = Array.from(action.selection.values());
     if (entries.length === 0) { setConfirmDelete(false); action.setMode("none"); return; }
-    const ids = entries.map((e) => e.payload.item.id);
+    const selectedIds = entries.map((e) => e.payload.item.id);
     const labels = entries.map((e) => e.payload.item.label);
+    // Cascade: include all descendants of any selected item so subtasks get deleted too.
+    const idSet = new Set<string>(selectedIds);
+    const stack = [...selectedIds];
+    while (stack.length) {
+      const pid = stack.pop()!;
+      for (const it of allItems as any[]) {
+        if (it.parent_item_id === pid && !idSet.has(it.id)) {
+          idSet.add(it.id);
+          stack.push(it.id);
+        }
+      }
+    }
+    const ids = Array.from(idSet);
     const { error } = await supabase.from("checklist_items")
       .update({ deleted_at: new Date().toISOString() }).in("id", ids);
     setConfirmDelete(false);
     if (error) { toast.error(error.message); return; }
     action.setMode("none");
     onChange();
-    toast.success(`Deleted ${ids.length} item${ids.length > 1 ? "s" : ""}${ids.length === 1 ? `: "${labels[0]}"` : ""}`, {
+    toast.success(`Deleted ${selectedIds.length} item${selectedIds.length > 1 ? "s" : ""}${selectedIds.length === 1 ? `: "${labels[0]}"` : ""}`, {
       duration: 3000,
       action: {
         label: "Undo",
