@@ -7,7 +7,7 @@ export interface ProgressNumbers {
 type ChecklistProgressItem = {
   id?: string;
   parent_item_id?: string | null;
-  done: boolean;
+  done?: boolean;
   deleted_at: string | null;
 };
 
