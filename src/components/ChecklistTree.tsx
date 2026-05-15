@@ -371,7 +371,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   return (
     <li ref={sortable ? sortableArgs.setNodeRef : undefined} style={style}
-      className={`rounded-md border bg-card ${
+      className={`rounded-md border bg-card ${depth === 0 ? "ml-2 border-l-4 border-l-muted-foreground/30" : ""} ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
         item.done ? "border-success/40 bg-success/10" : ""
