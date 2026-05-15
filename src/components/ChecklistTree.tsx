@@ -275,7 +275,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     onChange();
   };
 
-  const canExpand = (hasContent || canEdit) && !inMode;
+  const canExpand = hasContent || canEdit;
 
   // Engineers (canDeleteRoot=false) cannot select root items in delete mode.
   const blockedFromMode = mode === "delete" && !canDeleteRoot && !item.parent_item_id;
@@ -283,7 +283,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const onRowClick = (event: MouseEvent) => {
     event.stopPropagation();
     if (blockedFromMode) return;
-    action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
+    const entries: Array<[string, { kind: "item"; payload: { item: any; allItems: any[] } }]> = [item, ...descendants].map((node: any) => [
+      node.id,
+      { kind: "item" as const, payload: { item: node, allItems } },
+    ]);
+    action?.toggleMany(entries);
   };
 
   const row = (
@@ -302,12 +306,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
-      {!inMode && (
         <button onClick={(e) => { e.stopPropagation(); canExpand && setOpen((v) => !v); }}
-          className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
+          className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}
+          aria-label={open ? "Collapse" : "Expand"}
+        >
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
-      )}
       {inSelectMode && (
         <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
           {selected && <Check className="h-2.5 w-2.5" />}
@@ -504,7 +508,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       )}
 
       {/* Render subs in any action mode so they're visible/targetable */}
-      {inMode && subs.length > 0 && (
+      {inMode && open && subs.length > 0 && (
         <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
             {subs.map((s: any) => (
