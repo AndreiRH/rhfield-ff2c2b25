@@ -4,8 +4,33 @@ export interface ProgressNumbers {
   pct: number;
 }
 
-export function calcProgress(items: { done: boolean; deleted_at: string | null }[]): ProgressNumbers {
+type ChecklistProgressItem = {
+  id?: string;
+  parent_item_id?: string | null;
+  done?: boolean;
+  deleted_at: string | null;
+};
+
+export function liveChecklistItems<T extends { id?: string; parent_item_id?: string | null; deleted_at: string | null }>(items: T[]): T[] {
   const live = items.filter((i) => !i.deleted_at);
+  const byId = new Map<string, T>(live.filter((i) => i.id).map((i) => [i.id!, i]));
+
+  return live.filter((item) => {
+    let parentId = item.parent_item_id ?? null;
+    const seen = new Set<string>();
+    while (parentId) {
+      if (seen.has(parentId)) return false;
+      seen.add(parentId);
+      const parent = byId.get(parentId);
+      if (!parent) return false;
+      parentId = parent.parent_item_id ?? null;
+    }
+    return true;
+  });
+}
+
+export function calcProgress(items: ChecklistProgressItem[]): ProgressNumbers {
+  const live = liveChecklistItems(items);
   const total = live.length;
   const done = live.filter((i) => i.done).length;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);

@@ -13,6 +13,7 @@ import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
 import { useAuth } from "@/hooks/use-auth";
+import { liveChecklistItems } from "@/lib/progress";
 
 export function FlatChecklist(props: any) {
   // headerLeading: optional slot rendered on the left of the action bar (e.g. Manual/Checklist toggle).
@@ -30,7 +31,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     .filter((t: any) => !t.deleted_at)
     .flatMap((t: any) => (t.components ?? []).filter((c: any) => !c.deleted_at));
   const bucket = directComps[0] ?? typeComps[0] ?? null;
-  const allItems = (bucket?.checklist_items ?? []).filter((i: any) => !i.deleted_at);
+  const allItems = liveChecklistItems((bucket?.checklist_items ?? []) as any[]);
 
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);

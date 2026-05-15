@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, equipmentProgress } from "@/lib/progress";
+import { calcProgress, equipmentProgress, liveChecklistItems } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -40,16 +40,16 @@ function LineOverview() {
             id, name, kind, sort_order, deleted_at, mech_mode, mech_manual_pct,
             equipment_groups(
               id, chapter, deleted_at,
-              components(id, deleted_at, checklist_items(id, done, deleted_at)),
+              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
               component_types(
                 id, deleted_at,
-                components(id, deleted_at, checklist_items(id, done, deleted_at))
+                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
               )
             )
           ),
           equipment_groups(
             id, chapter, kind, name, sort_order, deleted_at, plant_equipment_id,
-            components(id, deleted_at, checklist_items(id, done, deleted_at))
+            components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
           )
         `)
         .eq("project_id", projectId)
@@ -218,7 +218,7 @@ function ExtraWorksSection({ line, works, canEdit, isAdmin, onChange }: any) {
       {works.length === 0 && <p className="mb-3 text-sm text-muted-foreground">No extra paid works yet.</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {works.map((w: any) => {
-          const items = (w.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => c.checklist_items ?? []);
+          const items = (w.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
           const prog = calcProgress(items);
           return (
             <Card key={w.id} className="relative transition hover:border-primary/40">

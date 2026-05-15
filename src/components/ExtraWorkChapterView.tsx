@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress } from "@/lib/progress";
+import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,7 +166,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   const allItems = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
-    .flatMap((c: any) => c.checklist_items ?? []);
+    .flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
   const prog = calcProgress(allItems);
   return (
     <Card>
@@ -193,7 +193,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     opacity: sortableArgs.isDragging ? 0.6 : 1,
   };
 
-  const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
+  const allItems = liveChecklistItems(component.checklist_items ?? []);
   const prog = calcProgress(allItems);
   const ownNote = (component.note ?? "").trim() !== "";
   const notesCount =

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { useClipboard, pasteItem } from "@/lib/clipboard";
 import { useTreeAction } from "@/components/TreeAction";
+import { liveChecklistItems } from "@/lib/progress";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -36,13 +37,14 @@ export function ChecklistTree({
   canDeleteRoot?: boolean;
   hideRootAdd?: boolean;
 }) {
+  const visibleItems = liveChecklistItems(items);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const { clip, clear } = useClipboard();
   const action = useTreeAction();
   const inMode = action?.mode !== "none" && !!action;
 
-  const rootItems = items
+  const rootItems = visibleItems
     .filter((i: any) => !i.parent_item_id)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
@@ -117,7 +119,7 @@ export function ChecklistTree({
         <SortableContext items={rootItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
-              <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
+              <TreeNode key={it.id} item={it} allItems={visibleItems} canEdit={canEdit}
                 onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen}
                 canDeleteRoot={canDeleteRoot} />
             ))}

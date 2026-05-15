@@ -17,7 +17,7 @@ import {
 } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
-import { calcProgress } from "@/lib/progress";
+import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -335,7 +335,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
   };
 
   const liveComps = (type.components ?? []).filter((c: any) => !c.deleted_at);
-  const items = liveComps.flatMap((c: any) => (c.checklist_items ?? []).filter((i: any) => !i.deleted_at));
+  const items = liveComps.flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
   const prog = calcProgress(items);
   const notesCount =
     liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
