@@ -82,7 +82,7 @@ export function ChecklistTree({
 
   return (
     <div className="space-y-2">
-      {canEdit && (
+      {canEdit && !hideRootAdd && (
         <div className="flex flex-wrap justify-end gap-1">
           {clip?.kind === "item" && !inMode && (
             <Button size="sm" variant="outline" onClick={pasteHere}
@@ -99,7 +99,7 @@ export function ChecklistTree({
           )}
         </div>
       )}
-      {adding && (
+      {adding && !hideRootAdd && (
         <div className="flex gap-2">
           <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
             placeholder="Checklist item"
