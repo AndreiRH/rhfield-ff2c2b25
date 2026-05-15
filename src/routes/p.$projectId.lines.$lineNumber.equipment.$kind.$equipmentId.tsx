@@ -345,7 +345,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           <div
             className="absolute inset-0"
             style={{
-              transform: `translateX(${swipeDx + (dir === 1 ? w : -w)}px)`,
+              transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
               transition: transformTransition,
             }}
             aria-hidden
