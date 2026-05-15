@@ -1,11 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
-import { LogOut, Users } from "lucide-react";
+import { LogOut, Users, Moon, Sun } from "lucide-react";
 import riedhammerLogo from "@/assets/riedhammer-logo.png";
 
 export function AppHeader() {
   const { user, roles, isAdmin, signOut } = useAuth();
+  const { theme, toggle } = useTheme();
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
@@ -24,6 +26,9 @@ export function AppHeader() {
                   <Link to="/admin/users"><Users className="mr-1 h-4 w-4" />Users</Link>
                 </Button>
               )}
+              <Button variant="ghost" size="sm" onClick={toggle} aria-label="Toggle theme">
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
               <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="mr-1 h-4 w-4" /> Sign out
               </Button>
