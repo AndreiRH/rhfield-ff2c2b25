@@ -206,7 +206,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
               {clip?.kind === "item" && !inMode && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
