@@ -85,10 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" },
-      { rel: "manifest", href: "https://progressier.app/xxeRITX28T2tptvbNXUw/progressier.json" },
-    ],
-    scripts: [
-      { src: "https://progressier.app/xxeRITX28T2tptvbNXUw/script.js", defer: true },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -111,6 +111,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const host = window.location.hostname;
+    const isPreview = host.includes("id-preview--") || host.includes("lovableproject.com") || host.includes("lovable.dev");
+    if (inIframe || isPreview) {
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    } else {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
