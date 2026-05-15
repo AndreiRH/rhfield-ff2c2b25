@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -253,7 +253,10 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     onChange();
   };
 
-  const onTap = () => action?.toggle(component.id, { kind: "component", payload: component });
+  const onTap = (event: MouseEvent) => {
+    event.stopPropagation();
+    action?.toggle(component.id, { kind: "component", payload: component });
+  };
 
   return (
     <div ref={sortableArgs.setNodeRef} style={style}

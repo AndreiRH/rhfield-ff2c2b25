@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -347,7 +347,10 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     else { setEditing(false); onChange(); }
   };
 
-  const onTap = () => action.toggle(type.id, { kind: "type", payload: type });
+  const onTap = (event: MouseEvent) => {
+    event.stopPropagation();
+    action.toggle(type.id, { kind: "type", payload: type });
+  };
 
   return (
     <div
@@ -360,9 +363,11 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
           ? `cursor-pointer ${selected ? "border-primary bg-primary/15" : "border-primary/40 bg-primary/5 hover:bg-primary/10"}`
           : "border-border"
       }`}
-      onClick={inMode ? onTap : undefined}
     >
-      <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2">
+      <div
+        className={`flex items-center gap-2 border-b bg-muted/60 px-3 py-2 ${inMode ? "cursor-pointer" : ""}`}
+        onClick={inMode ? onTap : undefined}
+      >
         {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
