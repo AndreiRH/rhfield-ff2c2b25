@@ -24,6 +24,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
+import { logSetting } from "@/lib/settingLogs";
+import { Link } from "@tanstack/react-router";
+import { ScrollText } from "lucide-react";
 
 interface SettingPhoto { id: string; storage_path: string }
 interface SettingFile { id: string; storage_path: string; file_name: string }
@@ -37,7 +40,7 @@ interface Setting {
   setting_files: SettingFile[];
 }
 
-export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string }) {
+export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
   return (
     <TreeActionProvider>
       <SettingsListInner {...props} />
@@ -46,8 +49,8 @@ export function SettingsList(props: { equipmentId: string; canEdit: boolean; use
 }
 
 function SettingsListInner({
-  equipmentId, canEdit, userId,
-}: { equipmentId: string; canEdit: boolean; userId?: string }) {
+  equipmentId, canEdit, userId, logHref, logParams,
+}: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -67,20 +70,41 @@ function SettingsListInner({
   useEffect(() => { load(); }, [equipmentId]);
 
   const addRow = async () => {
-    const { error } = await supabase.from("equipment_settings").insert({
+    const { data, error } = await supabase.from("equipment_settings").insert({
       plant_equipment_id: equipmentId, title: "Setting", body: "",
       sort_order: rows.length, created_by: userId,
+    }).select("id, title").single();
+    if (error) { toast.error(error.message); return; }
+    await logSetting({
+      plant_equipment_id: equipmentId,
+      equipment_setting_id: data?.id, setting_title: data?.title ?? "Setting",
+      action: "created", user_id: userId,
     });
-    if (error) toast.error(error.message); else load();
+    load();
   };
 
   const updateTitle = (id: string, title: string) => {
+    const prev = rows.find((x) => x.id === id);
+    const oldTitle = prev?.title ?? "";
     setRows((n) => n.map((x) => (x.id === id ? { ...x, title } : x)));
-    supabase.from("equipment_settings").update({ title }).eq("id", id).then();
+    supabase.from("equipment_settings").update({ title }).eq("id", id).then(() => {
+      if (oldTitle !== title) logSetting({
+        plant_equipment_id: equipmentId, equipment_setting_id: id, setting_title: title,
+        action: "title_changed", old_value: oldTitle, new_value: title, user_id: userId,
+      });
+    });
   };
   const updateBody = (id: string, body: string) => {
+    const prev = rows.find((x) => x.id === id);
+    const oldBody = prev?.body ?? "";
+    const title = prev?.title ?? "";
     setRows((n) => n.map((x) => (x.id === id ? { ...x, body } : x)));
-    supabase.from("equipment_settings").update({ body }).eq("id", id).then();
+    supabase.from("equipment_settings").update({ body }).eq("id", id).then(() => {
+      if (oldBody !== body) logSetting({
+        plant_equipment_id: equipmentId, equipment_setting_id: id, setting_title: title,
+        action: "value_changed", old_value: oldBody, new_value: body, user_id: userId,
+      });
+    });
   };
 
   const removeOne = async (s: Setting) => {
@@ -92,6 +116,10 @@ function SettingsListInner({
     }
     await supabase.from("equipment_settings")
       .update({ deleted_at: new Date().toISOString() }).eq("id", s.id);
+    await logSetting({
+      plant_equipment_id: equipmentId, equipment_setting_id: s.id, setting_title: s.title,
+      action: "deleted", old_value: s.body, user_id: userId,
+    });
   };
 
   const sensors = useSensors(
