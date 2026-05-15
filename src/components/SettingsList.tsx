@@ -127,8 +127,8 @@ export function SettingsList({
                 {rows.map((s) => (
                   <SettingRow
                     key={s.id} setting={s} canEdit={canEdit} deleteMode={deleteMode}
-                    onTitle={(t) => updateTitle(s.id, t)}
-                    onLocal={(p) => updateLocal(s.id, p)}
+                    onTitle={(t: string) => updateTitle(s.id, t)}
+                    onLocal={(p: Partial<Setting>) => updateLocal(s.id, p)}
                     onDelete={() => remove(s)}
                     onReload={load}
                   />
