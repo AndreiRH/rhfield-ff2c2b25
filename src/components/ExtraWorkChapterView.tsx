@@ -227,13 +227,14 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
-  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit });
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, mode = "none", onModeCopy }: any) {
+  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || mode !== "none" });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
     opacity: sortableArgs.isDragging ? 0.6 : 1,
   };
+  const inMode = mode !== "none";
 
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
@@ -241,9 +242,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
-  const { set: setClip } = useClipboard();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const photos = component.component_photos ?? [];
   const files = component.component_files ?? [];
