@@ -427,12 +427,12 @@ function SettingRow({
               <span className="truncate text-xs font-normal text-muted-foreground">— {setting.body}</span>
             )}
             {!open && photos.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground text-right">
                 <Camera className="h-3 w-3" /> {photos.length}
               </span>
             )}
             {!open && files.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] tabular-nums text-muted-foreground text-right">
                 <Paperclip className="h-3 w-3" /> {files.length}
               </span>
             )}
