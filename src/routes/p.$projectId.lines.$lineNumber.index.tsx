@@ -23,7 +23,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/")({ compo
 
 function LineOverview() {
   const { projectId, lineNumber } = Route.useParams();
-  const { session, loading, canEdit } = useAuth();
+  const { session, loading, canEdit, isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
@@ -154,7 +154,7 @@ function LineOverview() {
             <ExtraWorksSection
               line={data}
               works={extraWorks}
-              canEdit={canEdit}
+              canEdit={canEdit} isAdmin={isAdmin}
               onChange={invalidate}
             />
           </>
@@ -198,7 +198,7 @@ function HotCommissioningButton({ line, canEdit, onChange }: any) {
   );
 }
 
-function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
+function ExtraWorksSection({ line, works, canEdit, isAdmin, onChange }: any) {
   const { projectId, lineNumber } = Route.useParams();
   const [newWork, setNewWork] = useState("");
   const addWork = async () => {
@@ -235,7 +235,7 @@ function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
                   <ProgressBar value={prog.pct} size="sm" />
                 </CardContent>
               </Link>
-              {canEdit && (
+              {isAdmin && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
