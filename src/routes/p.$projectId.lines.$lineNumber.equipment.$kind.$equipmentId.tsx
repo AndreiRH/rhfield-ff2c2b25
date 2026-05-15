@@ -262,26 +262,6 @@ function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: numb
     </button>
   );
 }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${
-        active
-          ? "border-primary bg-primary/10"
-          : pct === 100
-          ? "border-success/40 bg-success/10 hover:bg-success/15"
-          : "border-border bg-muted/40 hover:bg-muted hover:border-muted-foreground/40"
-      }`}
-    >
-      <div className="mb-1 flex items-baseline justify-between gap-1">
-        <span className="truncate text-[11px] font-medium text-foreground">{label}</span>
-        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
-      </div>
-      <ProgressBar value={pct} size="sm" />
-    </button>
-  );
-}
 
 function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount }: any) {
   const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
