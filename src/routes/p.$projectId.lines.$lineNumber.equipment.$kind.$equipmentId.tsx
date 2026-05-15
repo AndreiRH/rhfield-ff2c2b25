@@ -12,33 +12,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, Settings as SettingsIcon, Wrench, Cable, Snowflake } from "lucide-react";
 
-const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; banner: string; dot: string; ring: string }> = {
+const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; header: string; accent: string }> = {
   assembly: {
     label: "Assembly",
     icon: Wrench,
-    tab: "border-amber-300/60 bg-amber-50 hover:bg-amber-100 text-amber-900",
-    tabActive: "border-amber-500 bg-amber-500 text-white shadow-sm",
-    banner: "bg-gradient-to-r from-amber-500 to-orange-500 text-white",
-    dot: "bg-amber-500",
-    ring: "ring-2 ring-amber-400/60",
+    tab: "border-amber-200/70 bg-amber-50/50 hover:bg-amber-100/70 text-amber-900",
+    tabActive: "border-amber-400 bg-amber-100 text-amber-950 shadow-sm",
+    header: "bg-amber-50/60 border-amber-200/70",
+    accent: "text-amber-700",
   },
   wiring: {
     label: "Wiring",
     icon: Cable,
-    tab: "border-violet-300/60 bg-violet-50 hover:bg-violet-100 text-violet-900",
-    tabActive: "border-violet-600 bg-violet-600 text-white shadow-sm",
-    banner: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white",
-    dot: "bg-violet-600",
-    ring: "ring-2 ring-violet-400/60",
+    tab: "border-emerald-200/70 bg-emerald-50/50 hover:bg-emerald-100/70 text-emerald-900",
+    tabActive: "border-emerald-400 bg-emerald-100 text-emerald-950 shadow-sm",
+    header: "bg-emerald-50/60 border-emerald-200/70",
+    accent: "text-emerald-700",
   },
   cold_comm: {
     label: "Cold commissioning",
     icon: Snowflake,
-    tab: "border-cyan-300/60 bg-cyan-50 hover:bg-cyan-100 text-cyan-900",
-    tabActive: "border-cyan-600 bg-cyan-600 text-white shadow-sm",
-    banner: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white",
-    dot: "bg-cyan-600",
-    ring: "ring-2 ring-cyan-400/60",
+    tab: "border-sky-200/70 bg-sky-50/50 hover:bg-sky-100/70 text-sky-900",
+    tabActive: "border-sky-400 bg-sky-100 text-sky-950 shadow-sm",
+    header: "bg-sky-50/60 border-sky-200/70",
+    accent: "text-sky-700",
   },
 };
 import { toast } from "sonner";
@@ -181,15 +178,16 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [section, setSection] = useState<Section>("assembly");
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
 
+  const meta = PHASE_META[section];
   return (
     <>
-      <div className="border-b pb-4">
+      <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {data.line.number} · {plantLabel}</span>
             <h1 className="text-3xl font-semibold">
               {data.pe.name}
-              <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
+              <span className={`ml-3 text-base font-normal ${meta.accent}`}>{overall}%</span>
             </h1>
           </div>
           <Link
@@ -200,7 +198,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
               kind: data.pe.kind,
               equipmentId: data.pe.id,
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-sky-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
           >
             <SettingsIcon className="h-3.5 w-3.5" /> Settings
           </Link>
@@ -213,7 +211,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       </div>
 
       <div className="mt-6">
-        <PhaseBanner phase={section} pct={section === "assembly" ? mech : section === "wiring" ? wiring : cold} />
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
@@ -227,18 +224,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
     </>
-  );
-}
-
-function PhaseBanner({ phase, pct }: { phase: Section; pct: number }) {
-  const meta = PHASE_META[phase];
-  const Icon = meta.icon;
-  return (
-    <div className={`mb-4 flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ${meta.banner}`}>
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="text-sm font-semibold tracking-wide uppercase">{meta.label}</span>
-      <span className="ml-auto font-mono text-xs tabular-nums opacity-90">{pct}%</span>
-    </div>
   );
 }
 
