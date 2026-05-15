@@ -428,6 +428,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
               items={allItems}
               canEdit={canEdit}
               onChange={onChange}
+              defaultOpen={defaultOpen}
             />
           </div>
         </div>
