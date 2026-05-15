@@ -297,8 +297,8 @@ function SettingRow({
 
   const onRowClick = (e: MouseEvent) => {
     e.stopPropagation();
-    if (inMode) action.toggle(setting.id, { kind: "setting", payload: setting });
-    else onToggleOpen();
+    if (inSelectMode) action.toggle(setting.id, { kind: "setting", payload: setting });
+    else if (!inReorder) onToggleOpen();
   };
 
   return (
@@ -308,13 +308,13 @@ function SettingRow({
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
       }`}>
       <div
-        className={`flex items-center gap-1 border-b bg-muted/40 px-2 py-1 cursor-pointer ${
+        className={`flex items-center gap-1 border-b bg-muted/40 px-2 py-1 ${inReorder ? "" : "cursor-pointer"} ${
           mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
           mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
         }`}
         onClick={onRowClick}
       >
-        {canEdit && !inMode && (
+        {canEdit && inReorder && (
           <button {...attributes} {...listeners}
             onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
@@ -327,7 +327,7 @@ function SettingRow({
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {inMode && (
+        {inSelectMode && (
           <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-2.5 w-2.5" />}
           </span>
