@@ -354,7 +354,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     <li ref={sortable ? sortableArgs.setNodeRef : undefined} style={style}
       className={`rounded-md border bg-card ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
-        mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
+        mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
+        item.done ? "border-success/40 bg-success/10" : ""
       }`}>
       {row}
       {open && !inMode && (
