@@ -142,7 +142,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const files = item.item_files ?? [];
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState<boolean>(!!defaultOpen);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
