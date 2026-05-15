@@ -22,15 +22,15 @@ export function AppHeader() {
                 {user.email} · <span className="font-mono uppercase">{roles.join(",") || "no role"}</span>
               </span>
               {isAdmin && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/admin/users"><Users className="mr-1 h-4 w-4" />Users</Link>
+                <Button variant="ghost" size="sm" asChild aria-label="Users">
+                  <Link to="/admin/users"><Users className="h-4 w-4" /></Link>
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={toggle} aria-label="Toggle theme">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button variant="ghost" size="sm" onClick={signOut}>
-                <LogOut className="mr-1 h-4 w-4" /> Sign out
+              <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
+                <LogOut className="h-4 w-4" />
               </Button>
             </>
           )}
