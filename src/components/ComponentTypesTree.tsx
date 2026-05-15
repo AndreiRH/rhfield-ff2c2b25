@@ -288,6 +288,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                       open={q ? true : openIds.has(t.id)}
                       onToggleOpen={() => toggleOne(t.id)}
                       externalSearch={q ? search : undefined}
+                      defaultOpen={allOpen}
                     />
                   );
                 })}
