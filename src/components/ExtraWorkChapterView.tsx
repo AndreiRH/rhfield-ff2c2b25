@@ -260,8 +260,19 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   };
   const deleteComponent = async () => {
     const { error } = await supabase.from("components").update({ deleted_at: new Date().toISOString() }).eq("id", component.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Component removed"); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    onChange();
+    toast.success(`"${component.name}" deleted`, {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase.from("components")
+            .update({ deleted_at: null }).eq("id", component.id);
+          if (undoErr) toast.error(undoErr.message); else onChange();
+        },
+      },
+    });
   };
   const saveNote = async () => {
     if (note === (component.note ?? "")) return;

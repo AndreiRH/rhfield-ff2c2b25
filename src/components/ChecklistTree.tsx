@@ -164,7 +164,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
-  const { set: setClip } = useClipboard();
+  const { clip, set: setClip, clear: clearClip } = useClipboard();
   const mode = useMode();
   const inMode = mode !== "none";
 
@@ -204,7 +204,29 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const remove = async () => {
     const { error } = await supabase.from("checklist_items")
       .update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    if (error) toast.error(error.message); else { setConfirmDelete(false); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    setConfirmDelete(false);
+    onChange();
+    toast.success(`"${item.label}" deleted`, {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase.from("checklist_items")
+            .update({ deleted_at: null }).eq("id", item.id);
+          if (undoErr) toast.error(undoErr.message); else onChange();
+        },
+      },
+    });
+  };
+  const pasteAsSub = async () => {
+    if (clip?.kind !== "item") return;
+    try {
+      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+      clearClip();
+      setOpen(true);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
   const saveNote = async () => {
     if (note === (item.note ?? "")) return;
@@ -319,6 +341,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
+              {clip?.kind === "item" && (
+                <button onClick={pasteAsSub}
+                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <ClipboardPaste className="h-3 w-3" /> Paste "{clip.sourceLabel ?? clip.node.label}"
+                </button>
+              )}
             </div>
           )}
 
