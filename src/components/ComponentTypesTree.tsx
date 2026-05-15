@@ -126,9 +126,15 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
     onChange();
   };
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Done handler — commit selection from any kind.
   const commitDone = async () => {
     if (!action.hasSelection) { action.setMode("none"); return; }
+    if (action.mode === "delete") {
+      setConfirmDelete(true);
+      return;
+    }
     const entries = Array.from(action.selection.values());
     const kind = entries[0].kind;
     if (action.mode === "copy") {
@@ -140,27 +146,33 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
         setClipTop(buildItemClipMany(entries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
       }
       action.setMode("none");
-    } else if (action.mode === "delete") {
-      const table = kind === "type" ? "component_types" : kind === "component" ? "components" : "checklist_items";
-      const ids = entries.map((e) => kind === "item" ? e.payload.item.id : e.payload.id);
-      const labels = entries.map((e) => kind === "item" ? e.payload.item.label : e.payload.name);
-      const { error } = await supabase.from(table as any)
-        .update({ deleted_at: new Date().toISOString() }).in("id", ids);
-      if (error) { toast.error(error.message); return; }
-      action.setMode("none");
-      onChange();
-      toast.success(`Deleted ${ids.length} ${kind}${ids.length > 1 ? "s" : ""}${ids.length === 1 ? `: "${labels[0]}"` : ""}`, {
-        duration: 3000,
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            const { error: undoErr } = await supabase.from(table as any)
-              .update({ deleted_at: null }).in("id", ids);
-            if (undoErr) toast.error(undoErr.message); else { toast.success("Restored"); onChange(); }
-          },
-        },
-      });
     }
+  };
+
+  const performDelete = async () => {
+    const entries = Array.from(action.selection.values());
+    if (entries.length === 0) { setConfirmDelete(false); action.setMode("none"); return; }
+    const kind = entries[0].kind;
+    const table = kind === "type" ? "component_types" : kind === "component" ? "components" : "checklist_items";
+    const ids = entries.map((e) => kind === "item" ? e.payload.item.id : e.payload.id);
+    const labels = entries.map((e) => kind === "item" ? e.payload.item.label : e.payload.name);
+    const { error } = await supabase.from(table as any)
+      .update({ deleted_at: new Date().toISOString() }).in("id", ids);
+    setConfirmDelete(false);
+    if (error) { toast.error(error.message); return; }
+    action.setMode("none");
+    onChange();
+    toast.success(`Deleted ${ids.length} ${kind}${ids.length > 1 ? "s" : ""}${ids.length === 1 ? `: "${labels[0]}"` : ""}`, {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase.from(table as any)
+            .update({ deleted_at: null }).in("id", ids);
+          if (undoErr) toast.error(undoErr.message); else { toast.success("Restored"); onChange(); }
+        },
+      },
+    });
   };
 
   return (
