@@ -64,8 +64,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BlueW1 Commissioning" },
-      { name: "description", content: "Production line commissioning tracker" },
+      { title: "BlueW1" },
+      { name: "description", content: "Production line commissioning" },
+      { property: "og:title", content: "BlueW1" },
+      { name: "twitter:title", content: "BlueW1" },
+      { property: "og:description", content: "Production line commissioning" },
+      { name: "twitter:description", content: "Production line commissioning" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/077bc4d4-cc28-43b0-ade4-27e68e410866/id-preview-b48b53cf--6e173fb0-f56c-4c97-9265-46ab74839d87.lovable.app-1778854410571.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/077bc4d4-cc28-43b0-ade4-27e68e410866/id-preview-b48b53cf--6e173fb0-f56c-4c97-9265-46ab74839d87.lovable.app-1778854410571.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
