@@ -314,7 +314,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         )}
       </div>
 
-      {open && !inMode && (
+      {(open || inMode) && !inMode && (
         <div className="space-y-3 p-3">
           {canEdit && (
             <div className="flex flex-wrap gap-1">
@@ -385,9 +385,20 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {/* In copy/delete mode: render ONLY the checklist so items can be selected. */}
+      {inMode && allItems.length > 0 && (
+        <div className="p-3">
+          <div className="rounded-md border border-dashed bg-background p-2">
+            <ChecklistTree
+              componentId={component.id}
+              items={allItems}
+              canEdit={canEdit}
+              onChange={onChange}
+            />
+          </div>
+        </div>
+      )}
 
 export default function ExtraWorkChapterView({ group, canEdit, onChange }: any) {
   return <ChapterGroupCard group={group} canEdit={canEdit} onChange={onChange} />;
