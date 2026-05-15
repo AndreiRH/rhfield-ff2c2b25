@@ -101,12 +101,18 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {overall.done}/{overall.total} · {overall.pct}%
-          </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {bucket && allItems.length > 0 && !inMode && (
+            <Button size="sm" variant="outline" onClick={toggleExpandAll}>
+              {expandAll ? (
+                <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
+              ) : (
+                <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
+              )}
+            </Button>
+          )}
           {bucket && canEdit && (
-            <div className="flex flex-wrap items-center gap-2">
+            <>
               <Button
                 size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
@@ -135,10 +141,9 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
                   {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
                 </Button>
               )}
-            </div>
+            </>
           )}
         </div>
-        <ProgressBar value={overall.pct} size="sm" />
 
         {action.mode === "delete" && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
