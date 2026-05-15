@@ -187,7 +187,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 aria-label="Reorder"
               >
                 <GripVertical className="h-4 w-4" />
-                {action.mode === "reorder" && <span className="ml-1">Done</span>}
               </Button>
               <Button
                 size="sm"
