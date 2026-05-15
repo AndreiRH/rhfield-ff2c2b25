@@ -214,6 +214,8 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const photos = component.component_photos ?? [];
   const files = component.component_files ?? [];
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const [note, setNote] = useState(component.note ?? "");
   useEffect(() => { setNote(component.note ?? ""); }, [component.note]);
 
@@ -233,14 +235,14 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_photos").insert({ component_id: component.id, storage_path: path });
-    onChange();
+    setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_files").insert({ component_id: component.id, storage_path: path, file_name: file.name });
-    onChange();
+    setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
@@ -331,16 +333,32 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                 className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${ownNote ? "border-primary text-primary" : "text-muted-foreground"}`}>
                 <StickyNote className="h-3 w-3" /> Note
               </button>
-              <PhotoPicker onPick={uploadPhoto}>
-                <button className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${photos.length > 0 ? "border-primary text-primary" : "text-muted-foreground"}`}>
-                  <Camera className="h-3 w-3" /> Photo
+              {photos.length === 0 ? (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                    <Camera className="h-3 w-3" /> Photo
+                  </button>
+                </PhotoPicker>
+              ) : (
+                <button onClick={() => setShowPhotos((v) => !v)}
+                  title={showPhotos ? "Hide photos" : "Show photos"}
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${showPhotos ? "border-primary text-primary" : "border-primary/50 text-primary/80"}`}>
+                  <Camera className="h-3 w-3" /> Photos {photos.length}
                 </button>
-              </PhotoPicker>
-              <label className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${files.length > 0 ? "border-primary text-primary" : "text-muted-foreground"}`}>
-                <Paperclip className="h-3 w-3" /> File
-                <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-              </label>
+              )}
+              {files.length === 0 ? (
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                  <Paperclip className="h-3 w-3" /> File
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              ) : (
+                <button onClick={() => setShowFiles((v) => !v)}
+                  title={showFiles ? "Hide files" : "Show files"}
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${showFiles ? "border-primary text-primary" : "border-primary/50 text-primary/80"}`}>
+                  <Paperclip className="h-3 w-3" /> Files {files.length}
+                </button>
+              )}
             </div>
           )}
 
@@ -369,18 +387,33 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             </div>
           )}
 
-          {photos.length > 0 && (
+          {showPhotos && photos.length > 0 && (
             <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
               {photos.map((p: any) => (
                 <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
               ))}
+              {canEdit && (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button title="Add another photo"
+                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </PhotoPicker>
+              )}
             </div>
           )}
-          {files.length > 0 && (
+          {showFiles && files.length > 0 && (
             <div className="space-y-1">
               {files.map((f: any) => (
                 <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
               ))}
+              {canEdit && (
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3.5 w-3.5" /> Add file
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              )}
             </div>
           )}
 

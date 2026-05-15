@@ -184,7 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
 
       <div className="mt-6">
         {section === "assembly" && (
-          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} />
+          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
         {section === "wiring" && (
           <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
@@ -219,7 +219,7 @@ function SectionTab({ label, pct, active, onClick }: { label: string; pct: numbe
   );
 }
 
-function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount }: any) {
   const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
@@ -265,7 +265,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
               {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
             </div>
           ) : (
-            <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} />
+            <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} />
           )}
         </CardContent>
       </Card>

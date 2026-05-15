@@ -143,6 +143,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
@@ -194,14 +196,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_photos").insert({ item_id: item.id, storage_path: path });
-    setOpen(true); onChange();
+    setOpen(true); setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_files").insert({ item_id: item.id, storage_path: path, file_name: file.name });
-    setOpen(true); onChange();
+    setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
@@ -294,18 +296,34 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 <ActionBtn onClick={() => setAddingSub(true)}
                   icon={<ListPlus className="h-3.5 w-3.5" />} label="Subtask" iconOnly={!showLabels} />
               )}
-              <PhotoPicker onPick={uploadPhoto}>
-                <button title="Photo"
-                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                  <Camera className="h-3.5 w-3.5" />{showLabels && <span>Photo</span>}
+              {photos.length === 0 ? (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button title="Add photo"
+                    className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}>
+                    <Camera className="h-3.5 w-3.5" />{showLabels && <span>Photo</span>}
+                  </button>
+                </PhotoPicker>
+              ) : (
+                <button title={showPhotos ? "Hide photos" : "Show photos"}
+                  onClick={() => setShowPhotos((v) => !v)}
+                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${showPhotos ? "text-primary" : "text-primary/70"}`}>
+                  <Camera className="h-3.5 w-3.5" />{showLabels ? <span>Photos {photos.length}</span> : <span className="ml-0.5 text-[10px]">{photos.length}</span>}
                 </button>
-              </PhotoPicker>
-              <label title="File"
-                className={`inline-flex cursor-pointer items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                <Paperclip className="h-3.5 w-3.5" />{showLabels && <span>File</span>}
-                <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-              </label>
+              )}
+              {files.length === 0 ? (
+                <label title="Add file"
+                  className={`inline-flex cursor-pointer items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}>
+                  <Paperclip className="h-3.5 w-3.5" />{showLabels && <span>File</span>}
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              ) : (
+                <button title={showFiles ? "Hide files" : "Show files"}
+                  onClick={() => setShowFiles((v) => !v)}
+                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${showFiles ? "text-primary" : "text-primary/70"}`}>
+                  <Paperclip className="h-3.5 w-3.5" />{showLabels ? <span>Files {files.length}</span> : <span className="ml-0.5 text-[10px]">{files.length}</span>}
+                </button>
+              )}
               {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
                   className={`inline-flex shrink-0 items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}
@@ -343,16 +361,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
 
-          {photos.length > 0 && (
+          {showPhotos && photos.length > 0 && (
             <div className="grid grid-cols-3 gap-1 px-3 pb-2">
               {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
                 canEdit={canEdit} onRemove={() => removePhoto(p)} />)}
+              {canEdit && (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button title="Add another photo"
+                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </PhotoPicker>
+              )}
             </div>
           )}
 
-          {files.length > 0 && (
+          {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
               {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />)}
+              {canEdit && (
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3.5 w-3.5" /> Add file
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              )}
             </div>
           )}
 
@@ -361,7 +394,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={showLabels} />
+                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false} />
                 ))}
               </ul>
               {addingSub && (
@@ -384,7 +417,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
           {subs.map((s: any) => (
             <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-              onChange={onChange} depth={depth + 1} sortable={false} showLabels={showLabels} />
+              onChange={onChange} depth={depth + 1} sortable={false} showLabels={false} />
           ))}
         </ul>
       )}
