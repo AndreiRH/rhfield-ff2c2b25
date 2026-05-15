@@ -267,6 +267,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             Tap any type, component, or item to add it to the copy. Tap "Done" to copy all selected.
           </p>
         )}
+        {action.mode === "reorder" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Drag the handle on each type to reorder. Tap "Done" when finished.
+          </p>
+        )}
 
         {types.length > 1 && !inMode && (
           <div className="relative max-w-md">
