@@ -184,16 +184,24 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null } | null>(null);
   const widthRef = useRef(1);
   const [swipeDx, setSwipeDx] = useState(0);
-  const [swiping, setSwiping] = useState(false);
+  const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
+  const commitTimeoutRef = useRef<number | null>(null);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
   const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
   const targetSection: Section | null = dir !== 0 ? (SECTION_ORDER[sectionIdx + dir] ?? null) : null;
   const progress = targetSection ? Math.min(1, Math.abs(swipeDx) / widthRef.current) : 0;
-  // Past 50% the target visuals take over so the bottom tab "follows" the swipe past the midpoint.
-  const displayedSection: Section = progress > 0.5 && targetSection ? targetSection : section;
+
+  // Per-tab weight 0..1 — follows the finger directly so the bottom tabs grow/shrink with swipe speed.
+  const weights: Record<Section, number> = { assembly: 0, wiring: 0, cold_comm: 0 };
+  weights[section] = 1 - progress;
+  if (targetSection) weights[targetSection] = progress;
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (commitTimeoutRef.current) {
+      window.clearTimeout(commitTimeoutRef.current);
+      commitTimeoutRef.current = null;
+    }
     const t = e.touches[0];
     startRef.current = { x: t.clientX, y: t.clientY, decided: null };
     widthRef.current = (e.currentTarget as HTMLElement).clientWidth || window.innerWidth;
@@ -207,7 +215,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     if (start.decided === null) {
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
       start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      if (start.decided === "h") setSwiping(true);
+      if (start.decided === "h") setSwipeState("dragging");
     }
     if (start.decided !== "h") return;
     const cur = SECTION_ORDER.indexOf(section);
@@ -221,53 +229,81 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     const decided = startRef.current?.decided;
     const dx = swipeDx;
     startRef.current = null;
-    setSwiping(false);
-    if (decided !== "h") { setSwipeDx(0); return; }
-    const ratio = dx / widthRef.current;
-    if (Math.abs(ratio) > 0.25) {
-      const d = ratio < 0 ? 1 : -1;
-      const next = SECTION_ORDER[SECTION_ORDER.indexOf(section) + d];
-      if (next) setSection(next);
+    if (decided !== "h") {
+      setSwipeState("idle");
+      setSwipeDx(0);
+      return;
     }
-    setSwipeDx(0);
+    const w = widthRef.current;
+    const ratio = dx / w;
+    const localDir = dx < 0 ? 1 : -1;
+    const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
+    if (Math.abs(ratio) > 0.25 && localTarget) {
+      // Commit: animate content fully off, then swap section silently
+      setSwipeState("animating");
+      setSwipeDx(localDir === 1 ? -w : w);
+      commitTimeoutRef.current = window.setTimeout(() => {
+        setSwipeState("idle");
+        setSection(localTarget);
+        setSwipeDx(0);
+        commitTimeoutRef.current = null;
+      }, 260);
+    } else {
+      // Cancel: animate back to start
+      setSwipeState("animating");
+      setSwipeDx(0);
+      commitTimeoutRef.current = window.setTimeout(() => {
+        setSwipeState("idle");
+        commitTimeoutRef.current = null;
+      }, 260);
+    }
   };
 
-  const meta = PHASE_META[displayedSection];
+  const dragging = swipeState === "dragging";
+  const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
+  // Always-on color transition smooths fast finger motion so colors don't flash.
+  const colorTransition = "opacity 180ms linear";
+
+  const meta = PHASE_META[section];
   const targetMeta = targetSection ? PHASE_META[targetSection] : null;
+  const w = widthRef.current;
+  const tapNav = (s: Section) => {
+    if (commitTimeoutRef.current) { window.clearTimeout(commitTimeoutRef.current); commitTimeoutRef.current = null; }
+    setSwipeState("idle");
+    setSwipeDx(0);
+    setSection(s);
+  };
 
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      {/* Background tint: current layer + target layer fading in with progress */}
+      {/* Background tint: current layer + target layer fading in with progress (rate-limited) */}
       <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
-        <div
-          className={`absolute inset-0 ${PHASE_META[section].tint}`}
-          style={{ transition: swiping ? "none" : "opacity 250ms ease-out", opacity: 1 }}
-        />
+        <div className={`absolute inset-0 ${meta.tint}`} />
         {targetMeta && (
           <div
             className={`absolute inset-0 ${targetMeta.tint}`}
-            style={{ opacity: progress, transition: swiping ? "none" : "opacity 250ms ease-out" }}
+            style={{ opacity: progress, transition: colorTransition }}
           />
         )}
       </div>
 
       {/* Header stack: current header + target header overlay fading in */}
       <div className="relative">
-        <div className={`rounded-lg border ${PHASE_META[section].header} px-3 pb-4 pt-3 transition-colors`}>
+        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
           <HeaderInner
             data={data}
             plantLabel={plantLabel}
             overall={overall}
-            accent={PHASE_META[section].accent}
+            accent={meta.accent}
             mech={mech} wiring={wiring} cold={cold}
-            displayedSection={displayedSection}
-            setSection={setSection}
+            weights={weights} dragging={dragging}
+            onTap={tapNav}
           />
         </div>
         {targetMeta && (
           <div
             className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-            style={{ opacity: progress, transition: swiping ? "none" : "opacity 250ms ease-out" }}
+            style={{ opacity: progress, transition: colorTransition }}
             aria-hidden
           >
             <HeaderInner
@@ -276,38 +312,48 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
               overall={overall}
               accent={targetMeta.accent}
               mech={mech} wiring={wiring} cold={cold}
-              displayedSection={displayedSection}
-              setSection={setSection}
+              weights={weights} dragging={dragging}
+              onTap={() => {}}
             />
           </div>
         )}
       </div>
 
-      {/* Content slides with finger; snaps back/commits on release */}
-      <div
-        className="mt-6"
-        style={{
-          transform: `translateX(${swipeDx}px)`,
-          transition: swiping ? "none" : "transform 250ms ease-out",
-        }}
-      >
-        {section === "assembly" && (
-          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
-        )}
-        {section === "wiring" && (
-          <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
-            emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
-        )}
-        {section === "cold_comm" && (
-          <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
-            emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
+      {/* Content track: current pane + adjacent pane following the finger */}
+      <div className="relative mt-6 overflow-hidden">
+        <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
+          {renderSection(section, data, canEdit, userId, onChange)}
+        </div>
+        {targetSection && (
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: `translateX(${swipeDx + (dir === 1 ? w : -w)}px)`,
+              transition: transformTransition,
+            }}
+            aria-hidden
+          >
+            {renderSection(targetSection, data, canEdit, userId, onChange)}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, displayedSection, setSection }: any) {
+function renderSection(s: Section, data: any, canEdit: boolean, userId: string | undefined, onChange: () => void) {
+  if (s === "assembly") {
+    return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />;
+  }
+  if (s === "wiring") {
+    return <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
+      emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />;
+  }
+  return <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
+    emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />;
+}
+
+function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, weights, dragging, onTap }: any) {
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -332,26 +378,35 @@ function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, di
         </Link>
       </div>
       <div className="mt-3 flex items-stretch gap-2">
-        <SectionTab phase="assembly" pct={mech} active={displayedSection === "assembly"} onClick={() => setSection("assembly")} />
-        <SectionTab phase="wiring" pct={wiring} active={displayedSection === "wiring"} onClick={() => setSection("wiring")} />
-        <SectionTab phase="cold_comm" pct={cold} active={displayedSection === "cold_comm"} onClick={() => setSection("cold_comm")} />
+        <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => onTap("assembly")} />
+        <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => onTap("wiring")} />
+        <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => onTap("cold_comm")} />
       </div>
     </>
   );
 }
 
-function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: number; active: boolean; onClick: () => void }) {
+function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section; pct: number; weight: number; dragging: boolean; onClick: () => void }) {
   const meta = PHASE_META[phase];
   const Icon = meta.icon;
+  const isActive = weight > 0.5;
+  // Base 1, grows up to 5 when fully active — flex-grow follows the finger directly during drag.
+  const grow = 1 + weight * 4;
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={meta.label}
       title={meta.label}
-      className={`min-w-0 cursor-pointer overflow-hidden rounded-md border transition-all duration-300 ease-out ${active ? `${meta.tabActive} flex-1 p-2 text-left` : `${meta.tab} flex-none px-3 py-2 flex flex-col items-center justify-center`}`}
+      style={{
+        flexGrow: grow,
+        flexShrink: 1,
+        flexBasis: 0,
+        transition: dragging ? "none" : "flex-grow 250ms ease-out",
+      }}
+      className={`min-w-0 cursor-pointer overflow-hidden rounded-md border ${isActive ? `${meta.tabActive} p-2 text-left` : `${meta.tab} flex flex-col items-center justify-center px-3 py-2`}`}
     >
-      {active ? (
+      {isActive ? (
         <>
           <div className="mb-1 flex items-center justify-between gap-1">
             <span className="inline-flex min-w-0 items-center gap-1">
