@@ -35,6 +35,15 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   const [deleteMode, setDeleteMode] = useState(false);
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  const { clip } = useClipboard();
+
+  const pasteTypeHere = async () => {
+    if (clip?.kind !== "componentType" || !group) return;
+    try {
+      await pasteType(clip, group.id, types.length);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+  };
 
   useEffect(() => {
     setOpenIds((prev) => {
