@@ -315,7 +315,8 @@ function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
-              deleteMode={deleteMode}
+              mode={mode}
+              onDuplicate={onDuplicate}
             />
           ))}
         </div>
