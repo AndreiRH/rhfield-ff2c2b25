@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -19,10 +19,12 @@ function EquipmentSettingsPage() {
   const { projectId, lineNumber, kind, equipmentId } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isLogRoute = pathname.includes(`/${equipmentId}/settings/log`);
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
 
   const { data, isLoading } = useQuery({
-    enabled: !!session,
+    enabled: !!session && !isLogRoute,
     queryKey: ["equipment-settings-page", equipmentId],
     queryFn: async () => {
       const { data: pe, error } = await supabase
@@ -31,6 +33,8 @@ function EquipmentSettingsPage() {
       return { pe };
     },
   });
+
+  if (isLogRoute) return <Outlet />;
 
   if (!session) return null;
   const plantLabel = kind === "kiln" ? "Kiln" : "SHS";
