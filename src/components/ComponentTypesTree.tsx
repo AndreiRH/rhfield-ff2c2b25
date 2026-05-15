@@ -53,10 +53,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const inMode = action.mode !== "none";
 
   // When entering copy/delete mode, expand all so users can reach sublayers.
+  const inSelectMode = action.mode === "delete" || action.mode === "copy";
   useEffect(() => {
-    if (inMode) setOpenIds(new Set(types.map((t: any) => t.id)));
+    if (inSelectMode) setOpenIds(new Set(types.map((t: any) => t.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode]);
+  }, [inSelectMode]);
 
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
@@ -192,6 +193,16 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             <>
               <Button
                 size="sm"
+                variant={action.mode === "reorder" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                title="Reorder"
+                aria-label="Reorder"
+              >
+                <GripVertical className="h-4 w-4" />
+                {action.mode === "reorder" && <span className="ml-1">Done</span>}
+              </Button>
+              <Button
+                size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
                 disabled={action.mode === "copy" && !action.hasSelection}
@@ -254,6 +265,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
         {action.mode === "copy" && (
           <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
             Tap any type, component, or item to add it to the copy. Tap "Done" to copy all selected.
+          </p>
+        )}
+        {action.mode === "reorder" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Drag the handle on each type to reorder. Tap "Done" when finished.
           </p>
         )}
 
@@ -326,9 +342,12 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
 
 function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch, defaultOpen }: any) {
   const action = useTreeAction()!;
-  const inMode = action.mode !== "none";
+  const mode = action.mode;
+  const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
   const selected = action.isSelected(type.id);
-  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || inMode });
+  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || !inReorder });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
@@ -368,18 +387,18 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
       ref={sortableArgs.setNodeRef}
       style={style}
       className={`overflow-hidden rounded-lg border bg-card shadow-sm transition ${
-        action.mode === "delete"
+        mode === "delete"
           ? `cursor-pointer ${selected ? "border-destructive bg-destructive/15" : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"}`
-          : action.mode === "copy"
+          : mode === "copy"
           ? `cursor-pointer ${selected ? "border-primary bg-primary/15" : "border-primary/40 bg-primary/5 hover:bg-primary/10"}`
           : prog.pct === 100 ? "border-success/40 bg-success/10" : "border-border"
       }`}
     >
       <div
-        className={`flex items-center gap-2 border-b bg-muted/60 px-3 py-2 cursor-pointer`}
-        onClick={inMode ? onTap : onToggleOpen}
+        className={`flex items-center gap-2 border-b bg-muted/60 px-3 py-2 ${inReorder ? "" : "cursor-pointer"}`}
+        onClick={inSelectMode ? onTap : (inReorder ? undefined : onToggleOpen)}
       >
-        {canEdit && !inMode && (
+        {canEdit && inReorder && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
@@ -391,8 +410,8 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {inMode && (
-          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (action.mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+        {inSelectMode && (
+          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-3 w-3" />}
           </span>
         )}
@@ -430,7 +449,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
         )}
       </div>
 
-      {(open || inMode) && (
+      {(open || inSelectMode) && (
         <div className="p-3">
           <ComponentsList
             group={type}

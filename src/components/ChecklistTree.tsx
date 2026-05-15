@@ -131,14 +131,16 @@ export function ChecklistTree({
 }
 
 function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
-  const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
+  const action = useTreeAction();
+  const mode = action?.mode ?? "none";
+  const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
+  const sortableArgs = useSortable({ id: item.id, disabled: !sortable || !inReorder });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
   const { clip, clear: clearClip } = useClipboard();
-  const action = useTreeAction();
-  const mode = action?.mode ?? "none";
-  const inMode = mode !== "none";
   const selected = !!action?.isSelected(item.id);
 
   const subs = allItems
@@ -276,13 +278,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   const row = (
     <div
-      className={`flex items-center gap-1 px-2 py-1.5 ${(inMode || canExpand) ? "cursor-pointer" : ""} ${
+      className={`flex items-center gap-1 px-2 py-1.5 ${(inSelectMode || canExpand) ? "cursor-pointer" : ""} ${
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
-        mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
+        mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
+        inReorder ? "bg-muted/30" : ""
       }`}
-      onClick={inMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
+      onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
-      {sortable && canEdit && !inMode && (
+      {sortable && canEdit && inReorder && (
         <button {...sortableArgs.attributes} {...sortableArgs.listeners}
           onClick={(e) => e.stopPropagation()}
           className="cursor-grab touch-none p-1 active:cursor-grabbing">
@@ -295,7 +298,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
       )}
-      {inMode && (
+      {inSelectMode && (
         <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
           {selected && <Check className="h-2.5 w-2.5" />}
         </span>
@@ -490,8 +493,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         </div>
       )}
 
-      {/* Render subs even in modes so they're targetable */}
-      {inMode && subs.length > 0 && (
+      {/* Render subs even in select modes so they're targetable */}
+      {inSelectMode && subs.length > 0 && (
         <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
           {subs.map((s: any) => (
             <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}

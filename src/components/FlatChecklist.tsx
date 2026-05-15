@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
@@ -168,6 +168,15 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
             <>
               <Button
                 size="sm"
+                variant={action.mode === "reorder" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                title="Reorder"
+                aria-label="Reorder"
+              >
+                <GripVertical className="h-4 w-4" />
+                {action.mode === "reorder" && <span className="ml-1">Done</span>}
+              </Button>
+              <Button
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
                 disabled={action.mode === "copy" && !action.hasSelection}
@@ -229,6 +238,11 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
         {action.mode === "copy" && (
           <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
             Tap any item or subtask to add it to the copy. Tap "Done" to copy all selected.
+          </p>
+        )}
+        {action.mode === "reorder" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Drag the handle on each item to reorder. Tap "Done" when finished.
           </p>
         )}
 

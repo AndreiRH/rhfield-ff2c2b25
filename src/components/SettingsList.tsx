@@ -167,6 +167,15 @@ function SettingsListInner({
             )}
             {rows.length > 0 && (
               <Button size="sm"
+                variant={action.mode === "reorder" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                title="Reorder" aria-label="Reorder">
+                <GripVertical className="h-4 w-4" />
+                {action.mode === "reorder" && <span className="ml-1 text-xs">Done</span>}
+              </Button>
+            )}
+            {rows.length > 0 && (
+              <Button size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={() => {
                   if (action.mode === "copy") confirmCopy();
@@ -200,9 +209,14 @@ function SettingsListInner({
           </div>
         )}
 
-        {inMode && (
+        {(action.mode === "delete" || action.mode === "copy") && (
           <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
             Tap settings to {action.mode === "delete" ? "delete" : "copy"}, then tap the {action.mode === "delete" ? "trash" : "copy"} icon again.
+          </p>
+        )}
+        {action.mode === "reorder" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Drag the handle on each setting to reorder. Tap "Done" when finished.
           </p>
         )}
 
@@ -244,11 +258,13 @@ function SettingRow({
   onBody: (b: string) => void;
   onReload: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: setting.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   const action = useTreeAction()!;
   const mode = action.mode;
   const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: setting.id, disabled: !inReorder });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   const selected = action.isSelected(setting.id);
 
   const [title, setTitle] = useState(setting.title);
@@ -286,8 +302,8 @@ function SettingRow({
 
   const onRowClick = (e: MouseEvent) => {
     e.stopPropagation();
-    if (inMode) action.toggle(setting.id, { kind: "setting", payload: setting });
-    else onToggleOpen();
+    if (inSelectMode) action.toggle(setting.id, { kind: "setting", payload: setting });
+    else if (!inReorder) onToggleOpen();
   };
 
   return (
@@ -297,13 +313,13 @@ function SettingRow({
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
       }`}>
       <div
-        className={`flex items-center gap-1 border-b bg-muted/40 px-2 py-1 cursor-pointer ${
+        className={`flex items-center gap-1 border-b bg-muted/40 px-2 py-1 ${inReorder ? "" : "cursor-pointer"} ${
           mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
           mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
         }`}
         onClick={onRowClick}
       >
-        {canEdit && !inMode && (
+        {canEdit && inReorder && (
           <button {...attributes} {...listeners}
             onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
@@ -316,7 +332,7 @@ function SettingRow({
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {inMode && (
+        {inSelectMode && (
           <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-2.5 w-2.5" />}
           </span>
