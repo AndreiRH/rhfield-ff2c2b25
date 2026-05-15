@@ -296,18 +296,34 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 <ActionBtn onClick={() => setAddingSub(true)}
                   icon={<ListPlus className="h-3.5 w-3.5" />} label="Subtask" iconOnly={!showLabels} />
               )}
-              <PhotoPicker onPick={uploadPhoto}>
-                <button title="Photo"
-                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                  <Camera className="h-3.5 w-3.5" />{showLabels && <span>Photo</span>}
+              {photos.length === 0 ? (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button title="Add photo"
+                    className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}>
+                    <Camera className="h-3.5 w-3.5" />{showLabels && <span>Photo</span>}
+                  </button>
+                </PhotoPicker>
+              ) : (
+                <button title={showPhotos ? "Hide photos" : "Show photos"}
+                  onClick={() => setShowPhotos((v) => !v)}
+                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${showPhotos ? "text-primary" : "text-primary/70"}`}>
+                  <Camera className="h-3.5 w-3.5" />{showLabels ? <span>Photos {photos.length}</span> : <span className="ml-0.5 text-[10px]">{photos.length}</span>}
                 </button>
-              </PhotoPicker>
-              <label title="File"
-                className={`inline-flex cursor-pointer items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                <Paperclip className="h-3.5 w-3.5" />{showLabels && <span>File</span>}
-                <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-              </label>
+              )}
+              {files.length === 0 ? (
+                <label title="Add file"
+                  className={`inline-flex cursor-pointer items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}>
+                  <Paperclip className="h-3.5 w-3.5" />{showLabels && <span>File</span>}
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              ) : (
+                <button title={showFiles ? "Hide files" : "Show files"}
+                  onClick={() => setShowFiles((v) => !v)}
+                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${showFiles ? "text-primary" : "text-primary/70"}`}>
+                  <Paperclip className="h-3.5 w-3.5" />{showLabels ? <span>Files {files.length}</span> : <span className="ml-0.5 text-[10px]">{files.length}</span>}
+                </button>
+              )}
               {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
                   className={`inline-flex shrink-0 items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}
