@@ -369,17 +369,18 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
       }`}
     >
       <div
-        className={`flex items-center gap-2 border-b bg-muted/60 px-3 py-2 ${inMode ? "cursor-pointer" : ""}`}
-        onClick={inMode ? onTap : undefined}
+        className={`flex items-center gap-2 border-b bg-muted/60 px-3 py-2 cursor-pointer`}
+        onClick={inMode ? onTap : onToggleOpen}
       >
         {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+            onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
         {!inMode && (
-          <button onClick={onToggleOpen} className="text-muted-foreground hover:text-foreground">
+          <button onClick={(e) => { e.stopPropagation(); onToggleOpen?.(); }} className="text-muted-foreground hover:text-foreground">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
@@ -389,7 +390,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
           </span>
         )}
         {!inMode && editing ? (
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-7" />
             <Button size="icon" variant="ghost" onClick={rename}><Check className="h-4 w-4" /></Button>

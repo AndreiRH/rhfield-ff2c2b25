@@ -265,20 +265,21 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   const row = (
     <div
-      className={`flex items-center gap-1 px-2 py-1.5 ${inMode ? "cursor-pointer" : ""} ${
+      className={`flex items-center gap-1 px-2 py-1.5 ${(inMode || canExpand) ? "cursor-pointer" : ""} ${
         mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
       }`}
-      onClick={inMode ? onRowClick : undefined}
+      onClick={inMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
       {sortable && canEdit && !inMode && (
         <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+          onClick={(e) => e.stopPropagation()}
           className="cursor-grab touch-none p-1 active:cursor-grabbing">
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
       {!inMode && (
-        <button onClick={() => canExpand && setOpen((v) => !v)}
+        <button onClick={(e) => { e.stopPropagation(); canExpand && setOpen((v) => !v); }}
           className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -288,11 +289,16 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           {selected && <Check className="h-2.5 w-2.5" />}
         </span>
       )}
-      {!inMode && <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />}
+      {!inMode && (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
+        </span>
+      )}
       {!inMode && editingLabel && canEdit ? (
         <Input
           value={label}
           autoFocus
+          onClick={(e) => e.stopPropagation()}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={saveLabel}
           onKeyDown={(e) => {
@@ -303,7 +309,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         />
       ) : (
         <span
-          onDoubleClick={() => !inMode && canEdit && setEditingLabel(true)}
+          onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
           className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
@@ -417,14 +423,16 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           )}
 
           {showPhotos && photos.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 px-3 pb-2">
-              {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
-                canEdit={canEdit} onRemove={() => removePhoto(p)} />)}
+            <div className="space-y-1 px-3 pb-2">
+              <div className="grid grid-cols-3 gap-1">
+                {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
+                  canEdit={canEdit} onRemove={() => removePhoto(p)} />)}
+              </div>
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
-                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-3.5 w-3.5" />
+                    className="inline-flex items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-3 w-3" />
                   </button>
                 </PhotoPicker>
               )}

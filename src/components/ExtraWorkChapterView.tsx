@@ -271,18 +271,19 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         className={`flex items-center gap-2 border-b px-3 py-2 ${
           action?.mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
           action?.mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
-          "bg-muted/40"
+          "bg-muted/40 cursor-pointer"
         }`}
-        onClick={inMode ? onTap : undefined}
+        onClick={inMode ? onTap : toggleOpen}
       >
         {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+            onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
         {!inMode && (
-          <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
+          <button onClick={(e) => { e.stopPropagation(); toggleOpen(); }} className="text-muted-foreground hover:text-foreground">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
@@ -292,7 +293,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </span>
         )}
         {!inMode && editingName ? (
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }}
               className="h-7" />
@@ -300,7 +301,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </div>
         ) : (
           <span
-            onDoubleClick={() => !inMode && canEdit && setEditingName(true)}
+            onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingName(true); }}
             title={!inMode && canEdit ? "Double-click to rename" : undefined}
             className="flex flex-1 items-center gap-2 font-semibold"
           >
@@ -388,15 +389,17 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           )}
 
           {showPhotos && photos.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {photos.map((p: any) => (
-                <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
-              ))}
+            <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+                {photos.map((p: any) => (
+                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+                ))}
+              </div>
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
-                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-3.5 w-3.5" />
+                    className="inline-flex items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-3 w-3" />
                   </button>
                 </PhotoPicker>
               )}
