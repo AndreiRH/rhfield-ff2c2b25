@@ -74,6 +74,12 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
 
+  // Auto-expand on entering any action mode (user can still collapse via the toggle).
+  useEffect(() => {
+    if (inMode) { setExpandAll(true); setTreeKey((k) => k + 1); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inMode]);
+
   const ensureBucket = async () => {
     if (bucket || !group || creating) return;
     setCreating(true);
@@ -159,7 +165,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">{headerLeading}</div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-          {bucket && allItems.length > 0 && !inMode && (
+          {bucket && allItems.length > 0 && (
             <Button size="sm" variant="outline" onClick={toggleExpandAll} title={expandAll ? "Collapse all" : "Expand all"} aria-label={expandAll ? "Collapse all" : "Expand all"}>
               {expandAll ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
             </Button>
