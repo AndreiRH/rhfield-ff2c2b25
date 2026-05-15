@@ -187,11 +187,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} />
         )}
         {section === "wiring" && (
-          <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange}
+          <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
             emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
         )}
         {section === "cold_comm" && (
-          <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange}
+          <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
             emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
         )}
       </div>
