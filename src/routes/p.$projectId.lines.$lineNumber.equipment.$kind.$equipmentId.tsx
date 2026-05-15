@@ -236,7 +236,7 @@ function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: numb
       onClick={onClick}
       aria-label={meta.label}
       title={meta.label}
-      className={`min-w-0 cursor-pointer rounded-md border transition ${active ? `${meta.tabActive} flex-1 p-2 text-left` : `${meta.tab} flex-none px-5 py-2 flex flex-col items-center justify-center`}`}
+      className={`min-w-0 cursor-pointer overflow-hidden rounded-md border transition-all duration-300 ease-out ${active ? `${meta.tabActive} flex-1 p-2 text-left` : `${meta.tab} flex-none px-5 py-2 flex flex-col items-center justify-center`}`}
     >
       {active ? (
         <>
