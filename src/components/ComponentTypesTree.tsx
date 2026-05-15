@@ -231,6 +231,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { set: setClip } = useClipboard();
 
   const rename = async () => {
     if (!name.trim() || name === type.name) { setEditing(false); return; }
