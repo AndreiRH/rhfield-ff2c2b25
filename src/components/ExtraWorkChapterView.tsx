@@ -398,8 +398,8 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
-                    className="inline-flex items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-3 w-3" />
+                    className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-4 w-4" />
                   </button>
                 </PhotoPicker>
               )}
@@ -412,8 +412,8 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
               ))}
               {canEdit && (
                 <label title="Add file"
-                  className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <Plus className="h-3 w-3" />
+                  className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-4 w-4" />
                   <input type="file" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
                 </label>
