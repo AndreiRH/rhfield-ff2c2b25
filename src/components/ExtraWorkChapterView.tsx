@@ -119,13 +119,33 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
               )}
             </Button>
           )}
-          {canEdit && clip?.kind === "component" && (
+          {canEdit && clip?.kind === "component" && mode === "none" && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
               title={`Paste "${clip.sourceLabel ?? clip.node.name}"`}>
               <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
             </Button>
           )}
-          {canEdit && !adding && (
+          {canEdit && components.length > 0 && !adding && (
+            <>
+              <Button
+                size="sm"
+                variant={mode === "copy" ? "default" : "outline"}
+                onClick={() => setMode((m) => (m === "copy" ? "none" : "copy"))}
+              >
+                <Copy className="mr-1 h-4 w-4" />
+                {mode === "copy" ? "Done" : "Copy"}
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === "delete" ? "destructive" : "outline"}
+                onClick={() => setMode((m) => (m === "delete" ? "none" : "delete"))}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                {mode === "delete" ? "Done" : "Delete"}
+              </Button>
+            </>
+          )}
+          {canEdit && !adding && mode === "none" && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add component
             </Button>
