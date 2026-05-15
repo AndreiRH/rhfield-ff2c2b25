@@ -171,9 +171,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   return (
     <Wrapper>
       <Inner className={noCard ? "space-y-3" : "space-y-3 p-4"}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">{headerLeading}</div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {bucket && allItems.length > 0 && (
             <Button size="sm" variant="outline" onClick={toggleExpandAll} title={expandAll ? "Collapse all" : "Expand all"} aria-label={expandAll ? "Collapse all" : "Expand all"}>
               {expandAll ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
@@ -192,6 +190,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 {action.mode === "reorder" && <span className="ml-1">Done</span>}
               </Button>
               <Button
+                size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
                 disabled={action.mode === "copy" && !action.hasSelection}
@@ -233,8 +232,10 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
               )}
             </>
           )}
-          </div>
         </div>
+        {headerLeading && (
+          <div className="flex items-center gap-2">{headerLeading}</div>
+        )}
 
         {addingItem && bucket && canEdit && (
           <div className="flex max-w-md gap-2">
