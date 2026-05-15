@@ -130,7 +130,13 @@ function FolderItem({
   folder, open, onToggle, canEdit, userId, onRename, onDelete,
 }: any) {
   const [name, setName] = useState(folder.name);
+  const [editing, setEditing] = useState(false);
   useEffect(() => setName(folder.name), [folder.name]);
+
+  const commit = () => {
+    setEditing(false);
+    if (name !== folder.name) onRename(name.trim() || "Untitled");
+  };
 
   return (
     <li className="overflow-hidden rounded-md border bg-card">
@@ -138,14 +144,28 @@ function FolderItem({
         <button onClick={onToggle} className="flex flex-1 items-center gap-2 text-left">
           <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
           {open ? <FolderOpen className="h-4 w-4 text-primary" /> : <Folder className="h-4 w-4 text-primary" />}
-          <Input
-            value={name}
-            disabled={!canEdit}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => name !== folder.name && onRename(name.trim() || "Untitled")}
-            className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
-          />
+          {editing && canEdit ? (
+            <Input
+              autoFocus
+              value={name}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+                if (e.key === "Escape") { setName(folder.name); setEditing(false); }
+              }}
+              className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
+            />
+          ) : (
+            <span
+              onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditing(true); } }}
+              className="flex-1 truncate px-1 text-sm font-medium"
+              title={canEdit ? "Double-click to rename" : undefined}
+            >
+              {name}
+            </span>
+          )}
         </button>
         {canEdit && (
           <AlertDialog>
