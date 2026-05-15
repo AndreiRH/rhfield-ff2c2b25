@@ -253,11 +253,13 @@ function SettingRow({
   onBody: (b: string) => void;
   onReload: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: setting.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   const action = useTreeAction()!;
   const mode = action.mode;
   const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: setting.id, disabled: !inReorder });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   const selected = action.isSelected(setting.id);
 
   const [title, setTitle] = useState(setting.title);
