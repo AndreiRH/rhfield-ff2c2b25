@@ -783,7 +783,10 @@ self.addEventListener("fetch", (event) => {
             broadcastDataChanged();
           } catch {}
 
-          await queueRequest(req);
+          const queuedBody = req.method === "POST" && bodyJson
+            ? JSON.stringify(Array.isArray(bodyJson) ? resultRows : (resultRows[0] ?? bodyJson))
+            : null;
+          await queueRequest(req, queuedBody);
 
           // Build a Supabase-compatible response.
           const accept = req.headers.get("Accept") || "";
