@@ -328,8 +328,9 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
           </button>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-        <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
-        <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
+          <StickyNote className="h-3 w-3" /> {notesCount}
+        </span>
       </div>
 
       {open && !inActionMode && (
