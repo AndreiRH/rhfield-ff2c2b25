@@ -24,7 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
   emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
-  canDeleteRoot = true,
+  canDeleteRoot = true, hideRootAdd = false,
 }: {
   componentId: string;
   items: any[];
@@ -34,6 +34,7 @@ export function ChecklistTree({
   showLabels?: boolean;
   defaultOpen?: boolean;
   canDeleteRoot?: boolean;
+  hideRootAdd?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -81,7 +82,7 @@ export function ChecklistTree({
 
   return (
     <div className="space-y-2">
-      {canEdit && (
+      {canEdit && !hideRootAdd && (
         <div className="flex flex-wrap justify-end gap-1">
           {clip?.kind === "item" && !inMode && (
             <Button size="sm" variant="outline" onClick={pasteHere}
@@ -98,7 +99,7 @@ export function ChecklistTree({
           )}
         </div>
       )}
-      {adding && (
+      {adding && !hideRootAdd && (
         <div className="flex gap-2">
           <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
             placeholder="Checklist item"
