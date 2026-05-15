@@ -5,6 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus, Trash2, Camera, Paperclip, GripVertical, ChevronDown, ChevronRight,
   ClipboardPaste, Check, ChevronsDownUp, ChevronsUpDown, Copy, X,
 } from "lucide-react";
@@ -25,8 +29,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
-import { Link } from "@tanstack/react-router";
-import { ScrollText } from "lucide-react";
 
 interface SettingPhoto { id: string; storage_path: string }
 interface SettingFile { id: string; storage_path: string; file_name: string }
@@ -40,7 +42,7 @@ interface Setting {
   setting_files: SettingFile[];
 }
 
-export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
+export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; lineCount?: number }) {
   return (
     <TreeActionProvider>
       <SettingsListInner {...props} />
@@ -49,14 +51,15 @@ export function SettingsList(props: { equipmentId: string; canEdit: boolean; use
 }
 
 function SettingsListInner({
-  equipmentId, canEdit, userId, logHref, logParams,
-}: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
+  equipmentId, canEdit, userId, lineCount,
+}: { equipmentId: string; canEdit: boolean; userId?: string; lineCount?: number }) {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const { clip, set: setClip, clear: clearClip } = useClipboard();
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -164,7 +167,14 @@ function SettingsListInner({
   };
   const confirmDelete = async () => {
     const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+    if (selected.length === 0) { action.setMode("none"); return; }
+    setConfirmDeleteOpen(true);
+  };
+
+  const performDelete = async () => {
+    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
     for (const s of selected) await removeOne(s);
+    setConfirmDeleteOpen(false);
     action.setMode("none");
     load();
   };
@@ -277,6 +287,23 @@ function SettingsListInner({
           </DndContext>
         )}
       </CardContent>
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {action.count} setting{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
+              Values, photos, and files attached to the selected settings on this line will also be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -389,7 +416,10 @@ function SettingRow({
           />
         ) : (
           <button type="button"
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (inSelectMode) action.toggle(setting.id, { kind: "setting", payload: setting });
+            }}
             onDoubleClick={(e) => { e.stopPropagation(); if (!inMode && canEdit) { if (!open) onToggleOpen(); setEditingTitle(true); } }}
             className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium cursor-default">
             <span className="truncate">{setting.title || "Untitled"}</span>
