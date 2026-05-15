@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
   emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
+  canDeleteRoot = true,
 }: {
   componentId: string;
   items: any[];
@@ -32,6 +33,7 @@ export function ChecklistTree({
   emptyHint?: string;
   showLabels?: boolean;
   defaultOpen?: boolean;
+  canDeleteRoot?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -115,7 +117,8 @@ export function ChecklistTree({
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen} />
+                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen}
+                canDeleteRoot={canDeleteRoot} />
             ))}
           </ul>
         </SortableContext>
@@ -124,7 +127,7 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
   const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
@@ -259,15 +262,19 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   const canExpand = (hasContent || canEdit) && !inMode;
 
+  // Engineers (canDeleteRoot=false) cannot select root items in delete mode.
+  const blockedFromMode = mode === "delete" && !canDeleteRoot && !item.parent_item_id;
+
   const onRowClick = (event: MouseEvent) => {
     event.stopPropagation();
+    if (blockedFromMode) return;
     action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
   };
 
   const row = (
     <div
       className={`flex items-center gap-1 px-2 py-1.5 ${(inMode || canExpand) ? "cursor-pointer" : ""} ${
-        mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
+        mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
       }`}
       onClick={inMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
@@ -310,9 +317,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         />
       ) : (
         <span
+          onClick={(e) => { if (!inMode) e.stopPropagation(); }}
           onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""}`}
+          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
         >{item.label}</span>
       )}
       {/* Always-visible content indicators */}
@@ -459,7 +467,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false} />
+                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
+                    canDeleteRoot={canDeleteRoot} />
                 ))}
               </ul>
               {addingSub && (
@@ -482,7 +491,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
           {subs.map((s: any) => (
             <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-              onChange={onChange} depth={depth + 1} sortable={false} showLabels={false} />
+              onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
+              canDeleteRoot={canDeleteRoot} />
           ))}
         </ul>
       )}

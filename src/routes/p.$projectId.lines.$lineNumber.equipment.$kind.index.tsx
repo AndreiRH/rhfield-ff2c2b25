@@ -32,7 +32,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
 
 function PlantEquipmentList() {
   const { projectId, lineNumber, kind } = Route.useParams();
-  const { session, loading, canEdit } = useAuth();
+  const { session, loading, canEdit, isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
@@ -112,7 +112,7 @@ function PlantEquipmentList() {
             lineId={data.line.id}
             kind={kind}
             equipment={data.plantEquipment}
-            canEdit={canEdit}
+            canEdit={canEdit} isAdmin={isAdmin}
             onChange={invalidate}
             projectId={projectId}
             lineNumber={lineNumber}
@@ -125,7 +125,7 @@ function PlantEquipmentList() {
   );
 }
 
-function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, lineNumber }: any) {
+function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projectId, lineNumber }: any) {
   const totals = equipment.reduce(
     (acc: any, pe: any) => {
       const p = equipmentProgress(pe);
@@ -182,19 +182,21 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
       </div>
 
       {canEdit && !adding && (
-        <div className="mb-3 grid grid-cols-2 gap-2">
+        <div className={`mb-3 grid gap-2 ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
           <Button size="sm" onClick={() => setAdding(true)}>
             <Plus className="mr-1 h-4 w-4" /> Add equipment
           </Button>
-          <Button
-            size="sm"
-            variant={deleteMode ? "destructive" : "outline"}
-            disabled={equipment.length === 0}
-            onClick={() => setDeleteMode((d) => !d)}
-          >
-            <Trash2 className="mr-1 h-4 w-4" />
-            {deleteMode ? "Done" : "Delete"}
-          </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant={deleteMode ? "destructive" : "outline"}
+              disabled={equipment.length === 0}
+              onClick={() => setDeleteMode((d) => !d)}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              {deleteMode ? "Done" : "Delete"}
+            </Button>
+          )}
         </div>
       )}
 

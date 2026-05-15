@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
+import { useAuth } from "@/hooks/use-auth";
 
 export function FlatChecklist(props: any) {
   // headerLeading: optional slot rendered on the left of the action bar (e.g. Manual/Checklist toggle).
@@ -23,6 +24,7 @@ export function FlatChecklist(props: any) {
 }
 
 function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading, noCard }: any) {
+  const { isAdmin } = useAuth();
   const directComps = (group?.components ?? []).filter((c: any) => !c.deleted_at);
   const typeComps = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
@@ -154,7 +156,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
                 disabled={action.mode === "delete" && !action.hasSelection}
-                title="Delete"
+                title={isAdmin ? "Delete" : "Delete subtasks"}
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
@@ -178,7 +180,9 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
 
         {action.mode === "delete" && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            Tap any item or subtask to add it to the deletion list. Tap "Done" to delete all selected.
+            {isAdmin
+              ? `Tap any item or subtask to add it to the deletion list. Tap "Done" to delete all selected.`
+              : `Engineers can only delete subtasks. Tap any subtask to add it to the deletion list, then tap "Done".`}
           </p>
         )}
         {action.mode === "copy" && (
@@ -212,6 +216,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
             items={filteredItems}
             canEdit={canEdit}
             onChange={onChange}
+            canDeleteRoot={isAdmin}
             showLabels
             defaultOpen={expandAll || !!q}
             emptyHint={q ? "No matching items." : "No items yet."}
