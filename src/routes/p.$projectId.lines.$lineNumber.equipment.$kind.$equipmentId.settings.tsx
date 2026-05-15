@@ -56,7 +56,13 @@ function EquipmentSettingsPage() {
               </span>
               <h1 className="text-3xl font-semibold">Settings</h1>
             </div>
-            <SettingsList equipmentId={equipmentId} canEdit={canEdit} userId={user?.id} />
+            <SettingsList
+              equipmentId={equipmentId}
+              canEdit={canEdit}
+              userId={user?.id}
+              logHref="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings/log"
+              logParams={{ projectId, lineNumber, kind, equipmentId }}
+            />
           </>
         )}
       </main>

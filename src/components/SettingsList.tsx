@@ -24,6 +24,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
+import { logSetting } from "@/lib/settingLogs";
+import { Link } from "@tanstack/react-router";
+import { ScrollText } from "lucide-react";
 
 interface SettingPhoto { id: string; storage_path: string }
 interface SettingFile { id: string; storage_path: string; file_name: string }
@@ -37,7 +40,7 @@ interface Setting {
   setting_files: SettingFile[];
 }
 
-export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string }) {
+export function SettingsList(props: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
   return (
     <TreeActionProvider>
       <SettingsListInner {...props} />
@@ -46,8 +49,8 @@ export function SettingsList(props: { equipmentId: string; canEdit: boolean; use
 }
 
 function SettingsListInner({
-  equipmentId, canEdit, userId,
-}: { equipmentId: string; canEdit: boolean; userId?: string }) {
+  equipmentId, canEdit, userId, logHref, logParams,
+}: { equipmentId: string; canEdit: boolean; userId?: string; logHref?: any; logParams?: any }) {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -67,20 +70,41 @@ function SettingsListInner({
   useEffect(() => { load(); }, [equipmentId]);
 
   const addRow = async () => {
-    const { error } = await supabase.from("equipment_settings").insert({
+    const { data, error } = await supabase.from("equipment_settings").insert({
       plant_equipment_id: equipmentId, title: "Setting", body: "",
       sort_order: rows.length, created_by: userId,
+    }).select("id, title").single();
+    if (error) { toast.error(error.message); return; }
+    await logSetting({
+      plant_equipment_id: equipmentId,
+      equipment_setting_id: data?.id, setting_title: data?.title ?? "Setting",
+      action: "created", user_id: userId,
     });
-    if (error) toast.error(error.message); else load();
+    load();
   };
 
   const updateTitle = (id: string, title: string) => {
+    const prev = rows.find((x) => x.id === id);
+    const oldTitle = prev?.title ?? "";
     setRows((n) => n.map((x) => (x.id === id ? { ...x, title } : x)));
-    supabase.from("equipment_settings").update({ title }).eq("id", id).then();
+    supabase.from("equipment_settings").update({ title }).eq("id", id).then(() => {
+      if (oldTitle !== title) logSetting({
+        plant_equipment_id: equipmentId, equipment_setting_id: id, setting_title: title,
+        action: "title_changed", old_value: oldTitle, new_value: title, user_id: userId,
+      });
+    });
   };
   const updateBody = (id: string, body: string) => {
+    const prev = rows.find((x) => x.id === id);
+    const oldBody = prev?.body ?? "";
+    const title = prev?.title ?? "";
     setRows((n) => n.map((x) => (x.id === id ? { ...x, body } : x)));
-    supabase.from("equipment_settings").update({ body }).eq("id", id).then();
+    supabase.from("equipment_settings").update({ body }).eq("id", id).then(() => {
+      if (oldBody !== body) logSetting({
+        plant_equipment_id: equipmentId, equipment_setting_id: id, setting_title: title,
+        action: "value_changed", old_value: oldBody, new_value: body, user_id: userId,
+      });
+    });
   };
 
   const removeOne = async (s: Setting) => {
@@ -92,6 +116,10 @@ function SettingsListInner({
     }
     await supabase.from("equipment_settings")
       .update({ deleted_at: new Date().toISOString() }).eq("id", s.id);
+    await logSetting({
+      plant_equipment_id: equipmentId, equipment_setting_id: s.id, setting_title: s.title,
+      action: "deleted", old_value: s.body, user_id: userId,
+    });
   };
 
   const sensors = useSensors(
@@ -144,8 +172,17 @@ function SettingsListInner({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        {canEdit && (
-          <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {logHref && !inMode && (
+            <Button asChild size="sm" variant="outline" title="View log" aria-label="View log">
+              <Link to={logHref} params={logParams}>
+                <ScrollText className="h-4 w-4" />
+                <span className="ml-1 text-xs">Log</span>
+              </Link>
+            </Button>
+          )}
+          {canEdit && (
+          <>
             {clip?.kind === "setting" && !inMode && (
               <Button size="sm" variant="outline" onClick={pasteHere}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
@@ -206,8 +243,9 @@ function SettingsListInner({
                 <X className="h-4 w-4" />
               </Button>
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
 
         {(action.mode === "delete" || action.mode === "copy") && (
           <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
@@ -238,6 +276,8 @@ function SettingsListInner({
                     onTitle={(t: string) => updateTitle(s.id, t)}
                     onBody={(b: string) => updateBody(s.id, b)}
                     onReload={load}
+                    plantEquipmentId={equipmentId}
+                    userId={userId}
                   />
                 ))}
               </ul>
@@ -250,13 +290,15 @@ function SettingsListInner({
 }
 
 function SettingRow({
-  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload,
+  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload, plantEquipmentId, userId,
 }: {
   setting: Setting; canEdit: boolean; open: boolean;
   onToggleOpen: () => void;
   onTitle: (t: string) => void;
   onBody: (b: string) => void;
   onReload: () => void;
+  plantEquipmentId: string;
+  userId?: string;
 }) {
   const action = useTreeAction()!;
   const mode = action.mode;
@@ -280,6 +322,7 @@ function SettingRow({
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_photos").insert({ equipment_setting_id: setting.id, storage_path: path });
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_added", new_value: file.name, user_id: userId });
     onReload();
   };
   const uploadFile = async (file: File) => {
@@ -287,16 +330,19 @@ function SettingRow({
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_files").insert({ equipment_setting_id: setting.id, storage_path: path, file_name: file.name });
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_added", new_value: file.name, user_id: userId });
     onReload();
   };
   const removePhoto = async (p: SettingPhoto) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
     await supabase.from("setting_photos").delete().eq("id", p.id);
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_deleted", old_value: p.storage_path.split("/").pop() ?? null, user_id: userId });
     onReload();
   };
   const removeFile = async (f: SettingFile) => {
     await supabase.storage.from("files").remove([f.storage_path]);
     await supabase.from("setting_files").delete().eq("id", f.id);
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_deleted", old_value: f.file_name, user_id: userId });
     onReload();
   };
 

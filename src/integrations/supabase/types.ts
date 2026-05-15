@@ -906,6 +906,42 @@ export type Database = {
           },
         ]
       }
+      setting_logs: {
+        Row: {
+          action: string
+          created_at: string
+          equipment_setting_id: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          plant_equipment_id: string
+          setting_title: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          equipment_setting_id?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          plant_equipment_id: string
+          setting_title?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          equipment_setting_id?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          plant_equipment_id?: string
+          setting_title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       setting_photos: {
         Row: {
           equipment_setting_id: string
