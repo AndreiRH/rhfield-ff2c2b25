@@ -267,19 +267,20 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   return (
     <div ref={sortableArgs.setNodeRef} style={style}
       className={`overflow-hidden rounded-lg border bg-card shadow-sm ${
-        action?.mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40")
-        : action?.mode === "copy" ? (selected ? "border-primary" : "border-primary/40")
+        mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40")
+        : mode === "copy" ? (selected ? "border-primary" : "border-primary/40")
         : prog.pct === 100 ? "border-success/40" : "border-border"
       }`}>
       <div
         className={`flex items-center gap-2 border-b px-3 py-2 ${
-          action?.mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
-          action?.mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
+          mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
+          mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
+          inReorder ? "bg-muted/40" :
           prog.pct === 100 ? "bg-success/10 cursor-pointer" : "bg-muted/40 cursor-pointer"
         }`}
-        onClick={inMode ? onTap : toggleOpen}
+        onClick={inSelectMode ? onTap : (inReorder ? undefined : toggleOpen)}
       >
-        {canEdit && !inMode && (
+        {canEdit && inReorder && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
@@ -291,8 +292,8 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {inMode && (
-          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (action!.mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+        {inSelectMode && (
+          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-3 w-3" />}
           </span>
         )}
