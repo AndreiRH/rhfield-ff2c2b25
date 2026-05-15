@@ -39,6 +39,7 @@ export function ChecklistTree({
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
+  const { clip } = useClipboard();
 
   const rootItems = items
     .filter((i: any) => !i.parent_item_id)
@@ -51,6 +52,14 @@ export function ChecklistTree({
     });
     if (error) toast.error(error.message);
     else { setText(""); setAdding(false); onChange(); }
+  };
+
+  const pasteHere = async () => {
+    if (clip?.kind !== "item") return;
+    try {
+      await pasteItem(clip, { component_id: componentId, parent_item_id: null, sort_order: rootItems.length });
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
 
   const sensors = useSensors(
