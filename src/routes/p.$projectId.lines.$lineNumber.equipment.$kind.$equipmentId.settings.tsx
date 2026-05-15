@@ -5,8 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ScrollText } from "lucide-react";
 import { SettingsList } from "@/components/SettingsList";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute(
   "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings",
@@ -50,18 +51,27 @@ function EquipmentSettingsPage() {
           <Skeleton className="h-40" />
         ) : (
           <>
-            <div className="mb-4 border-b pb-4">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Production line {lineNumber} · {plantLabel} · {data.pe.name}
-              </span>
-              <h1 className="text-3xl font-semibold">Settings</h1>
+            <div className="mb-4 flex items-end justify-between gap-2 border-b pb-4">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                  Production line {lineNumber} · {plantLabel} · {data.pe.name}
+                </span>
+                <h1 className="text-3xl font-semibold">Settings</h1>
+              </div>
+              <Button asChild size="sm" variant="outline" title="View log" aria-label="View log">
+                <Link
+                  to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings/log"
+                  params={{ projectId, lineNumber, kind, equipmentId }}
+                >
+                  <ScrollText className="h-4 w-4" />
+                  <span className="ml-1 text-xs">Log</span>
+                </Link>
+              </Button>
             </div>
             <SettingsList
               equipmentId={equipmentId}
               canEdit={canEdit}
               userId={user?.id}
-              logHref="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings/log"
-              logParams={{ projectId, lineNumber, kind, equipmentId }}
             />
           </>
         )}
