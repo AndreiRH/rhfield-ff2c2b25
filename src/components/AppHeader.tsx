@@ -11,7 +11,7 @@ export function AppHeader() {
   const { theme, toggle } = useTheme();
   const { online, pending, warm } = useOfflineStatus();
   const syncing = online && warm.phase !== "idle" && warm.phase !== "done" && warm.total > 0;
-  const phaseLabel = warm.phase === "tables" ? "data" : warm.phase === "blobs" ? "files" : "";
+  const phaseLabel = warm.phase === "tables" ? "data" : warm.phase === "routes" ? "pages" : warm.phase === "blobs" ? "files" : "";
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
