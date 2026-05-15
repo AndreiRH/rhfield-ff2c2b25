@@ -474,6 +474,7 @@ function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean
 function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [open, setOpen] = useState(false);
   useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
 
   const basePath = `pa-notes/${note.line_id}/${note.kind}/${note.id}`;
