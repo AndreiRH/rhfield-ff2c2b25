@@ -275,7 +275,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     onChange();
   };
 
-  const canExpand = (hasContent || canEdit) && !inMode;
+  const canExpand = hasContent || canEdit;
 
   // Engineers (canDeleteRoot=false) cannot select root items in delete mode.
   const blockedFromMode = mode === "delete" && !canDeleteRoot && !item.parent_item_id;
@@ -306,12 +306,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
-      {!inMode && (
         <button onClick={(e) => { e.stopPropagation(); canExpand && setOpen((v) => !v); }}
-          className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
+          className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}
+          aria-label={open ? "Collapse" : "Expand"}
+        >
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
-      )}
       {inSelectMode && (
         <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
           {selected && <Check className="h-2.5 w-2.5" />}
