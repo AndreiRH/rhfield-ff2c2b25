@@ -10,7 +10,7 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check,
+  Camera, Paperclip, Check, X,
 } from "lucide-react";
 import {
   useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
@@ -238,8 +238,9 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             </>
           )}
           {inMode && (
-            <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}>
-              Cancel
+            <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
+              title="Cancel" aria-label="Cancel">
+              <X className="h-4 w-4" />
             </Button>
           )}
           {canEdit && !adding && !inMode && (

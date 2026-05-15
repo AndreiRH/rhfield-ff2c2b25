@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus, GripVertical } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus, GripVertical, X } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
@@ -213,7 +213,10 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
               {inMode && (
-                <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}>Cancel</Button>
+                <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
+                  title="Cancel" aria-label="Cancel">
+                  <X className="h-4 w-4" />
+                </Button>
               )}
               {clip?.kind === "item" && !inMode && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
