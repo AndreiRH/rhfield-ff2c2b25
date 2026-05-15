@@ -33,9 +33,10 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteMode, setDeleteMode] = useState(false);
+  const [copyMode, setCopyMode] = useState(false);
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip } = useClipboard();
+  const { clip, set: setClipTop } = useClipboard();
 
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
@@ -130,21 +131,30 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
         <ProgressBar value={overall.pct} size="sm" />
 
         {canEdit && !adding && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add type
             </Button>
             <Button
               size="sm"
+              variant={copyMode ? "default" : "outline"}
+              disabled={types.length === 0}
+              onClick={() => { setCopyMode((c) => !c); setDeleteMode(false); }}
+            >
+              <Copy className="mr-1 h-4 w-4" />
+              {copyMode ? "Done" : "Copy"}
+            </Button>
+            <Button
+              size="sm"
               variant={deleteMode ? "destructive" : "outline"}
               disabled={types.length === 0}
-              onClick={() => setDeleteMode((d) => !d)}
+              onClick={() => { setDeleteMode((d) => !d); setCopyMode(false); }}
             >
               <Trash2 className="mr-1 h-4 w-4" />
               {deleteMode ? "Done" : "Delete"}
             </Button>
-            {clip?.kind === "componentType" && !deleteMode && (
-              <Button size="sm" variant="outline" className="col-span-2" onClick={pasteTypeHere}
+            {clip?.kind === "componentType" && !deleteMode && !copyMode && (
+              <Button size="sm" variant="outline" className="col-span-3" onClick={pasteTypeHere}
                 title={`Paste "${clip.sourceLabel ?? clip.node.name}" with all its components & subtasks`}>
                 <ClipboardPaste className="mr-1 h-4 w-4" /> Paste "{clip.sourceLabel ?? clip.node.name}"
               </Button>
@@ -165,6 +175,12 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
         {deleteMode && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
             Tap a component type to delete it. Tap "Done" to exit delete mode.
+          </p>
+        )}
+
+        {copyMode && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Tap a component type to copy it (with all components & subtasks). Tap "Done" to exit copy mode.
           </p>
         )}
 
