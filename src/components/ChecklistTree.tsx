@@ -127,6 +127,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
+  const { clip, set: setClip } = useClipboard();
 
   const subs = allItems
     .filter((i: any) => i.parent_item_id === item.id)
