@@ -74,9 +74,19 @@ export function ChecklistTree({
   const onDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldIdx = rootItems.findIndex((i: any) => i.id === active.id);
-    const newIdx = rootItems.findIndex((i: any) => i.id === over.id);
-    const next = arrayMove(rootItems, oldIdx, newIdx);
+    const activeItem = visibleItems.find((i: any) => i.id === active.id);
+    const overItem = visibleItems.find((i: any) => i.id === over.id);
+    if (!activeItem || !overItem) return;
+    const activeParent = activeItem.parent_item_id ?? null;
+    const overParent = overItem.parent_item_id ?? null;
+    if (activeParent !== overParent) return;
+    const siblings = visibleItems
+      .filter((i: any) => (i.parent_item_id ?? null) === activeParent)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order);
+    const oldIdx = siblings.findIndex((i: any) => i.id === active.id);
+    const newIdx = siblings.findIndex((i: any) => i.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(siblings, oldIdx, newIdx);
     await Promise.all(next.map((it: any, i: number) =>
       supabase.from("checklist_items").update({ sort_order: i }).eq("id", it.id)));
     onChange();
@@ -495,13 +505,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
       {/* Render subs in any action mode so they're visible/targetable */}
       {inMode && subs.length > 0 && (
-        <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
-          {subs.map((s: any) => (
-            <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-              onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
-              canDeleteRoot={canDeleteRoot} />
-          ))}
-        </ul>
+        <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+            {subs.map((s: any) => (
+              <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
+                onChange={onChange} depth={depth + 1} sortable showLabels={false}
+                canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen} />
+            ))}
+          </ul>
+        </SortableContext>
       )}
     </li>
   );
