@@ -439,6 +439,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
             onChange={onChange}
             externalSearch={externalSearch}
             hideTitle
+            defaultOpen={defaultOpen}
           />
         </div>
       )}
