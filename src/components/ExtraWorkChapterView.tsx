@@ -235,14 +235,14 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_photos").insert({ component_id: component.id, storage_path: path });
-    onChange();
+    setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_files").insert({ component_id: component.id, storage_path: path, file_name: file.name });
-    onChange();
+    setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
