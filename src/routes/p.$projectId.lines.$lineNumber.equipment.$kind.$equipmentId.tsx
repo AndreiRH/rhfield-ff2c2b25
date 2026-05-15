@@ -214,7 +214,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         </div>
       </div>
 
-      <div className={`-mx-4 mt-4 px-4 py-4 transition-colors ${meta.tint}`}>
+      <div className="mt-6">
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
