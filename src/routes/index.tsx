@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress } from "@/lib/progress";
+import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,7 +56,7 @@ function ProjectsPage() {
             {(projects ?? []).map((p) => {
               const items = (p.lines ?? []).flatMap((l: any) =>
                 (l.equipment_groups ?? []).flatMap((eg: any) =>
-                  (eg.components ?? []).flatMap((c: any) => c.checklist_items ?? [])
+                  (eg.components ?? []).flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []))
                 )
               );
               const prog = calcProgress(items);
