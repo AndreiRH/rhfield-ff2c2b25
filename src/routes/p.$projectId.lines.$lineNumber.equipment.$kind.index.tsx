@@ -279,7 +279,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
   );
 }
 
-function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
+function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind, mode, onDuplicate }: any) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
