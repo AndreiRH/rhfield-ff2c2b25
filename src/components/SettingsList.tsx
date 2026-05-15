@@ -335,8 +335,8 @@ function SettingRow({
 
   const photos = setting.setting_photos ?? [];
   const files = setting.setting_files ?? [];
-  const [showPhotos, setShowPhotos] = useState(true);
-  const [showFiles, setShowFiles] = useState(true);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
