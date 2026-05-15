@@ -196,7 +196,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 aria-label="Copy"
               >
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
               <Button
                 size="sm"
@@ -207,7 +207,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
             </>
           )}
@@ -223,9 +223,10 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
           )}
           {clip && !inMode && canEdit && clip.kind === "componentType" && (
             <Button size="sm" variant="outline" onClick={pasteTypeHere}
-              title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}>
-              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+              title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}
+              aria-label="Paste">
+              <ClipboardPaste className="h-4 w-4" />
+              {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
             </Button>
           )}
         </div>

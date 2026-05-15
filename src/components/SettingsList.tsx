@@ -146,9 +146,10 @@ function SettingsListInner({
           <div className="flex flex-wrap items-center justify-end gap-1">
             {clip?.kind === "setting" && !inMode && (
               <Button size="sm" variant="outline" onClick={pasteHere}
-                title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}>
-                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-                {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+                title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
+                aria-label="Paste">
+                <ClipboardPaste className="h-4 w-4" />
+                {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
               </Button>
             )}
             {!inMode && (
@@ -172,7 +173,7 @@ function SettingsListInner({
                 title={action.mode === "copy" ? "Copy selected" : "Copy"}
                 aria-label="Copy">
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+                {action.mode === "copy" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
             {rows.length > 0 && (
@@ -185,7 +186,7 @@ function SettingsListInner({
                 title={action.mode === "delete" ? "Delete selected" : "Delete"}
                 aria-label="Delete">
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+                {action.mode === "delete" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
             {inMode && (

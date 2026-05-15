@@ -14,6 +14,7 @@ import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
 
 export function FlatChecklist(props: any) {
+  // headerLeading: optional slot rendered on the left of the action bar (e.g. Manual/Checklist toggle).
   return (
     <TreeActionProvider>
       <FlatChecklistInner {...props} />
@@ -21,7 +22,7 @@ export function FlatChecklist(props: any) {
   );
 }
 
-function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
+function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading, noCard }: any) {
   const directComps = (group?.components ?? []).filter((c: any) => !c.deleted_at);
   const typeComps = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
@@ -122,10 +123,14 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
 
+  const Wrapper: any = noCard ? "div" : Card;
+  const Inner: any = noCard ? "div" : CardContent;
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center justify-end gap-2">
+    <Wrapper>
+      <Inner className={noCard ? "space-y-3" : "space-y-3 p-4"}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">{headerLeading}</div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
           {bucket && allItems.length > 0 && !inMode && (
             <Button size="sm" variant="outline" onClick={toggleExpandAll} title={expandAll ? "Collapse all" : "Expand all"} aria-label={expandAll ? "Collapse all" : "Expand all"}>
               {expandAll ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
@@ -142,7 +147,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
                 aria-label="Copy"
               >
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
               <Button
                 size="sm"
@@ -153,20 +158,22 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
               {inMode && (
                 <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}>Cancel</Button>
               )}
               {clip?.kind === "item" && !inMode && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
-                  title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
-                  <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-                  {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+                  title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
+                  aria-label="Paste">
+                  <ClipboardPaste className="h-4 w-4" />
+                  {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
                 </Button>
               )}
             </>
           )}
+          </div>
         </div>
 
         {action.mode === "delete" && (
@@ -210,7 +217,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
             emptyHint={q ? "No matching items." : "No items yet."}
           />
         )}
-      </CardContent>
+      </Inner>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
@@ -232,6 +239,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </Wrapper>
   );
 }
