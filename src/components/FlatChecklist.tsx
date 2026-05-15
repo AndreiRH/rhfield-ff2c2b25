@@ -31,9 +31,16 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
 
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expandAll, setExpandAll] = useState(false);
+  const [treeKey, setTreeKey] = useState(0);
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const { clip, set: setClip, clear: clearClip } = useClipboard();
+
+  const toggleExpandAll = () => {
+    setExpandAll((v) => !v);
+    setTreeKey((k) => k + 1);
+  };
 
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
