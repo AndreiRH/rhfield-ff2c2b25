@@ -20,6 +20,7 @@ import { Route as PProjectIdLinesLineNumberEquipmentKindRouteImport } from './ro
 import { Route as PProjectIdLinesLineNumberEquipmentKindIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.index'
 import { Route as PProjectIdLinesLineNumberEquipmentKindPaRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.pa'
 import { Route as PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.$equipmentId'
+import { Route as PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.$equipmentId.settings'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -82,6 +83,13 @@ const PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute =
     path: '/$equipmentId',
     getParentRoute: () => PProjectIdLinesLineNumberEquipmentKindRoute,
   } as any)
+const PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute =
+  PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () =>
+      PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -92,9 +100,10 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
-  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/pa': typeof PProjectIdLinesLineNumberEquipmentKindPaRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind/': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -103,9 +112,10 @@ export interface FileRoutesByTo {
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberIndexRoute
-  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/pa': typeof PProjectIdLinesLineNumberEquipmentKindPaRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,9 +127,10 @@ export interface FileRoutesById {
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
-  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/pa': typeof PProjectIdLinesLineNumberEquipmentKindPaRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind/': typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
+  '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/pa'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -146,6 +158,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/pa'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings'
   id:
     | '__root__'
     | '/'
@@ -159,6 +172,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/pa'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/'
+    | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,11 +263,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteImport
       parentRoute: typeof PProjectIdLinesLineNumberEquipmentKindRoute
     }
+    '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings': {
+      id: '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings'
+      path: '/settings'
+      fullPath: '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings'
+      preLoaderRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRouteImport
+      parentRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute
+    }
   }
 }
 
+interface PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteChildren {
+  PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute
+}
+
+const PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteChildren: PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteChildren =
+  {
+    PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute:
+      PProjectIdLinesLineNumberEquipmentKindEquipmentIdSettingsRoute,
+  }
+
+const PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren =
+  PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute._addFileChildren(
+    PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteChildren,
+  )
+
 interface PProjectIdLinesLineNumberEquipmentKindRouteChildren {
-  PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute
+  PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute: typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
   PProjectIdLinesLineNumberEquipmentKindPaRoute: typeof PProjectIdLinesLineNumberEquipmentKindPaRoute
   PProjectIdLinesLineNumberEquipmentKindIndexRoute: typeof PProjectIdLinesLineNumberEquipmentKindIndexRoute
 }
@@ -261,7 +297,7 @@ interface PProjectIdLinesLineNumberEquipmentKindRouteChildren {
 const PProjectIdLinesLineNumberEquipmentKindRouteChildren: PProjectIdLinesLineNumberEquipmentKindRouteChildren =
   {
     PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute:
-      PProjectIdLinesLineNumberEquipmentKindEquipmentIdRoute,
+      PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren,
     PProjectIdLinesLineNumberEquipmentKindPaRoute:
       PProjectIdLinesLineNumberEquipmentKindPaRoute,
     PProjectIdLinesLineNumberEquipmentKindIndexRoute:
