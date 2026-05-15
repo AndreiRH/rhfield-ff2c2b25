@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  ChevronsDownUp, ChevronsUpDown, Search,
+  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste,
 } from "lucide-react";
+import { useClipboard, buildTypeClip, pasteType } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
@@ -34,6 +35,15 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   const [deleteMode, setDeleteMode] = useState(false);
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  const { clip } = useClipboard();
+
+  const pasteTypeHere = async () => {
+    if (clip?.kind !== "componentType" || !group) return;
+    try {
+      await pasteType(clip, group.id, types.length);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+  };
 
   useEffect(() => {
     setOpenIds((prev) => {
@@ -133,6 +143,12 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
               <Trash2 className="mr-1 h-4 w-4" />
               {deleteMode ? "Done" : "Delete"}
             </Button>
+            {clip?.kind === "componentType" && !deleteMode && (
+              <Button size="sm" variant="outline" className="col-span-2" onClick={pasteTypeHere}
+                title={`Paste "${clip.sourceLabel ?? clip.node.name}" with all its components & subtasks`}>
+                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste "{clip.sourceLabel ?? clip.node.name}"
+              </Button>
+            )}
           </div>
         )}
 
@@ -215,6 +231,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { set: setClip } = useClipboard();
 
   const rename = async () => {
     if (!name.trim() || name === type.name) { setEditing(false); return; }
@@ -288,6 +305,15 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        {canEdit && !deleteMode && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setClip(buildTypeClip(type)); }}
+            title="Copy this type with all its components & subtasks"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          >
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {open && (

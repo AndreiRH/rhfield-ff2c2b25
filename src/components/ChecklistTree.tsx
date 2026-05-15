@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X, Globe, Lock,
+  StickyNote, ListPlus, X, Globe, Lock, Copy, ClipboardPaste,
 } from "lucide-react";
+import { useClipboard, buildItemClip, pasteItem } from "@/lib/clipboard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -38,6 +39,7 @@ export function ChecklistTree({
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
+  const { clip } = useClipboard();
 
   const rootItems = items
     .filter((i: any) => !i.parent_item_id)
@@ -50,6 +52,14 @@ export function ChecklistTree({
     });
     if (error) toast.error(error.message);
     else { setText(""); setAdding(false); onChange(); }
+  };
+
+  const pasteHere = async () => {
+    if (clip?.kind !== "item") return;
+    try {
+      await pasteItem(clip, { component_id: componentId, parent_item_id: null, sort_order: rootItems.length });
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
 
   const sensors = useSensors(
@@ -71,7 +81,12 @@ export function ChecklistTree({
   return (
     <div className="space-y-2">
       {canEdit && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
+          {clip?.kind === "item" && (
+            <Button size="sm" variant="outline" onClick={pasteHere} title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+            </Button>
+          )}
           {!adding && (
             <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add item
@@ -112,6 +127,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
+  const { clip, set: setClip } = useClipboard();
 
   const subs = allItems
     .filter((i: any) => i.parent_item_id === item.id)
@@ -224,6 +240,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         >{item.label}</span>
       )}
       {canEdit && (
+        <button
+          onClick={() => setClip(buildItemClip(item, allItems))}
+          title="Copy this item with all its subtasks"
+          className="p-1 opacity-60 hover:opacity-100"
+        >
+          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      )}
+      {canEdit && (
         <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
     </div>
@@ -239,6 +264,18 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
             <div className="flex flex-wrap gap-1 border-b border-dashed px-3 py-1.5">
               <ActionBtn onClick={() => { setShowNoteEditor(true); }} icon={<StickyNote className="h-3 w-3" />} label="Note" />
               <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
+              {clip?.kind === "item" && (
+                <ActionBtn
+                  onClick={async () => {
+                    try {
+                      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+                      setOpen(true); toast.success("Pasted"); onChange();
+                    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+                  }}
+                  icon={<ClipboardPaste className="h-3 w-3" />}
+                  label={`Paste "${clip.sourceLabel ?? clip.node.label}"`}
+                />
+              )}
               <PhotoPicker onPick={uploadPhoto}>
                 <button className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
                   <Camera className="h-3 w-3" /> Photo

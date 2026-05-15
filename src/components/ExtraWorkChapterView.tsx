@@ -13,10 +13,12 @@ import {
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
   StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search, Globe, Lock,
+  Copy, ClipboardPaste,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { useClipboard, buildComponentClip, pasteComponent } from "@/lib/clipboard";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -39,6 +41,16 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  const { clip } = useClipboard();
+
+  const pasteComponentHere = async () => {
+    if (clip?.kind !== "component") return;
+    try {
+      const parent = parentKind === "component_type" ? { component_type_id: group.id } : { equipment_id: group.id };
+      await pasteComponent(clip, parent, components.length);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+  };
 
   const q = search.trim().toLowerCase();
   const visible = q
@@ -103,6 +115,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
               ) : (
                 <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
               )}
+            </Button>
+          )}
+          {canEdit && clip?.kind === "component" && (
+            <Button size="sm" variant="outline" onClick={pasteComponentHere}
+              title={`Paste "${clip.sourceLabel ?? clip.node.name}"`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
             </Button>
           )}
           {canEdit && !adding && (
@@ -188,6 +206,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
+  const { set: setClip } = useClipboard();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
 
@@ -271,6 +290,15 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        {canEdit && (
+          <button
+            onClick={() => setClip(buildComponentClip(component))}
+            title="Copy this item with all its subtasks"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          >
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
         {canEdit && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
