@@ -25,7 +25,11 @@ function EquipmentDetail() {
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isChildRoute = pathname.endsWith("/settings");
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
+
+  if (isChildRoute) return <Outlet />;
 
   const { data, isLoading } = useQuery({
     enabled: !!session,
