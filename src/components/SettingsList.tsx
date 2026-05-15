@@ -173,14 +173,6 @@ function SettingsListInner({
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-end gap-1">
-          {logHref && !inMode && (
-            <Button asChild size="sm" variant="outline" title="View log" aria-label="View log">
-              <Link to={logHref} params={logParams}>
-                <ScrollText className="h-4 w-4" />
-                <span className="ml-1 text-xs">Log</span>
-              </Link>
-            </Button>
-          )}
           {canEdit && (
           <>
             {clip?.kind === "setting" && !inMode && (
