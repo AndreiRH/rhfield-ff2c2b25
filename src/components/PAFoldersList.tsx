@@ -220,16 +220,16 @@ function FolderItem({
       >
         <button
           onClick={(e) => { e.stopPropagation(); rowClick(); }}
-          className="flex flex-1 items-center gap-2 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
           {deleteMode ? (
-            <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? "border-destructive bg-destructive text-destructive-foreground" : "border-muted-foreground/30"}`}>
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-destructive bg-destructive text-destructive-foreground" : "border-muted-foreground/30"}`}>
               {selected && <Check className="h-3 w-3" />}
             </span>
           ) : (
-            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+            <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
           )}
-          {open ? <FolderOpen className="h-4 w-4 text-primary" /> : <Folder className="h-4 w-4 text-primary" />}
+          {open ? <FolderOpen className="h-4 w-4 shrink-0 text-primary" /> : <Folder className="h-4 w-4 shrink-0 text-primary" />}
           {!deleteMode && editing && canEdit ? (
             <Input
               autoFocus
@@ -241,12 +241,12 @@ function FolderItem({
                 if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
                 if (e.key === "Escape") { setName(folder.name); setEditing(false); }
               }}
-              className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
+              className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
             />
           ) : (
             <span
               onDoubleClick={(e) => { if (!deleteMode && canEdit) { e.stopPropagation(); setEditing(true); } }}
-              className="flex-1 truncate px-1 text-sm font-medium"
+              className="min-w-0 flex-1 truncate px-1 text-sm font-medium"
               title={!deleteMode && canEdit ? "Double-click to rename" : undefined}
             >
               {name}
