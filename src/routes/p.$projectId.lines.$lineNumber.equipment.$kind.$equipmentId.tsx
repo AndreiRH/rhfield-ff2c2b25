@@ -200,9 +200,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
-      // Only ignore gestures starting in text inputs (so caret/selection still works).
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest("input, textarea, select, [contenteditable='true']")) return;
       if (commitTimeoutRef.current) {
         window.clearTimeout(commitTimeoutRef.current);
         commitTimeoutRef.current = null;
