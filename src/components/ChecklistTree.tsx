@@ -484,7 +484,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           )}
 
           {(subs.length > 0 || addingSub) && (
-            <div className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+            <div className="ml-4 mt-2 space-y-1 rounded border-l-2 border-primary/30 bg-muted/20 px-2 py-2">
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
