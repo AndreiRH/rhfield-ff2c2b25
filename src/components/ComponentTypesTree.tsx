@@ -192,6 +192,16 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             <>
               <Button
                 size="sm"
+                variant={action.mode === "reorder" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                title="Reorder"
+                aria-label="Reorder"
+              >
+                <GripVertical className="h-4 w-4" />
+                {action.mode === "reorder" && <span className="ml-1">Done</span>}
+              </Button>
+              <Button
+                size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
                 disabled={action.mode === "copy" && !action.hasSelection}
