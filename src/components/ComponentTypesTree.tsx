@@ -36,7 +36,7 @@ export function ComponentTypesTree(props: any) {
   );
 }
 
-function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
+function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount }: any) {
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -298,7 +298,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {action.count} {Array.from(action.selection.values())[0]?.kind ?? "item"}{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the selected items and everything inside them. You can undo from the toast for a few seconds.
+              This will remove the selected items and everything inside them.
+              {lineCount && lineCount > 1 ? (
+                <> This is shared content and will be deleted from <strong>all {lineCount} project lines</strong>.</>
+              ) : null}
+              {" "}You can undo from the toast for a few seconds.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

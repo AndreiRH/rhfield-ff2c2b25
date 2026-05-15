@@ -23,13 +23,14 @@ import { CSS } from "@dnd-kit/utilities";
 
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
-  emptyHint = "No items yet.",
+  emptyHint = "No items yet.", showLabels = false,
 }: {
   componentId: string;
   items: any[];
   canEdit: boolean;
   onChange: () => void;
   emptyHint?: string;
+  showLabels?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -112,7 +113,7 @@ export function ChecklistTree({
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable />
+                onChange={onChange} depth={0} sortable showLabels={showLabels} />
             ))}
           </ul>
         </SortableContext>
@@ -121,7 +122,7 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels }: any) {
   const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
@@ -288,29 +289,30 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           {canEdit && (
             <div className="flex flex-nowrap items-center gap-1 border-b border-dashed px-2 py-1 sm:px-3 sm:py-1.5">
               <ActionBtn onClick={() => setShowNoteEditor((v) => !v)}
-                icon={<StickyNote className="h-3.5 w-3.5" />} label="Note" active={ownNote} iconOnly />
+                icon={<StickyNote className="h-3.5 w-3.5" />} label="Note" active={ownNote} iconOnly={!showLabels} />
               {depth < 2 && (
                 <ActionBtn onClick={() => setAddingSub(true)}
-                  icon={<ListPlus className="h-3.5 w-3.5" />} label="Subtask" iconOnly />
+                  icon={<ListPlus className="h-3.5 w-3.5" />} label="Subtask" iconOnly={!showLabels} />
               )}
               <PhotoPicker onPick={uploadPhoto}>
                 <button title="Photo"
-                  className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                  <Camera className="h-3.5 w-3.5" />
+                  className={`inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  <Camera className="h-3.5 w-3.5" />{showLabels && <span>Photo</span>}
                 </button>
               </PhotoPicker>
               <label title="File"
-                className={`inline-flex cursor-pointer items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                <Paperclip className="h-3.5 w-3.5" />
+                className={`inline-flex cursor-pointer items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                <Paperclip className="h-3.5 w-3.5" />{showLabels && <span>File</span>}
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
               {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
-                  className="inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className={`inline-flex shrink-0 items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
                   <ClipboardPaste className="h-3.5 w-3.5" />
-                  {clip.nodes.length > 1 ? <span className="ml-0.5 text-[10px]">{clip.nodes.length}</span> : null}
+                  {showLabels ? <span>Paste{clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}</span> :
+                    (clip.nodes.length > 1 ? <span className="ml-0.5 text-[10px]">{clip.nodes.length}</span> : null)}
                 </button>
               )}
             </div>
@@ -359,7 +361,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                    onChange={onChange} depth={depth + 1} sortable={false} />
+                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={showLabels} />
                 ))}
               </ul>
               {addingSub && (
@@ -382,7 +384,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
           {subs.map((s: any) => (
             <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-              onChange={onChange} depth={depth + 1} sortable={false} />
+              onChange={onChange} depth={depth + 1} sortable={false} showLabels={showLabels} />
           ))}
         </ul>
       )}
