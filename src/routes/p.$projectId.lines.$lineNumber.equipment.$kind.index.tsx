@@ -372,13 +372,18 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
     });
   };
 
+  const isDelete = mode === "delete";
+  const isCopy = mode === "copy";
+  const isReorder = mode === "reorder";
   return (
     <Card
       ref={setNodeRef}
       style={style}
-      className={`transition ${deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
+      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
       onClick={(e) => {
-        if (deleteMode) { setConfirmDelete(true); return; }
+        if (isDelete) { setConfirmDelete(true); return; }
+        if (isCopy) { onDuplicate?.(pe); return; }
+        if (isReorder) return;
         if (editing) return;
         const target = e.target as HTMLElement;
         if (target.closest("button, a, input, textarea, [role='button'], [data-no-nav]")) return;
@@ -390,7 +395,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
     >
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          {canEdit && !editing && !deleteMode && (
+          {canEdit && !editing && isReorder && (
             <button
               type="button"
               className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
@@ -408,9 +413,15 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
               <Button size="icon" variant="ghost" onClick={save}><Check className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(pe.name); }}><X className="h-4 w-4" /></Button>
             </div>
-          ) : deleteMode ? (
+          ) : isDelete ? (
             <div className="flex flex-1 items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
+              <h3 className="text-lg font-semibold">{pe.name}</h3>
+              <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
+            </div>
+          ) : isCopy ? (
+            <div className="flex flex-1 items-center gap-2">
+              <Copy className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold">{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
             </div>
