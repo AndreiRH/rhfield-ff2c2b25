@@ -618,12 +618,12 @@ export function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; o
     if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
   return (
-    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{f.file_name}</span>
+    <div className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+      <button onClick={open} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
+        <Paperclip className="h-3 w-3 shrink-0" /> <span className="truncate">{f.file_name}</span>
       </button>
       {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
+        <button onClick={onRemove} className="shrink-0 text-destructive hover:opacity-80">
           <X className="h-3 w-3" />
         </button>
       )}
