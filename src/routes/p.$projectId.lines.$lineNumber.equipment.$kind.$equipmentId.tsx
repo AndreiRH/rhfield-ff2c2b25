@@ -184,7 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {data.line.number} · {plantLabel}</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-white/80">Production line {data.line.number} · {plantLabel}</span>
             <h1 className="text-3xl font-semibold">
               {data.pe.name}
               <span className={`ml-3 text-base font-normal ${meta.accent}`}>{overall}%</span>
