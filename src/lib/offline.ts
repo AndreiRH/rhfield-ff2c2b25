@@ -1,9 +1,7 @@
-// Client-side glue for the offline service worker.
-// - Tracks online/offline status and the SW outbox queue size.
-// - Triggers queue flushes on reconnect / focus.
-// - Registers a Background Sync where supported.
+// Client-side glue for the offline service worker + warm-up.
 
 import { useEffect, useState } from "react";
+import { onWarmUpProgress, warmUp, getWarmUpState } from "./warm-up";
 
 type SwMessage = { type: "rhfield-queue"; count: number };
 
@@ -14,9 +12,8 @@ function send(type: string) {
 async function requestBackgroundSync() {
   try {
     const reg = await navigator.serviceWorker?.ready;
-    // SyncManager is only on Chromium-based browsers.
     if (reg && "sync" in reg) {
-      // @ts-expect-error - SyncManager not in lib.dom yet
+      // @ts-expect-error - SyncManager isn't in lib.dom yet
       await reg.sync.register("rhfield-flush");
     }
   } catch {}
@@ -28,17 +25,21 @@ export function triggerFlush() {
 }
 
 export function useOfflineStatus() {
-  const [online, setOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true,
-  );
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [pending, setPending] = useState(0);
+  const [warm, setWarm] = useState(getWarmUpState());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const onOnline  = () => { setOnline(true);  triggerFlush(); };
+    const onOnline  = () => { setOnline(true);  triggerFlush(); warmUp(true); };
     const onOffline = () => setOnline(false);
-    const onVis     = () => { if (document.visibilityState === "visible") { send("rhfield-queue?"); if (navigator.onLine) triggerFlush(); } };
+    const onVis     = () => {
+      if (document.visibilityState === "visible") {
+        send("rhfield-queue?");
+        if (navigator.onLine) { triggerFlush(); warmUp(); }
+      }
+    };
     const onMsg = (e: MessageEvent<SwMessage>) => {
       if (e.data?.type === "rhfield-queue") setPending(e.data.count);
     };
@@ -47,8 +48,8 @@ export function useOfflineStatus() {
     window.addEventListener("offline", onOffline);
     document.addEventListener("visibilitychange", onVis);
     navigator.serviceWorker?.addEventListener("message", onMsg);
+    const off = onWarmUpProgress(setWarm);
 
-    // Ask SW for initial count.
     send("rhfield-queue?");
 
     return () => {
@@ -56,8 +57,9 @@ export function useOfflineStatus() {
       window.removeEventListener("offline", onOffline);
       document.removeEventListener("visibilitychange", onVis);
       navigator.serviceWorker?.removeEventListener("message", onMsg);
+      off();
     };
   }, []);
 
-  return { online, pending };
+  return { online, pending, warm };
 }
