@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,13 @@ import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
   StickyNote, ListPlus, X, Globe, Lock, Copy, ClipboardPaste,
 } from "lucide-react";
-import { useClipboard, buildItemClip, pasteItem } from "@/lib/clipboard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { useClipboard, buildItemClip, pasteItem } from "@/lib/clipboard";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -24,9 +24,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Reusable rich checklist tree (notes, photos, files, subtasks, drag reorder).
-// Pass the full `items` list (already filtered to non-deleted) for one component
-// and the `componentId` so subtasks/new items get inserted in the right place.
+type Mode = "none" | "delete" | "copy";
+const ModeCtx = createContext<Mode>("none");
+const useMode = () => useContext(ModeCtx);
+
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
   emptyHint = "No items yet.",
@@ -39,7 +40,8 @@ export function ChecklistTree({
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
-  const { clip } = useClipboard();
+  const [mode, setMode] = useState<Mode>("none");
+  const { clip, clear } = useClipboard();
 
   const rootItems = items
     .filter((i: any) => !i.parent_item_id)
@@ -58,6 +60,7 @@ export function ChecklistTree({
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { component_id: componentId, parent_item_id: null, sort_order: rootItems.length });
+      clear();
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -79,46 +82,80 @@ export function ChecklistTree({
   };
 
   return (
-    <div className="space-y-2">
-      {canEdit && (
-        <div className="flex justify-end gap-1">
-          {clip?.kind === "item" && (
-            <Button size="sm" variant="outline" onClick={pasteHere} title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
-              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-            </Button>
-          )}
-          {!adding && (
-            <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add item
-            </Button>
-          )}
-        </div>
-      )}
-      {adding && (
-        <div className="flex gap-2">
-          <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
-            placeholder="Checklist item"
-            onKeyDown={(e) => e.key === "Enter" && addItem()} />
-          <Button size="sm" onClick={addItem}>Add</Button>
-          <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setText(""); }}>Cancel</Button>
-        </div>
-      )}
+    <ModeCtx.Provider value={mode}>
+      <div className="space-y-2">
+        {canEdit && (
+          <div className="flex flex-wrap justify-end gap-1">
+            {clip?.kind === "item" && mode === "none" && (
+              <Button size="sm" variant="outline" onClick={pasteHere}
+                title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
+                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+              </Button>
+            )}
+            {!adding && rootItems.length > 0 && (
+              <>
+                <Button
+                  size="sm"
+                  variant={mode === "copy" ? "default" : "outline"}
+                  onClick={() => setMode((m) => (m === "copy" ? "none" : "copy"))}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
+                  {mode === "copy" ? "Done" : "Copy"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mode === "delete" ? "destructive" : "outline"}
+                  onClick={() => setMode((m) => (m === "delete" ? "none" : "delete"))}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  {mode === "delete" ? "Done" : "Delete"}
+                </Button>
+              </>
+            )}
+            {!adding && mode === "none" && (
+              <Button size="sm" onClick={() => setAdding(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Add item
+              </Button>
+            )}
+          </div>
+        )}
+        {adding && (
+          <div className="flex gap-2">
+            <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
+              placeholder="Checklist item"
+              onKeyDown={(e) => e.key === "Enter" && addItem()} />
+            <Button size="sm" onClick={addItem}>Add</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setText(""); }}>Cancel</Button>
+          </div>
+        )}
 
-      {rootItems.length === 0 && !adding && (
-        <p className="text-sm text-muted-foreground">{emptyHint}</p>
-      )}
+        {mode === "delete" && (
+          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            Tap any item to delete it (subtasks included). Tap "Done" to exit.
+          </p>
+        )}
+        {mode === "copy" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Tap any item to copy it (with its subtasks). Tap "Done" to exit.
+          </p>
+        )}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={rootItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-          <ul className="space-y-1">
-            {rootItems.map((it: any) => (
-              <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
-    </div>
+        {rootItems.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground">{emptyHint}</p>
+        )}
+
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={rootItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+            <ul className="space-y-1">
+              {rootItems.map((it: any) => (
+                <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
+                  onChange={onChange} depth={0} sortable />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </ModeCtx.Provider>
   );
 }
 
@@ -127,7 +164,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
-  const { clip, set: setClip } = useClipboard();
+  const { set: setClip } = useClipboard();
+  const mode = useMode();
+  const inMode = mode !== "none";
 
   const subs = allItems
     .filter((i: any) => i.parent_item_id === item.id)
@@ -141,6 +180,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
 
@@ -164,7 +204,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const remove = async () => {
     const { error } = await supabase.from("checklist_items")
       .update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(error.message); else { setConfirmDelete(false); onChange(); }
   };
   const saveNote = async () => {
     if (note === (item.note ?? "")) return;
@@ -205,22 +245,37 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
     onChange();
   };
 
-  const canExpand = hasContent || canEdit;
+  const canExpand = (hasContent || canEdit) && !inMode;
+
+  const onRowClick = () => {
+    if (mode === "delete") setConfirmDelete(true);
+    else if (mode === "copy") setClip(buildItemClip(item, allItems));
+  };
 
   const row = (
-    <div className="flex items-center gap-1 px-2 py-1.5">
-      {sortable && canEdit && (
+    <div
+      className={`flex items-center gap-1 px-2 py-1.5 ${inMode ? "cursor-pointer" : ""} ${
+        mode === "delete" ? "border-destructive/40 bg-destructive/5 hover:bg-destructive/10" :
+        mode === "copy" ? "border-primary/40 bg-primary/5 hover:bg-primary/10" : ""
+      }`}
+      onClick={inMode ? onRowClick : undefined}
+    >
+      {sortable && canEdit && !inMode && (
         <button {...sortableArgs.attributes} {...sortableArgs.listeners}
           className="cursor-grab touch-none p-1 active:cursor-grabbing">
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
-      <button onClick={() => canExpand && setOpen((v) => !v)}
-        className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
-        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-      </button>
-      <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
-      {editingLabel && canEdit ? (
+      {!inMode && (
+        <button onClick={() => canExpand && setOpen((v) => !v)}
+          className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
+          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </button>
+      )}
+      {mode === "delete" && <Trash2 className="h-3.5 w-3.5 text-destructive" />}
+      {mode === "copy" && <Copy className="h-3.5 w-3.5 text-primary" />}
+      {!inMode && <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />}
+      {!inMode && editingLabel && canEdit ? (
         <Input
           value={label}
           autoFocus
@@ -234,48 +289,26 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         />
       ) : (
         <span
-          onDoubleClick={() => canEdit && setEditingLabel(true)}
-          title={canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done ? "text-muted-foreground line-through" : ""} ${canEdit ? "cursor-text" : ""}`}
+          onDoubleClick={() => !inMode && canEdit && setEditingLabel(true)}
+          title={!inMode && canEdit ? "Double-click to rename" : undefined}
+          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
-      )}
-      {canEdit && (
-        <button
-          onClick={() => setClip(buildItemClip(item, allItems))}
-          title="Copy this item with all its subtasks"
-          className="p-1 opacity-60 hover:opacity-100"
-        >
-          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      )}
-      {canEdit && (
-        <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
     </div>
   );
 
   return (
     <li ref={sortable ? sortableArgs.setNodeRef : undefined} style={style}
-      className="rounded-md border bg-card">
+      className={`rounded-md border bg-card ${
+        mode === "delete" ? "border-destructive/40" : mode === "copy" ? "border-primary/40" : ""
+      }`}>
       {row}
-      {open && (
+      {open && !inMode && (
         <div className="border-t bg-muted/10">
           {canEdit && (
             <div className="flex flex-wrap gap-1 border-b border-dashed px-3 py-1.5">
               <ActionBtn onClick={() => { setShowNoteEditor(true); }} icon={<StickyNote className="h-3 w-3" />} label="Note" />
               <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
-              {clip?.kind === "item" && (
-                <ActionBtn
-                  onClick={async () => {
-                    try {
-                      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
-                      setOpen(true); toast.success("Pasted"); onChange();
-                    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
-                  }}
-                  icon={<ClipboardPaste className="h-3 w-3" />}
-                  label={`Paste "${clip.sourceLabel ?? clip.node.label}"`}
-                />
-              )}
               <PhotoPicker onPick={uploadPhoto}>
                 <button className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
                   <Camera className="h-3 w-3" /> Photo
@@ -348,6 +381,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           )}
         </div>
       )}
+
+      {/* Render subs even in modes so they're targetable */}
+      {inMode && subs.length > 0 && (
+        <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+          {subs.map((s: any) => (
+            <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
+              onChange={onChange} depth={depth + 1} sortable={false} />
+          ))}
+        </ul>
+      )}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{item.label}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This item is shared across all lines. It will be removed from every line, along with its subtasks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
@@ -402,45 +460,5 @@ export function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; o
         </button>
       )}
     </div>
-  );
-}
-
-function DeleteItemButton({ itemLabel, onConfirm }: { itemLabel: string; onConfirm: () => void | Promise<void> }) {
-  const [step, setStep] = useState<0 | 1 | 2>(0);
-  const close = () => setStep(0);
-  return (
-    <>
-      <button onClick={() => setStep(1)} className="p-1 opacity-60 hover:opacity-100">
-        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-      </button>
-      <AlertDialog open={step === 1} onOpenChange={(o) => !o && close()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{itemLabel}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This checklist item is shared across all 10 lines. Deleting it here will remove it from every line in the project.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); setStep(2); }}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={step === 2} onOpenChange={(o) => !o && close()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Final confirmation: "{itemLabel}" will be permanently deleted from all 10 lines. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { await onConfirm(); close(); }}>Delete from all lines</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   );
 }

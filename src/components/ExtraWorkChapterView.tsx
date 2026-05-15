@@ -41,13 +41,15 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip } = useClipboard();
+  const [mode, setMode] = useState<"none" | "delete" | "copy">("none");
+  const { clip, set: setClip, clear } = useClipboard();
 
   const pasteComponentHere = async () => {
     if (clip?.kind !== "component") return;
     try {
       const parent = parentKind === "component_type" ? { component_type_id: group.id } : { equipment_id: group.id };
       await pasteComponent(clip, parent, components.length);
+      clear();
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -117,13 +119,33 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
               )}
             </Button>
           )}
-          {canEdit && clip?.kind === "component" && (
+          {canEdit && clip?.kind === "component" && mode === "none" && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
               title={`Paste "${clip.sourceLabel ?? clip.node.name}"`}>
               <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
             </Button>
           )}
-          {canEdit && !adding && (
+          {canEdit && components.length > 0 && !adding && (
+            <>
+              <Button
+                size="sm"
+                variant={mode === "copy" ? "default" : "outline"}
+                onClick={() => setMode((m) => (m === "copy" ? "none" : "copy"))}
+              >
+                <Copy className="mr-1 h-4 w-4" />
+                {mode === "copy" ? "Done" : "Copy"}
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === "delete" ? "destructive" : "outline"}
+                onClick={() => setMode((m) => (m === "delete" ? "none" : "delete"))}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                {mode === "delete" ? "Done" : "Delete"}
+              </Button>
+            </>
+          )}
+          {canEdit && !adding && mode === "none" && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add component
             </Button>
@@ -158,12 +180,25 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         <p className="text-sm text-muted-foreground">No components match "{search}".</p>
       )}
 
+      {mode === "delete" && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          Tap a component to delete it. Tap "Done" to exit.
+        </p>
+      )}
+      {mode === "copy" && (
+        <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+          Tap a component to copy it (with its checklist). Tap "Done" to exit.
+        </p>
+      )}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={visible.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
-                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)}
+                mode={mode}
+                onModeCopy={() => setClip(buildComponentClip(c))} />
             ))}
           </div>
         </SortableContext>
@@ -192,13 +227,14 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
-  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit });
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, mode = "none", onModeCopy }: any) {
+  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || mode !== "none" });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
     opacity: sortableArgs.isDragging ? 0.6 : 1,
   };
+  const inMode = mode !== "none";
 
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
@@ -206,9 +242,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
-  const { set: setClip } = useClipboard();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const photos = component.component_photos ?? [];
   const files = component.component_files ?? [];
@@ -259,18 +295,34 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
 
   return (
     <div ref={sortableArgs.setNodeRef} style={style}
-      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
-        {canEdit && (
+      className={`overflow-hidden rounded-lg border bg-card shadow-sm ${
+        mode === "delete" ? "border-destructive/40" : mode === "copy" ? "border-primary/40" : "border-border"
+      }`}>
+      <div
+        className={`flex items-center gap-2 border-b px-3 py-2 ${
+          mode === "delete" ? "bg-destructive/10 cursor-pointer hover:bg-destructive/15" :
+          mode === "copy" ? "bg-primary/10 cursor-pointer hover:bg-primary/15" :
+          "bg-muted/40"
+        }`}
+        onClick={inMode ? () => {
+          if (mode === "delete") setConfirmDelete(true);
+          else if (mode === "copy") onModeCopy?.();
+        } : undefined}
+      >
+        {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
-          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {editingName ? (
+        {!inMode && (
+          <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        )}
+        {mode === "delete" && <Trash2 className="h-4 w-4 text-destructive" />}
+        {mode === "copy" && <Copy className="h-4 w-4 text-primary" />}
+        {!inMode && editingName ? (
           <div className="flex flex-1 items-center gap-2">
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }}
@@ -280,9 +332,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </div>
         ) : (
           <span
-            onDoubleClick={() => canEdit && setEditingName(true)}
-            title={canEdit ? "Double-click to rename" : undefined}
-            className={`flex flex-1 items-center gap-2 font-semibold ${canEdit ? "cursor-text" : ""}`}
+            onDoubleClick={() => !inMode && canEdit && setEditingName(true)}
+            title={!inMode && canEdit ? "Double-click to rename" : undefined}
+            className="flex flex-1 items-center gap-2 font-semibold"
           >
             {component.name}
           </span>
@@ -290,35 +342,20 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
-        {canEdit && (
-          <button
-            onClick={() => setClip(buildComponentClip(component))}
-            title="Copy this item with all its subtasks"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
-          >
-            <Copy className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
-        {canEdit && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent">
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete "{component.name}"?</AlertDialogTitle>
-                <AlertDialogDescription>All items inside will be hidden.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={deleteComponent}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{component.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>All items inside will be hidden from every line.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { await deleteComponent(); setConfirmDelete(false); }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {open && (
         <div className="space-y-3 p-3">
