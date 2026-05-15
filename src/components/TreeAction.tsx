@@ -14,6 +14,7 @@ type Ctx = {
   selection: Map<string, SelectionEntry>;
   isSelected: (id: string) => boolean;
   toggle: (id: string, entry: SelectionEntry) => void;
+  toggleMany: (entries: Array<[string, SelectionEntry]>) => void;
   clear: () => void;
   hasSelection: boolean;
   count: number;
@@ -43,13 +44,28 @@ export function TreeActionProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  const toggleMany = useCallback((entries: Array<[string, SelectionEntry]>) => {
+    if (entries.length === 0) return;
+    setSelection((prev) => {
+      const next = new Map(prev);
+      const entryKind = entries[0][1].kind;
+      const firstKind = next.size > 0 ? next.values().next().value!.kind : entryKind;
+      if (firstKind !== entryKind) next.clear();
+      const shouldSelect = entries.some(([id]) => !next.has(id));
+      for (const [id, entry] of entries) {
+        if (shouldSelect) next.set(id, entry);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
   const isSelected = useCallback((id: string) => selection.has(id), [selection]);
 
   const value = useMemo<Ctx>(() => ({
-    mode, setMode, selection, isSelected, toggle, clear,
+    mode, setMode, selection, isSelected, toggle, toggleMany, clear,
     hasSelection: selection.size > 0,
     count: selection.size,
-  }), [mode, selection, setMode, toggle, isSelected, clear]);
+  }), [mode, selection, setMode, toggle, toggleMany, isSelected, clear]);
 
   return <TreeActionCtx.Provider value={value}>{children}</TreeActionCtx.Provider>;
 }
