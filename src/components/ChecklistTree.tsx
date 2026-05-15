@@ -204,7 +204,29 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const remove = async () => {
     const { error } = await supabase.from("checklist_items")
       .update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    if (error) toast.error(error.message); else { setConfirmDelete(false); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    setConfirmDelete(false);
+    onChange();
+    toast.success(`"${item.label}" deleted`, {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { error: undoErr } = await supabase.from("checklist_items")
+            .update({ deleted_at: null }).eq("id", item.id);
+          if (undoErr) toast.error(undoErr.message); else onChange();
+        },
+      },
+    });
+  };
+  const pasteAsSub = async () => {
+    if (clip?.kind !== "item") return;
+    try {
+      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+      clearClip();
+      setOpen(true);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
   const saveNote = async () => {
     if (note === (item.note ?? "")) return;
