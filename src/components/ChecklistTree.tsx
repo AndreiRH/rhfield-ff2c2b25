@@ -114,7 +114,7 @@ export function ChecklistTree({
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable showLabels={showLabels} />
+                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen} />
             ))}
           </ul>
         </SortableContext>
