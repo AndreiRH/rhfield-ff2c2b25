@@ -463,7 +463,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
       </div>
 
       {open && (
-        <div className="p-3">
+        <div className="bg-muted/20 p-3">
           <ComponentsList
             group={type}
             parentKind="component_type"
