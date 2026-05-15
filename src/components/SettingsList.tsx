@@ -60,7 +60,7 @@ function SettingsListInner({
       .eq("plant_equipment_id", equipmentId)
       .is("deleted_at", null)
       .order("sort_order").order("created_at");
-    setRows((data ?? []) as Setting[]);
+    setRows(((data ?? []) as unknown) as Setting[]);
   };
   useEffect(() => { load(); }, [equipmentId]);
 
