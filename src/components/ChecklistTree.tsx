@@ -287,12 +287,27 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
       )}
-      {/* compact indicators when collapsed */}
-      {!inMode && !open && (
-        <span className="flex items-center gap-1.5">
-          {ownNote && <StickyNote className="h-3 w-3 text-primary" aria-label="has note" />}
-          {photos.length > 0 && <Camera className="h-3 w-3 text-primary" aria-label="has photos" />}
-          {files.length > 0 && <Paperclip className="h-3 w-3 text-primary" aria-label="has files" />}
+      {/* Always-visible content indicators */}
+      {!inMode && (
+        <span className="flex items-center gap-2">
+          {subsTotal > 0 && (
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
+          )}
+          {notesCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
+              <StickyNote className="h-3 w-3" /> {notesCount}
+            </span>
+          )}
+          {photosCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
+              <Camera className="h-3 w-3" /> {photosCount}
+            </span>
+          )}
+          {filesCount > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
+              <Paperclip className="h-3 w-3" /> {filesCount}
+            </span>
+          )}
         </span>
       )}
     </div>
