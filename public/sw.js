@@ -205,7 +205,27 @@ async function cacheRoutesForOffline(routes, port) {
 // Install / activate
 // ============================================================
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE_SHELL).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    const shell = await caches.open(CACHE_SHELL);
+    await shell.addAll(SHELL);
+    try {
+      const rootUrl = new URL("/", self.location.origin).href;
+      const root = await fetch(rootUrl, { cache: "no-store" });
+      if (root && root.ok) {
+        await shell.put(rootUrl, root.clone());
+        await shell.put("/", root.clone());
+        const html = await root.text().catch(() => "");
+        const assets = await caches.open(CACHE_ASSETS);
+        await Promise.all(sameOriginAssetUrls(html, rootUrl).map(async (assetUrl) => {
+          try {
+            const res = await fetch(assetUrl, { cache: "no-store" });
+            if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
+          } catch {}
+        }));
+      }
+    } catch {}
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
