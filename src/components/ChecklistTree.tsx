@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -215,7 +215,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
 
   const canExpand = (hasContent || canEdit) && !inMode;
 
-  const onRowClick = () => action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
+  const onRowClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
+  };
 
   const row = (
     <div
