@@ -37,6 +37,8 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   const [expandAll, setExpandAll] = useState(false);
   const [treeKey, setTreeKey] = useState(0);
   const [search, setSearch] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemText, setNewItemText] = useState("");
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const { clip, set: setClip, clear: clearClip } = useClipboard();
