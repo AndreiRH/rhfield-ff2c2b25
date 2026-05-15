@@ -236,19 +236,24 @@ function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: numb
       onClick={onClick}
       aria-label={meta.label}
       title={meta.label}
-      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${active ? `${meta.tabActive} flex-1` : `${meta.tab} flex-none`}`}
+      className={`min-w-0 cursor-pointer rounded-md border transition ${active ? `${meta.tabActive} flex-1 p-2 text-left` : `${meta.tab} flex-none px-5 py-2 flex flex-col items-center justify-center`}`}
     >
-      <div className="mb-1 flex items-center justify-between gap-1">
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          {active && <span className="truncate text-[11px] font-medium">{meta.label}</span>}
-        </span>
-        {active && <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>}
-      </div>
       {active ? (
-        <ProgressBar value={pct} size="sm" />
+        <>
+          <div className="mb-1 flex items-center justify-between gap-1">
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate text-[11px] font-medium">{meta.label}</span>
+            </span>
+            <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>
+          </div>
+          <ProgressBar value={pct} size="sm" />
+        </>
       ) : (
-        <div className="font-mono text-[10px] tabular-nums opacity-70 text-center">{pct}%</div>
+        <>
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="mt-0.5 font-mono text-[10px] tabular-nums opacity-70">{pct}%</span>
+        </>
       )}
     </button>
   );
