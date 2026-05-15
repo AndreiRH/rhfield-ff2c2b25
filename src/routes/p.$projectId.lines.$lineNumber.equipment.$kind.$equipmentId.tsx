@@ -203,7 +203,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             <SettingsIcon className="h-3.5 w-3.5" /> Settings
           </Link>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-3 flex items-stretch gap-2">
           <SectionTab phase="assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
           <SectionTab phase="wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
           <SectionTab phase="cold_comm" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
@@ -234,16 +234,22 @@ function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: numb
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${active ? meta.tabActive : meta.tab}`}
+      aria-label={meta.label}
+      title={meta.label}
+      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${active ? `${meta.tabActive} flex-1` : `${meta.tab} flex-none`}`}
     >
       <div className="mb-1 flex items-center justify-between gap-1">
         <span className="inline-flex min-w-0 items-center gap-1">
-          <Icon className="h-3 w-3 shrink-0" />
-          <span className="truncate text-[11px] font-medium">{meta.label}</span>
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          {active && <span className="truncate text-[11px] font-medium">{meta.label}</span>}
         </span>
-        <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>
+        {active && <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>}
       </div>
-      <ProgressBar value={pct} size="sm" />
+      {active ? (
+        <ProgressBar value={pct} size="sm" />
+      ) : (
+        <div className="font-mono text-[10px] tabular-nums opacity-70 text-center">{pct}%</div>
+      )}
     </button>
   );
 }
