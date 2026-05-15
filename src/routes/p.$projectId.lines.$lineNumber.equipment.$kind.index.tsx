@@ -102,7 +102,7 @@ function PlantEquipmentList() {
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Link to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber }} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Line {lineNumber}
+          <ChevronLeft className="h-4 w-4" /> Production line {lineNumber}
         </Link>
 
         {isLoading || !data ? (
@@ -159,7 +159,7 @@ function PlantView({ lineId, kind, equipment, canEdit, onChange, projectId, line
       <div className="mb-6 border-b pb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line {lineNumber} · Plant</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {lineNumber} · Plant</span>
             <h1 className="flex items-center gap-3 text-3xl font-semibold">
               <span>{title}</span>
               <span className="text-base font-normal text-muted-foreground">{overall}%</span>

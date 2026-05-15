@@ -121,7 +121,7 @@ export function ImportProjectButton() {
               <AlertDescription>
                 <div className="font-medium">Import complete.</div>
                 <div className="mt-2 text-xs space-y-0.5 tabular-nums">
-                  <div>{summary.counts.lines ?? 0} lines</div>
+                  <div>{summary.counts.lines ?? 0} production lines</div>
                   <div>{summary.counts.plant_equipment ?? 0} equipment</div>
                   <div>{summary.counts.checklist_items ?? 0} checklist items</div>
                   <div>{summary.counts.equipment_notes ?? 0} equipment notes</div>

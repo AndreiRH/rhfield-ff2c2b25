@@ -311,7 +311,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         <span
           onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
+          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""}`}
         >{item.label}</span>
       )}
       {/* Always-visible content indicators */}
@@ -408,7 +408,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                         .update({ note_shared: !item.note_shared }).eq("id", item.id);
                       if (error) toast.error(error.message); else onChange();
                     }}
-                    title={item.note_shared ? "Note shared across all lines — click to make local" : "Note local to this line — click to share across all lines"}
+                    title={item.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${item.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
                   >
                     {item.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}

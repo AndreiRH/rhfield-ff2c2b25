@@ -73,7 +73,7 @@ function CombinedCalendar({ projectId }: { projectId: string }) {
         {lines.map((l, i) => (
           <span key={l.id} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: lineColor(i) }} />
-            Line {String(l.number).padStart(2, "0")}
+            Production line {String(l.number).padStart(2, "0")}
           </span>
         ))}
       </div>
@@ -101,7 +101,7 @@ function CombinedCalendar({ projectId }: { projectId: string }) {
                 <li key={m.id} className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorByLine.get(m.line_id) }} />
                   <span className="font-mono text-xs text-muted-foreground">{format(parseISO(m.date), "d MMM")}</span>
-                  <span className="font-medium">Line {String(line?.number).padStart(2, "0")}</span>
+                  <span className="font-medium">Production line {String(line?.number).padStart(2, "0")}</span>
                   <span className="text-muted-foreground">·</span>
                   <span>{m.label}</span>
                 </li>

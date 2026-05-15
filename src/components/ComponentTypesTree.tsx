@@ -300,7 +300,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             <AlertDialogDescription>
               This will remove the selected items and everything inside them.
               {lineCount && lineCount > 1 ? (
-                <> This is shared content and will be deleted from <strong>all {lineCount} project lines</strong>.</>
+                <> This is shared content and will be deleted from <strong>all {lineCount} project production lines</strong>.</>
               ) : null}
               {" "}You can undo from the toast for a few seconds.
             </AlertDialogDescription>

@@ -374,7 +374,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                         .update({ note_shared: !component.note_shared }).eq("id", component.id);
                       if (error) toast.error(error.message); else onChange();
                     }}
-                    title={component.note_shared ? "Note shared across all lines — click to make local" : "Note local to this line — click to share across all lines"}
+                    title={component.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${component.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
                   >
                     {component.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
