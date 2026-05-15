@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,6 +17,7 @@ import { PhotoPicker } from "@/components/PhotoPicker";
 interface FolderRow {
   id: string;
   project_id: string;
+  parent_folder_id: string | null;
   name: string;
   sort_order: number;
 }
@@ -45,7 +46,7 @@ export function CommonFoldersList({
 }: { projectId: string; canEdit: boolean; userId?: string }) {
   const { isAdmin } = useAuth();
   const [folders, setFolders] = useState<FolderRow[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [deleteMode, setDeleteMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -61,14 +62,51 @@ export function CommonFoldersList({
   };
   useEffect(() => { load(); }, [projectId]);
 
-  const addFolder = async () => {
+  const childrenOf = useMemo(() => {
+    const map = new Map<string | null, FolderRow[]>();
+    for (const f of folders) {
+      const k = f.parent_folder_id;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(f);
+    }
+    return map;
+  }, [folders]);
+
+  const collectDescendants = (id: string): string[] => {
+    const out: string[] = [];
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      const kids = childrenOf.get(cur) ?? [];
+      for (const k of kids) { out.push(k.id); stack.push(k.id); }
+    }
+    return out;
+  };
+
+  const toggleOpen = (id: string) => {
+    setOpenIds((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const addFolder = async (parentId: string | null) => {
+    const siblingCount = (childrenOf.get(parentId) ?? []).length;
     const { data, error } = await supabase.from("common_folders").insert({
-      project_id: projectId, name: "New folder",
-      sort_order: folders.length, created_by: userId,
+      project_id: projectId, parent_folder_id: parentId, name: "New folder",
+      sort_order: siblingCount, created_by: userId,
     }).select().single();
     if (error) { toast.error(error.message); return; }
     await load();
-    if (data) setOpenId(data.id);
+    if (data) {
+      setOpenIds((s) => {
+        const next = new Set(s);
+        if (parentId) next.add(parentId);
+        next.add(data.id);
+        return next;
+      });
+    }
   };
 
   const renameFolder = async (id: string, name: string) => {
@@ -77,18 +115,32 @@ export function CommonFoldersList({
   };
 
   const deleteFolders = async (ids: string[]) => {
-    const { data: atts } = await supabase.from("common_folder_attachments").select("kind, storage_path").in("folder_id", ids);
+    // Expand to include all descendants so we can clean up storage
+    const all = new Set<string>();
+    for (const id of ids) {
+      all.add(id);
+      for (const d of collectDescendants(id)) all.add(d);
+    }
+    const allIds = Array.from(all);
+    const { data: atts } = await supabase.from("common_folder_attachments")
+      .select("kind, storage_path").in("folder_id", allIds);
     const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
     const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
-    const { data: notes } = await supabase.from("common_folder_notes").select("photo_path, file_path").in("folder_id", ids);
+    const { data: notes } = await supabase.from("common_folder_notes")
+      .select("photo_path, file_path").in("folder_id", allIds);
     (notes ?? []).forEach((n: any) => {
       if (n.photo_path) photos.push(n.photo_path);
       if (n.file_path) files.push(n.file_path);
     });
     if (photos.length) await supabase.storage.from("photos").remove(photos);
     if (files.length) await supabase.storage.from("files").remove(files);
+    // CASCADE will remove descendant rows when we delete the top-level selected ids
     await supabase.from("common_folders").delete().in("id", ids);
-    if (openId && ids.includes(openId)) setOpenId(null);
+    setOpenIds((s) => {
+      const next = new Set(s);
+      allIds.forEach((id) => next.delete(id));
+      return next;
+    });
     await load();
   };
 
@@ -106,11 +158,50 @@ export function CommonFoldersList({
     setConfirmDelete(true);
   };
   const performDelete = async () => {
-    const ids = Array.from(selected);
+    // Drop selected ids that are descendants of other selected ids — CASCADE handles them
+    const sel = new Set(selected);
+    const minimal: string[] = [];
+    for (const id of sel) {
+      let p = folders.find((f) => f.id === id)?.parent_folder_id ?? null;
+      let covered = false;
+      while (p) {
+        if (sel.has(p)) { covered = true; break; }
+        p = folders.find((f) => f.id === p)?.parent_folder_id ?? null;
+      }
+      if (!covered) minimal.push(id);
+    }
     setConfirmDelete(false);
-    await deleteFolders(ids);
+    await deleteFolders(minimal);
     cancelDelete();
-    toast.success(`Deleted ${ids.length} folder${ids.length > 1 ? "s" : ""}`);
+    toast.success(`Deleted ${selected.size} folder${selected.size > 1 ? "s" : ""}`);
+  };
+
+  const roots = childrenOf.get(null) ?? [];
+
+  const renderFolder = (f: FolderRow, depth: number) => {
+    const kids = childrenOf.get(f.id) ?? [];
+    const isOpen = openIds.has(f.id) && !deleteMode;
+    return (
+      <FolderItem
+        key={f.id}
+        folder={f}
+        depth={depth}
+        open={isOpen}
+        onToggle={() => toggleOpen(f.id)}
+        canEdit={canEdit}
+        userId={userId}
+        onRename={(name: string) => renameFolder(f.id, name)}
+        onAddChild={() => addFolder(f.id)}
+        deleteMode={deleteMode}
+        selected={selected.has(f.id)}
+        onSelectToggle={() => toggleSelect(f.id)}
+        childrenContent={kids.length > 0 ? (
+          <ul className="space-y-2">
+            {kids.map((c) => renderFolder(c, depth + 1))}
+          </ul>
+        ) : null}
+      />
+    );
   };
 
   return (
@@ -123,7 +214,6 @@ export function CommonFoldersList({
               size="sm"
               variant={deleteMode ? "destructive" : "outline"}
               onClick={deleteMode ? commitDelete : () => setDeleteMode(true)}
-              disabled={deleteMode && selected.size === 0}
               title="Delete"
               aria-label="Delete"
             >
@@ -131,11 +221,8 @@ export function CommonFoldersList({
               {deleteMode && <span className="ml-1">Done{selected.size ? ` ${selected.size}` : ""}</span>}
             </Button>
           )}
-          {deleteMode && (
-            <Button size="sm" variant="ghost" onClick={cancelDelete}>Cancel</Button>
-          )}
           {canEdit && !deleteMode && (
-            <Button size="sm" onClick={addFolder}>
+            <Button size="sm" onClick={() => addFolder(null)}>
               <Plus className="mr-1 h-4 w-4" /> New folder
             </Button>
           )}
@@ -144,28 +231,15 @@ export function CommonFoldersList({
 
       {deleteMode && (
         <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          Tap any folder to add it to the deletion list. Tap "Done" to delete all selected.
+          Tap any folder to add it to the deletion list. Subfolders inside a selected folder are deleted too. Tap "Done" to delete all selected.
         </p>
       )}
 
-      {folders.length === 0 ? (
+      {roots.length === 0 ? (
         <p className="text-sm text-muted-foreground">No folders yet. Create one to start adding photos, files and notes.</p>
       ) : (
         <ul className="space-y-2">
-          {folders.map((f) => (
-            <FolderItem
-              key={f.id}
-              folder={f}
-              open={openId === f.id && !deleteMode}
-              onToggle={() => setOpenId(openId === f.id ? null : f.id)}
-              canEdit={canEdit}
-              userId={userId}
-              onRename={(name: string) => renameFolder(f.id, name)}
-              deleteMode={deleteMode}
-              selected={selected.has(f.id)}
-              onSelectToggle={() => toggleSelect(f.id)}
-            />
-          ))}
+          {roots.map((f) => renderFolder(f, 0))}
         </ul>
       )}
 
@@ -174,7 +248,7 @@ export function CommonFoldersList({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {selected.size} folder{selected.size > 1 ? "s" : ""}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes the selected folders and all their photos, files and notes.
+              This deletes the selected folders, all their subfolders, and all photos, files and notes inside them.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -190,7 +264,8 @@ export function CommonFoldersList({
 }
 
 function FolderItem({
-  folder, open, onToggle, canEdit, userId, onRename, deleteMode, selected, onSelectToggle,
+  folder, depth, open, onToggle, canEdit, userId, onRename, onAddChild,
+  deleteMode, selected, onSelectToggle, childrenContent,
 }: any) {
   const [name, setName] = useState(folder.name);
   const [editing, setEditing] = useState(false);
@@ -248,11 +323,26 @@ function FolderItem({
             </span>
           )}
         </button>
+        {!deleteMode && canEdit && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddChild(); }}
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Add subfolder"
+            aria-label="Add subfolder"
+          >
+            <FolderPlus className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {open && !deleteMode && (
-        <div className="border-t bg-muted/20 p-3">
+        <div className="space-y-3 border-t bg-muted/20 p-3">
           <FolderContents folder={folder} canEdit={canEdit} userId={userId} />
+          {childrenContent && (
+            <div className="pl-3 border-l-2 border-muted">
+              {childrenContent}
+            </div>
+          )}
         </div>
       )}
     </li>
