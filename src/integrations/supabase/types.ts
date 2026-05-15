@@ -452,6 +452,54 @@ export type Database = {
           },
         ]
       }
+      equipment_settings: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          photo_path: string | null
+          plant_equipment_id: string
+          sort_order: number
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          photo_path?: string | null
+          plant_equipment_id: string
+          sort_order?: number
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          photo_path?: string | null
+          plant_equipment_id?: string
+          sort_order?: number
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       item_files: {
         Row: {
           file_name: string
