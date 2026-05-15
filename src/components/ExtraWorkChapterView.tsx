@@ -408,8 +408,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                 <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
               ))}
               {canEdit && (
-                <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <Plus className="h-3.5 w-3.5" /> Add file
+                <label title="Add file"
+                  className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3 w-3" />
                   <input type="file" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
                 </label>
