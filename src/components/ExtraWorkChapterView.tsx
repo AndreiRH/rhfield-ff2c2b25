@@ -13,10 +13,12 @@ import {
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
   StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search, Globe, Lock,
+  Copy, ClipboardPaste,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { useClipboard, buildComponentClip, pasteComponent } from "@/lib/clipboard";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
