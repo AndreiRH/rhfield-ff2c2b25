@@ -472,7 +472,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
                     onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
-                    canDeleteRoot={canDeleteRoot} />
+                    canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen} />
                 ))}
               </ul>
               {addingSub && (
