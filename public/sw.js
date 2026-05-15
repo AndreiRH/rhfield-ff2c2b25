@@ -817,15 +817,13 @@ self.addEventListener("fetch", (event) => {
           return res;
         }).catch(() => null);
 
-        if (cached) {
-          event.waitUntil(network);
-          return cached;
-        }
         const fresh = await network;
         if (fresh) return fresh;
-        // Offline + nothing cached → reconstruct from snapshot.
+        // Offline → reconstruct from snapshot first so locally queued edits are visible,
+        // even when an older exact response is already in the HTTP cache.
         const snap = await snapshotResponse(url, req);
         if (snap) return snap;
+        if (cached) return cached;
         return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
       })());
       return;
