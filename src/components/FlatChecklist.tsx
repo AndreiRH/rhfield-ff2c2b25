@@ -180,6 +180,18 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           </p>
         )}
 
+        {bucket && allItems.length > 0 && !inMode && (
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search items…"
+              className="h-8 pl-7 text-sm"
+            />
+          </div>
+        )}
+
         {!bucket ? (
           canEdit ? (
             <Button size="sm" onClick={ensureBucket} disabled={creating}>Start checklist</Button>
@@ -188,13 +200,14 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           )
         ) : (
           <ChecklistTree
-            key={treeKey}
+            key={`${treeKey}-${q ? "search" : "all"}`}
             componentId={bucket.id}
-            items={allItems}
+            items={filteredItems}
             canEdit={canEdit}
             onChange={onChange}
             showLabels
-            defaultOpen={expandAll}
+            defaultOpen={expandAll || !!q}
+            emptyHint={q ? "No matching items." : "No items yet."}
           />
         )}
       </CardContent>
