@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, Settings as SettingsIcon, Wrench, Cable, Snowflake } from "lucide-react";
 
-const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; header: string; accent: string }> = {
+const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; header: string; accent: string; tint: string }> = {
   assembly: {
     label: "Assembly",
     icon: Wrench,
@@ -20,6 +20,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-amber-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500",
     accent: "text-white/90",
+    tint: "bg-amber-50/40",
   },
   wiring: {
     label: "Wiring",
@@ -28,6 +29,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-violet-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-violet-600",
     accent: "text-white/90",
+    tint: "bg-violet-50/40",
   },
   cold_comm: {
     label: "Cold commissioning",
@@ -36,6 +38,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-cyan-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white border-cyan-600",
     accent: "text-white/90",
+    tint: "bg-cyan-50/40",
   },
 };
 import { toast } from "sonner";
@@ -181,8 +184,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const meta = PHASE_META[section];
   return (
     <>
-      <div className={`pointer-events-none fixed inset-y-0 left-0 z-30 w-1.5 ${meta.header}`} aria-hidden />
-      <div className={`pointer-events-none fixed inset-y-0 right-0 z-30 w-1.5 ${meta.header}`} aria-hidden />
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
@@ -212,7 +213,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className={`mt-4 rounded-lg ${meta.tint} p-3 transition-colors`}>
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
