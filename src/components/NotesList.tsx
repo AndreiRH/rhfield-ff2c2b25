@@ -148,6 +148,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   const hasPhoto = !!note.photo_path;
   const hasFile = !!note.file_name;
 
+  const maybeAutoDelete = () => {
+    const titleEmpty = !title.trim() || title.trim() === "Note";
+    if (!body.trim() && titleEmpty && !hasPhoto && !hasFile) {
+      onDelete();
+    }
+  };
+
   const uploadPhoto = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("photos").upload(path, file);
@@ -196,7 +203,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title !== note.title && onUpdate({ title })}
+            onBlur={() => {
+              if (title !== note.title) onUpdate({ title });
+              maybeAutoDelete();
+            }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
           />
         ) : (
@@ -239,7 +249,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={body}
             disabled={!canEdit}
             onChange={(e) => setBody(e.target.value)}
-            onBlur={() => body !== note.body && onUpdate({ body })}
+            onBlur={() => {
+              if (body !== note.body) onUpdate({ body });
+              maybeAutoDelete();
+            }}
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />

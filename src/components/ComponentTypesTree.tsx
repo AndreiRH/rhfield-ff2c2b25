@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste,
+  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
 } from "lucide-react";
 import { useClipboard, buildTypeClip, pasteType } from "@/lib/clipboard";
 import { toast } from "sonner";
@@ -109,16 +109,11 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
     onChange();
   };
 
-  const overall = calcProgress(itemsFromGroup(group));
-
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {overall.done}/{overall.total} · {overall.pct}%
-          </span>
-          {types.length > 0 && (
+        {types.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
               {allOpen ? (
                 <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
@@ -126,9 +121,8 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
                 <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
               )}
             </Button>
-          )}
-        </div>
-        <ProgressBar value={overall.pct} size="sm" />
+          </div>
+        )}
 
         {canEdit && !adding && (
           <div className="grid grid-cols-3 gap-2">
@@ -242,10 +236,12 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
     opacity: sortableArgs.isDragging ? 0.5 : 1,
   };
 
-  const items = (type.components ?? [])
-    .filter((c: any) => !c.deleted_at)
-    .flatMap((c: any) => c.checklist_items ?? []);
+  const liveComps = (type.components ?? []).filter((c: any) => !c.deleted_at);
+  const items = liveComps.flatMap((c: any) => (c.checklist_items ?? []).filter((i: any) => !i.deleted_at));
   const prog = calcProgress(items);
+  const notesCount =
+    liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
+    items.filter((i: any) => (i.note ?? "").trim() !== "").length;
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
@@ -332,8 +328,9 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
           </button>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-        <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
-        <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
+          <StickyNote className="h-3 w-3" /> {notesCount}
+        </span>
       </div>
 
       {open && !inActionMode && (
