@@ -193,7 +193,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
-                disabled={action.mode === "copy" && !action.hasSelection}
                 title="Copy"
                 aria-label="Copy"
               >
