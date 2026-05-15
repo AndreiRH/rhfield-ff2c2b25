@@ -289,11 +289,13 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        {!inMode && (
-          <button onClick={(e) => { e.stopPropagation(); toggleOpen(); }} className="text-muted-foreground hover:text-foreground">
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleOpen(); }}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label={open ? "Collapse" : "Expand"}
+        >
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        )}
+        </button>
         {inSelectMode && (
           <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-3 w-3" />}
@@ -441,7 +443,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
       )}
 
       {/* In copy/delete mode: render ONLY the checklist so items can be selected. */}
-      {inMode && allItems.length > 0 && (
+      {inMode && open && allItems.length > 0 && (
         <div className="p-3">
           <div className="rounded-md border border-dashed bg-background p-2">
             <ChecklistTree
