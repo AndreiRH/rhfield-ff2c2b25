@@ -167,6 +167,15 @@ function SettingsListInner({
             )}
             {rows.length > 0 && (
               <Button size="sm"
+                variant={action.mode === "reorder" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                title="Reorder" aria-label="Reorder">
+                <GripVertical className="h-4 w-4" />
+                {action.mode === "reorder" && <span className="ml-1 text-xs">Done</span>}
+              </Button>
+            )}
+            {rows.length > 0 && (
+              <Button size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={() => {
                   if (action.mode === "copy") confirmCopy();
