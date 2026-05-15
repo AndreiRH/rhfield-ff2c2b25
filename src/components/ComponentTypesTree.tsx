@@ -390,7 +390,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
           </span>
         )}
         {!inMode && editing ? (
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-7" />
             <Button size="icon" variant="ghost" onClick={rename}><Check className="h-4 w-4" /></Button>
