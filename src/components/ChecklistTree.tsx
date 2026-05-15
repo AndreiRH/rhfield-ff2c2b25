@@ -81,7 +81,12 @@ export function ChecklistTree({
   return (
     <div className="space-y-2">
       {canEdit && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
+          {clip?.kind === "item" && (
+            <Button size="sm" variant="outline" onClick={pasteHere} title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+            </Button>
+          )}
           {!adding && (
             <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add item
