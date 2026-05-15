@@ -134,7 +134,13 @@ function LineOverview() {
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Cog className="h-5 w-5 text-muted-foreground" />
+                            {eq.kind === "kiln" ? (
+                              <Flame className="h-5 w-5 text-orange-500" />
+                            ) : eq.kind === "shs" ? (
+                              <Zap className="h-5 w-5 text-amber-500" />
+                            ) : (
+                              <Cog className="h-5 w-5 text-muted-foreground" />
+                            )}
                             <h3 className="text-lg font-semibold">{eq.name}</h3>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
