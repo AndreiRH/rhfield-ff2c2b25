@@ -195,7 +195,7 @@ export function PAFoldersList({
 }
 
 function FolderItem({
-  folder, open, onToggle, canEdit, userId, onRename, onDelete,
+  folder, open, onToggle, canEdit, userId, onRename, deleteMode, selected, onSelectToggle,
 }: any) {
   const [name, setName] = useState(folder.name);
   const [editing, setEditing] = useState(false);
@@ -206,13 +206,31 @@ function FolderItem({
     if (name !== folder.name) onRename(name.trim() || "Untitled");
   };
 
+  const rowClick = deleteMode ? onSelectToggle : onToggle;
+
   return (
-    <li className="overflow-hidden rounded-md border bg-card">
-      <div className="flex items-center gap-1 px-2 py-1.5">
-        <button onClick={onToggle} className="flex flex-1 items-center gap-2 text-left">
-          <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+    <li className={`overflow-hidden rounded-md border bg-card ${
+      deleteMode ? (selected ? "border-destructive" : "border-destructive/40") : ""
+    }`}>
+      <div
+        className={`flex items-center gap-1 px-2 py-1.5 ${
+          deleteMode ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` : ""
+        }`}
+        onClick={deleteMode ? rowClick : undefined}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); rowClick(); }}
+          className="flex flex-1 items-center gap-2 text-left"
+        >
+          {deleteMode ? (
+            <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? "border-destructive bg-destructive text-destructive-foreground" : "border-muted-foreground/30"}`}>
+              {selected && <Check className="h-3 w-3" />}
+            </span>
+          ) : (
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+          )}
           {open ? <FolderOpen className="h-4 w-4 text-primary" /> : <Folder className="h-4 w-4 text-primary" />}
-          {editing && canEdit ? (
+          {!deleteMode && editing && canEdit ? (
             <Input
               autoFocus
               value={name}
@@ -227,38 +245,17 @@ function FolderItem({
             />
           ) : (
             <span
-              onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditing(true); } }}
+              onDoubleClick={(e) => { if (!deleteMode && canEdit) { e.stopPropagation(); setEditing(true); } }}
               className="flex-1 truncate px-1 text-sm font-medium"
-              title={canEdit ? "Double-click to rename" : undefined}
+              title={!deleteMode && canEdit ? "Double-click to rename" : undefined}
             >
               {name}
             </span>
           )}
         </button>
-        {canEdit && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="p-1 text-destructive hover:opacity-80" title="Delete folder">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete "{folder.name}"?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This deletes the folder and all its photos, files and notes.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
 
-      {open && (
+      {open && !deleteMode && (
         <div className="border-t bg-muted/20 p-3">
           <FolderContents folder={folder} canEdit={canEdit} userId={userId} />
         </div>
