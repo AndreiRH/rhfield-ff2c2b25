@@ -573,21 +573,9 @@ async function applyUpdate(table, url, patch) {
 async function applyDelete(table, url) {
   const rows = await readTable(table);
   const filters = getFiltersFromUrl(url);
+  if (filters.length === 0) return [];
   const remaining = [];
   const removed = [];
-  for (const r of rows) {
-    let keep = true;
-    for (const { col, value } of filters) {
-      const dot = value.indexOf(".");
-      if (dot < 0) continue;
-      if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) { keep = false; break; }
-    }
-    if (keep) remaining.push(r); else removed.push(r);
-  }
-  // If none matched filters (filters all kept the row), the loop above wrongly kept everything.
-  // Re-run with the correct semantics: a row is removed only when ALL filters match it.
-  const remaining2 = [];
-  const removed2 = [];
   for (const r of rows) {
     let allMatch = true;
     for (const { col, value } of filters) {
@@ -595,10 +583,10 @@ async function applyDelete(table, url) {
       if (dot < 0) continue;
       if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) { allMatch = false; break; }
     }
-    if (allMatch && filters.length > 0) removed2.push(r); else remaining2.push(r);
+    if (allMatch) removed.push(r); else remaining.push(r);
   }
-  await writeTable(table, remaining2);
-  return removed2;
+  await writeTable(table, remaining);
+  return removed;
 }
 
 // ============================================================
