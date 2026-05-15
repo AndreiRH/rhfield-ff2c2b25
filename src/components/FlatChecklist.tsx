@@ -239,6 +239,10 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
           <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
             Tap any item or subtask to add it to the copy. Tap "Done" to copy all selected.
           </p>
+        {action.mode === "reorder" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Drag the handle on each item to reorder. Tap "Done" when finished.
+          </p>
         )}
 
         {bucket && allItems.length > 0 && !inMode && (
