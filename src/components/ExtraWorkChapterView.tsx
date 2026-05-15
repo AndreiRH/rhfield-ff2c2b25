@@ -268,10 +268,10 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
 
   return (
     <div ref={sortableArgs.setNodeRef} style={style}
-      className={`overflow-hidden rounded-lg border bg-card shadow-sm ${
-        mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40")
-        : mode === "copy" ? (selected ? "border-primary" : "border-primary/40")
-        : prog.pct === 100 ? "border-success/40" : "border-border"
+      className={`ml-2 overflow-hidden rounded-lg border-l-4 border-y border-r bg-card shadow-sm ${
+        mode === "delete" ? (selected ? "border-destructive border-l-destructive" : "border-destructive/40 border-l-destructive/60")
+        : mode === "copy" ? (selected ? "border-primary border-l-primary" : "border-primary/40 border-l-primary/60")
+        : prog.pct === 100 ? "border-success/40 border-l-success" : "border-border border-l-accent"
       }`}>
       <div
         className={`flex items-center gap-2 border-b px-3 py-2 ${
