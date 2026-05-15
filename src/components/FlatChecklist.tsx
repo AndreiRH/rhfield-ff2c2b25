@@ -53,6 +53,7 @@ export function FlatChecklist({ group, canEdit, onChange }: any) {
             items={allItems}
             canEdit={canEdit}
             onChange={onChange}
+            showLabels
           />
         )}
       </CardContent>
