@@ -264,7 +264,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
     setConfirmDelete(false);
     onChange();
     toast.success(`"${type.name}" deleted`, {
-      duration: 6000,
+      duration: 3000,
       action: {
         label: "Undo",
         onClick: async () => {
