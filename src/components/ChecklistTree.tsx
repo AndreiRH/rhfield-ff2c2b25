@@ -283,7 +283,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const onRowClick = (event: MouseEvent) => {
     event.stopPropagation();
     if (blockedFromMode) return;
-    action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
+    const entries = [item, ...descendants].map((node: any) => [
+      node.id,
+      { kind: "item" as const, payload: { item: node, allItems } },
+    ] as const);
+    action?.toggleMany(entries as any);
   };
 
   const row = (
@@ -504,7 +508,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       )}
 
       {/* Render subs in any action mode so they're visible/targetable */}
-      {inMode && subs.length > 0 && (
+      {inMode && open && subs.length > 0 && (
         <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
             {subs.map((s: any) => (
