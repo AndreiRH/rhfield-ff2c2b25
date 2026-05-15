@@ -242,12 +242,12 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
         disabled={!canEdit}
         onClick={() => switchMode("manual")}
         className={`rounded px-3 py-1 text-xs ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-      >Manual %</button>
+      >Man %</button>
       <button
         disabled={!canEdit}
         onClick={() => switchMode("checklist")}
         className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-      >Checklist</button>
+      >Items</button>
     </div>
   );
 
