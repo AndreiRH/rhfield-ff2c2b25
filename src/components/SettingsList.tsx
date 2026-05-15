@@ -167,7 +167,14 @@ function SettingsListInner({
   };
   const confirmDelete = async () => {
     const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+    if (selected.length === 0) { action.setMode("none"); return; }
+    setConfirmDeleteOpen(true);
+  };
+
+  const performDelete = async () => {
+    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
     for (const s of selected) await removeOne(s);
+    setConfirmDeleteOpen(false);
     action.setMode("none");
     load();
   };
@@ -280,6 +287,23 @@ function SettingsListInner({
           </DndContext>
         )}
       </CardContent>
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {action.count} setting{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
+              Values, photos, and files attached to the selected settings on this line will also be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
