@@ -871,6 +871,57 @@ export type Database = {
         }
         Relationships: []
       }
+      setting_files: {
+        Row: {
+          equipment_setting_id: string
+          file_name: string
+          id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          equipment_setting_id: string
+          file_name: string
+          id?: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          equipment_setting_id?: string
+          file_name?: string
+          id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      setting_photos: {
+        Row: {
+          equipment_setting_id: string
+          id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          equipment_setting_id: string
+          id?: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          equipment_setting_id?: string
+          id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
