@@ -180,12 +180,25 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         <p className="text-sm text-muted-foreground">No components match "{search}".</p>
       )}
 
+      {mode === "delete" && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          Tap a component to delete it. Tap "Done" to exit.
+        </p>
+      )}
+      {mode === "copy" && (
+        <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+          Tap a component to copy it (with its checklist). Tap "Done" to exit.
+        </p>
+      )}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={visible.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
-                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)}
+                mode={mode}
+                onModeCopy={() => setClip(buildComponentClip(c))} />
             ))}
           </div>
         </SortableContext>
