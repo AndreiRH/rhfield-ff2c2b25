@@ -371,7 +371,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   return (
     <li ref={sortable ? sortableArgs.setNodeRef : undefined} style={style}
-      className={`rounded-md border bg-card ${
+      className={`rounded-md border bg-card ${depth === 0 ? "ml-2 border-l-4 border-l-muted-foreground/30" : ""} ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
         item.done ? "border-success/40 bg-success/10" : ""
@@ -484,7 +484,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           )}
 
           {(subs.length > 0 || addingSub) && (
-            <div className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+            <div className="ml-4 mt-2 space-y-1 rounded border-l-2 border-primary/30 bg-muted/20 px-2 py-2">
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
@@ -510,7 +510,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       {/* Render subs in any action mode so they're visible/targetable */}
       {inMode && open && subs.length > 0 && (
         <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
-          <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+          <ul className="ml-4 mt-2 space-y-1 rounded border-l-2 border-primary/30 bg-muted/20 px-2 py-2">
             {subs.map((s: any) => (
               <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
                 onChange={onChange} depth={depth + 1} sortable showLabels={false}

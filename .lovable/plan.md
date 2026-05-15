@@ -1,31 +1,43 @@
 ## Problem
 
-The import RPC fails with:
-> insert or update on table "components" violates foreign key constraint "components_equipment_id_fkey"
+When everything is expanded, the four nesting levels (Type → Component → Item → Subtask) all use the same `rounded-lg border bg-card` styling and similar spacing. The result reads as one continuous list — you can't see where a parent ends and the next sibling begins.
 
-### Root cause
+## Goal
 
-In `src/lib/importProject.ts`, the id-remap maps (`peMap`, `egMap`, `ctMap`, `compMap`, `ciMap`) are built from **every** row in the CSV — including soft-deleted ones. But the payload only inserts non-deleted rows.
+Make each level visually distinct so that, at a glance, the user can tell:
+- which level a row belongs to,
+- where a parent's children end and the next sibling parent starts.
 
-So a `component` whose `equipment_id` points to a soft-deleted `equipment_group` passes the filter (`egMap.has(...)` is true), gets remapped to a fresh UUID, and then references an `equipment_group` that was never inserted → FK violation. The same leak can happen for component_types under deleted EGs, components under deleted CTs, and checklist_items under deleted components.
+Logic, data, and behavior stay untouched — purely a presentation change in the existing tree components.
 
-## Fix
+## Design system
 
-Filter children against the **live** parent set (not the full id map).
+Assign each level a clear visual signature using existing semantic tokens (no new colors):
 
-In `src/lib/importProject.ts`:
+| Level | Container | Left accent rail | Header background | Sibling gap |
+|------|-----------|------------------|-------------------|-------------|
+| Type | thicker outer card, stronger shadow | `border-l-4 border-l-primary` | bold header (`bg-muted/70`, larger title) | `space-y-6` |
+| Component | nested card, lighter shadow, indented `ml-2` | `border-l-4 border-l-accent` (or `border-l-secondary`) | `bg-muted/40`, smaller title | `space-y-4` |
+| Item | flat row inside a soft container, indented `ml-3` | `border-l-2 border-l-muted-foreground/40` | no header band | `space-y-2` |
+| Subtask | already `border-l-2 border-primary/20 ml-4` — keep, but bump padding so it visually separates from its parent item | unchanged | unchanged | `space-y-1` |
 
-1. Build a `liveEgIds = new Set(liveEg.map(r => r.id))` after computing `liveEg`. Same for `livePe`, `liveCt`, `liveComp`.
-2. Replace the membership checks:
-   - `equipment_groups`: filter by `livePeIds.has(r.plant_equipment_id)` when `plant_equipment_id` is set (orphan EGs are allowed since `plant_equipment_id` is nullable).
-   - `component_types`: filter by `liveEgIds.has(r.equipment_group_id)` (already in code via `egMap`, change to `liveEgIds`).
-   - `components`: keep only rows where `(equipment_id && liveEgIds.has(equipment_id)) || (component_type_id && liveCtIds.has(component_type_id))`.
-   - `checklist_items`: filter by `liveCompIds.has(r.component_id)`.
-   - `equipment_notes` / `equipment_photos`: filter by `livePeIds.has(r.equipment_id)`.
-3. Also defensively null out `parent_item_id` for checklist items if the parent is missing from `ciMap` (already partly handled with `?? null`, just confirm).
+Additional cues:
+- Wrap each level's children area in a subtle inset background (`bg-muted/20` or `bg-card/50`) and add a small top/bottom padding so children sit "inside" the parent rather than flush against the next sibling.
+- Add a thin divider (`border-t border-dashed border-border`) between sibling Components inside a Type, and between sibling Items inside a Component, to reinforce the boundary when content is dense.
+- Keep the existing color-state styling (delete = destructive, copy = primary, complete = success) — apply the new level rails only when no action mode is active so we don't fight the selection colors.
 
-No DB changes needed — the `import_project_bulk` RPC and triggers are correct.
+## Files to change
 
-## Validation
+- `src/components/ComponentTypesTree.tsx` — TypeSection container + the wrapper around `<ComponentsList>` (lines ~396–478): add primary left rail, stronger outer card, inset background on the children area, increase outer `space-y` to `space-y-6`.
+- `src/components/ExtraWorkChapterView.tsx` — `ComponentsList` outer `space-y-3` → `space-y-4`, `ComponentBlock` (lines ~269–336): add accent left rail, `ml-2` indent, softer inset on the expanded children area, dashed divider between siblings.
+- `src/components/ChecklistTree.tsx` — Item rows: add muted left rail + `ml-3` indent; tighten header so items read as rows-in-a-container rather than independent cards. Subtask rail (`border-l-2 border-primary/20 ml-4`, lines 487 and 513): keep but add a small top margin so the subtask block clearly belongs to its parent.
 
-After the fix, re-export the existing `BlueW1` project and import it as a new project; the dialog should reach "Uploading photos & files…" and finish without the FK error.
+## Out of scope
+
+- No changes to data fetching, drag-and-drop, selection, delete confirmation, or the action toolbar.
+- No new color tokens; only existing semantic tokens from `src/styles.css`.
+- No change to the collapsed appearance — only how nesting reads when expanded.
+
+## Verification
+
+After the edit, open a Type → Component → Item with subtasks in the preview, expand everything, and screenshot: each level should have a visible indent + a distinct colored left rail, and sibling parents should be separated by clear vertical gaps.
