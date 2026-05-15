@@ -10,7 +10,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, Settings as SettingsIcon } from "lucide-react";
+import { ChevronLeft, Settings as SettingsIcon, Wrench, Cable, Snowflake } from "lucide-react";
+
+const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; banner: string; dot: string; ring: string }> = {
+  assembly: {
+    label: "Assembly",
+    icon: Wrench,
+    tab: "border-amber-300/60 bg-amber-50 hover:bg-amber-100 text-amber-900",
+    tabActive: "border-amber-500 bg-amber-500 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-amber-500 to-orange-500 text-white",
+    dot: "bg-amber-500",
+    ring: "ring-2 ring-amber-400/60",
+  },
+  wiring: {
+    label: "Wiring",
+    icon: Cable,
+    tab: "border-violet-300/60 bg-violet-50 hover:bg-violet-100 text-violet-900",
+    tabActive: "border-violet-600 bg-violet-600 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white",
+    dot: "bg-violet-600",
+    ring: "ring-2 ring-violet-400/60",
+  },
+  cold_comm: {
+    label: "Cold commissioning",
+    icon: Snowflake,
+    tab: "border-cyan-300/60 bg-cyan-50 hover:bg-cyan-100 text-cyan-900",
+    tabActive: "border-cyan-600 bg-cyan-600 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white",
+    dot: "bg-cyan-600",
+    ring: "ring-2 ring-cyan-400/60",
+  },
+};
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
