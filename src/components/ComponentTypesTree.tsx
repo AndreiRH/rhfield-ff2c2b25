@@ -444,7 +444,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
         )}
       </div>
 
-      {(open || inMode) && (
+      {(open || inSelectMode) && (
         <div className="p-3">
           <ComponentsList
             group={type}
