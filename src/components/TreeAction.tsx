@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export type TreeMode = "none" | "delete" | "copy";
-export type SelectionKind = "type" | "component" | "item";
+export type SelectionKind = "type" | "component" | "item" | "setting";
 
 type SelectionEntry = {
   kind: SelectionKind;
