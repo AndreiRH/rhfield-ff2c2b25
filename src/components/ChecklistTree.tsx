@@ -105,8 +105,8 @@ export function ChecklistTree({
             </Button>
           )}
           {!adding && !inMode && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add item
+            <Button size="sm" onClick={() => setAdding(true)} title="Add item" aria-label="Add item">
+              <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add item</span>
             </Button>
           )}
         </div>
