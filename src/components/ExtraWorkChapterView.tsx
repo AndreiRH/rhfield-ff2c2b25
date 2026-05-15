@@ -117,6 +117,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
               )}
             </Button>
           )}
+          {canEdit && clip?.kind === "component" && (
+            <Button size="sm" variant="outline" onClick={pasteComponentHere}
+              title={`Paste "${clip.sourceLabel ?? clip.node.name}"`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+            </Button>
+          )}
           {canEdit && !adding && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add component
