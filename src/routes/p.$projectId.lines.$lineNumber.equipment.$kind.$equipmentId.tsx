@@ -219,7 +219,7 @@ function SectionTab({ label, pct, active, onClick }: { label: string; pct: numbe
   );
 }
 
-function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange }: any) {
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount }: any) {
   const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
