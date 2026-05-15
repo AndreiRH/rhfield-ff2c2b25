@@ -431,8 +431,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
-                    className="inline-flex items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-3 w-3" />
+                    className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-4 w-4" />
                   </button>
                 </PhotoPicker>
               )}
