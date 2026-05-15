@@ -127,6 +127,16 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
 
+  const addRootItem = async () => {
+    if (!bucket || !newItemText.trim()) return;
+    const rootCount = allItems.filter((i: any) => !i.parent_item_id).length;
+    const { error } = await supabase.from("checklist_items").insert({
+      component_id: bucket.id, label: newItemText.trim(), sort_order: rootCount,
+    });
+    if (error) { toast.error(error.message); return; }
+    setNewItemText(""); setAddingItem(false); onChange();
+  };
+
   const Wrapper: any = noCard ? "div" : Card;
   const Inner: any = noCard ? "div" : CardContent;
   return (
@@ -175,10 +185,25 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                   {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
                 </Button>
               )}
+              {!inMode && !addingItem && (
+                <Button size="sm" onClick={() => setAddingItem(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Add item
+                </Button>
+              )}
             </>
           )}
           </div>
         </div>
+
+        {addingItem && bucket && canEdit && (
+          <div className="flex max-w-md gap-2">
+            <Input value={newItemText} autoFocus onChange={(e) => setNewItemText(e.target.value)}
+              placeholder="Checklist item"
+              onKeyDown={(e) => e.key === "Enter" && addRootItem()} />
+            <Button size="sm" onClick={addRootItem}>Add</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAddingItem(false); setNewItemText(""); }}>Cancel</Button>
+          </div>
+        )}
 
         {action.mode === "delete" && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
