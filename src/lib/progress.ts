@@ -13,7 +13,7 @@ type ChecklistProgressItem = {
 
 export function liveChecklistItems<T extends { id?: string; parent_item_id?: string | null; deleted_at: string | null }>(items: T[]): T[] {
   const live = items.filter((i) => !i.deleted_at);
-  const byId = new Map(live.filter((i) => i.id).map((i) => [i.id, i]));
+  const byId = new Map<string, T>(live.filter((i) => i.id).map((i) => [i.id!, i]));
 
   return live.filter((item) => {
     let parentId = item.parent_item_id ?? null;
