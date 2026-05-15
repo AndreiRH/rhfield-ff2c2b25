@@ -62,6 +62,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     });
   }, [components.map((c: any) => c.id).join(",")]);
 
+  // Auto-expand all components when entering copy/delete mode.
+  useEffect(() => {
+    if (inMode) setOpenIds(new Set(components.map((c: any) => c.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inMode]);
+
   const toggleOne = (id: string) => setOpenIds((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
