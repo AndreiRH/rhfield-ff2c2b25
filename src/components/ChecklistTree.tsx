@@ -289,11 +289,16 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           {selected && <Check className="h-2.5 w-2.5" />}
         </span>
       )}
-      {!inMode && <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />}
+      {!inMode && (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />
+        </span>
+      )}
       {!inMode && editingLabel && canEdit ? (
         <Input
           value={label}
           autoFocus
+          onClick={(e) => e.stopPropagation()}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={saveLabel}
           onKeyDown={(e) => {
@@ -304,7 +309,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         />
       ) : (
         <span
-          onDoubleClick={() => !inMode && canEdit && setEditingLabel(true)}
+          onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
           className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
