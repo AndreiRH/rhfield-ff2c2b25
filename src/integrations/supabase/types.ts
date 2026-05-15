@@ -121,6 +121,130 @@ export type Database = {
           },
         ]
       }
+      common_folder_attachments: {
+        Row: {
+          file_name: string | null
+          folder_id: string
+          id: string
+          kind: string
+          sort_order: number
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name?: string | null
+          folder_id: string
+          id?: string
+          kind: string
+          sort_order?: number
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string | null
+          folder_id?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "common_folder_attachments_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "common_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      common_folder_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          folder_id: string
+          id: string
+          photo_path: string | null
+          project_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          folder_id: string
+          id?: string
+          photo_path?: string | null
+          project_id: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          folder_id?: string
+          id?: string
+          photo_path?: string | null
+          project_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "common_folder_notes_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "common_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      common_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          project_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          project_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       common_notes: {
         Row: {
           body: string
