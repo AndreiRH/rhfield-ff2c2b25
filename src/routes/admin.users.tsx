@@ -73,36 +73,45 @@ function UsersPage() {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="grid grid-cols-[1fr_repeat(3,90px)] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              <div className="hidden sm:grid grid-cols-[1fr_repeat(3,72px)] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
                 <div>User</div>
                 {ALL_ROLES.map((r) => <div key={r} className="text-center">{r}</div>)}
               </div>
               {(data ?? []).map((u) => {
                 const isMe = u.user_id === me?.id;
                 return (
-                  <div key={u.user_id} className="grid grid-cols-[1fr_repeat(3,90px)] items-center gap-2 border-b px-4 py-3 last:border-b-0">
+                  <div
+                    key={u.user_id}
+                    className="flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_repeat(3,72px)] sm:items-center sm:gap-2"
+                  >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">
+                      <div className="text-sm font-medium break-words">
                         {u.display_name || u.email.split("@")[0]}
                         {isMe && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">{u.email}</div>
+                      <div className="text-xs text-muted-foreground break-all">{u.email}</div>
                     </div>
-                    {ALL_ROLES.map((r) => {
-                      const has = u.roles?.includes(r);
-                      const disabled = mutate.isPending || (isMe && r === "admin" && has);
-                      return (
-                        <div key={r} className="flex justify-center">
-                          <Checkbox
-                            checked={!!has}
-                            disabled={disabled}
-                            onCheckedChange={(v) =>
-                              mutate.mutate({ userId: u.user_id, role: r, grant: !!v })
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center justify-between gap-2 sm:contents">
+                      {ALL_ROLES.map((r) => {
+                        const has = u.roles?.includes(r);
+                        const disabled = mutate.isPending || (isMe && r === "admin" && has);
+                        return (
+                          <label
+                            key={r}
+                            className="flex flex-1 items-center justify-center gap-2 rounded-md border px-2 py-1.5 sm:flex-none sm:border-0 sm:p-0"
+                          >
+                            <span className="text-xs uppercase tracking-wide text-muted-foreground sm:hidden">{r}</span>
+                            <Checkbox
+                              checked={!!has}
+                              disabled={disabled}
+                              onCheckedChange={(v) =>
+                                mutate.mutate({ userId: u.user_id, role: r, grant: !!v })
+                              }
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
