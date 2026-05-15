@@ -324,7 +324,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   );
 }
 
-function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch }: any) {
+function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch, defaultOpen }: any) {
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const selected = action.isSelected(type.id);
