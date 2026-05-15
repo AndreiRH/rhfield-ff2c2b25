@@ -399,6 +399,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
 export default function ExtraWorkChapterView({ group, canEdit, onChange }: any) {
   return <ChapterGroupCard group={group} canEdit={canEdit} onChange={onChange} />;
