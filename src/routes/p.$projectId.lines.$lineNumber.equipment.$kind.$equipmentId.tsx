@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -176,14 +176,37 @@ function EquipmentDetail() {
 }
 
 type Section = "assembly" | "wiring" | "cold_comm";
+const SECTION_ORDER: Section[] = ["assembly", "wiring", "cold_comm"];
 
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [section, setSection] = useState<Section>("assembly");
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
+  const touchRef = useRef<{ x: number; y: number } | null>(null);
+
+  const goRelative = (delta: number) => {
+    const i = SECTION_ORDER.indexOf(section);
+    const next = SECTION_ORDER[i + delta];
+    if (next) setSection(next);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchRef.current;
+    touchRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    goRelative(dx < 0 ? 1 : -1);
+  };
 
   const meta = PHASE_META[section];
   return (
-    <>
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className={`pointer-events-none fixed inset-0 -z-10 transition-colors ${meta.tint}`} aria-hidden />
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -227,7 +250,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
         )}
       </div>
-    </>
+    </div>
   );
 }
 
