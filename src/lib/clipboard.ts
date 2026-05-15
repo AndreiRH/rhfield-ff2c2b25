@@ -66,7 +66,8 @@ function labelOf(c: Clip) {
   const suffix = n > 1 ? ` (${n})` : "";
   if (c.kind === "item") return `subtask "${c.sourceLabel ?? c.nodes[0]?.label ?? ""}"${suffix}`;
   if (c.kind === "component") return `component "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
-  return `type "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
+  if (c.kind === "componentType") return `type "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
+  return `setting "${c.sourceLabel ?? c.nodes[0]?.title ?? ""}"${suffix}`;
 }
 
 // ─── Clip builders (from loaded data) ─────────────────────────────────────
