@@ -196,7 +196,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title !== note.title && onUpdate({ title })}
+            onBlur={() => {
+              if (title !== note.title) onUpdate({ title });
+              maybeAutoDelete();
+            }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
           />
         ) : (
