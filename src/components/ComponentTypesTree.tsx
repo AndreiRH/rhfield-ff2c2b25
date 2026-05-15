@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -347,7 +347,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     else { setEditing(false); onChange(); }
   };
 
-  const onTap = (event: React.MouseEvent) => {
+  const onTap = (event: MouseEvent) => {
     event.stopPropagation();
     action.toggle(type.id, { kind: "type", payload: type });
   };
