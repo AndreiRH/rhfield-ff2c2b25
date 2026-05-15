@@ -203,19 +203,12 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
-                disabled={action.mode === "delete" && !action.hasSelection}
                 title={isAdmin ? "Delete" : "Delete subtasks"}
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
                 {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
-              {inMode && (
-                <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
-                  title="Cancel" aria-label="Cancel">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
               {clip?.kind === "item" && !inMode && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
