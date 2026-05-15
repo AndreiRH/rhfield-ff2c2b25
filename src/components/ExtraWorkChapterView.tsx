@@ -388,15 +388,17 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           )}
 
           {showPhotos && photos.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {photos.map((p: any) => (
-                <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
-              ))}
+            <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+                {photos.map((p: any) => (
+                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+                ))}
+              </div>
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
-                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-3.5 w-3.5" />
+                    className="inline-flex items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-3 w-3" />
                   </button>
                 </PhotoPicker>
               )}
