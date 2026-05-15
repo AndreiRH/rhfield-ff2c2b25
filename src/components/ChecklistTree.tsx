@@ -23,7 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
-  emptyHint = "No items yet.", showLabels = false,
+  emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
 }: {
   componentId: string;
   items: any[];
@@ -31,6 +31,7 @@ export function ChecklistTree({
   onChange: () => void;
   emptyHint?: string;
   showLabels?: boolean;
+  defaultOpen?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -113,7 +114,7 @@ export function ChecklistTree({
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable showLabels={showLabels} />
+                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen} />
             ))}
           </ul>
         </SortableContext>
@@ -122,7 +123,7 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false }: any) {
   const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
@@ -141,7 +142,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const files = item.item_files ?? [];
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(!!defaultOpen);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);

@@ -6,10 +6,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { toast } from "sonner";
-import { calcProgress, itemsFromGroup } from "@/lib/progress";
-import { ProgressBar } from "@/components/ProgressBar";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
@@ -29,13 +27,19 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
     .flatMap((t: any) => (t.components ?? []).filter((c: any) => !c.deleted_at));
   const bucket = directComps[0] ?? typeComps[0] ?? null;
   const allItems = (bucket?.checklist_items ?? []).filter((i: any) => !i.deleted_at);
-  const overall = calcProgress(itemsFromGroup(group));
 
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expandAll, setExpandAll] = useState(false);
+  const [treeKey, setTreeKey] = useState(0);
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const { clip, set: setClip, clear: clearClip } = useClipboard();
+
+  const toggleExpandAll = () => {
+    setExpandAll((v) => !v);
+    setTreeKey((k) => k + 1);
+  };
 
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
@@ -97,12 +101,18 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {overall.done}/{overall.total} · {overall.pct}%
-          </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {bucket && allItems.length > 0 && !inMode && (
+            <Button size="sm" variant="outline" onClick={toggleExpandAll}>
+              {expandAll ? (
+                <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
+              ) : (
+                <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
+              )}
+            </Button>
+          )}
           {bucket && canEdit && (
-            <div className="flex flex-wrap items-center gap-2">
+            <>
               <Button
                 size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
@@ -131,10 +141,9 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
                   {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
                 </Button>
               )}
-            </div>
+            </>
           )}
         </div>
-        <ProgressBar value={overall.pct} size="sm" />
 
         {action.mode === "delete" && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
@@ -155,11 +164,13 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           )
         ) : (
           <ChecklistTree
+            key={treeKey}
             componentId={bucket.id}
             items={allItems}
             canEdit={canEdit}
             onChange={onChange}
             showLabels
+            defaultOpen={expandAll}
           />
         )}
       </CardContent>
