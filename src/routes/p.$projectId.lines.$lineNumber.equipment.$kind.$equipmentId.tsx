@@ -179,15 +179,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
 
   const meta = PHASE_META[section];
-  const Icon = meta.icon;
-  const currentPct = section === "assembly" ? mech : section === "wiring" ? wiring : cold;
   return (
     <>
-      <div className={`sticky top-0 z-30 -mx-4 mb-3 flex items-center gap-2 px-4 py-1.5 shadow-sm ${meta.header}`}>
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider">{meta.label}</span>
-        <span className="ml-auto font-mono text-[11px] tabular-nums opacity-90">{currentPct}%</span>
-      </div>
+      <div className={`pointer-events-none fixed inset-y-0 left-0 z-30 w-1.5 ${meta.header}`} aria-hidden />
+      <div className={`pointer-events-none fixed inset-y-0 right-0 z-30 w-1.5 ${meta.header}`} aria-hidden />
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
