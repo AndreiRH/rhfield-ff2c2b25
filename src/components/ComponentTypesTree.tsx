@@ -53,10 +53,11 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const inMode = action.mode !== "none";
 
   // When entering copy/delete mode, expand all so users can reach sublayers.
+  const inSelectMode = action.mode === "delete" || action.mode === "copy";
   useEffect(() => {
-    if (inMode) setOpenIds(new Set(types.map((t: any) => t.id)));
+    if (inSelectMode) setOpenIds(new Set(types.map((t: any) => t.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode]);
+  }, [inSelectMode]);
 
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
