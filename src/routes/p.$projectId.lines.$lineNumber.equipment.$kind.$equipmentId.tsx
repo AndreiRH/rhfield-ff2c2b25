@@ -184,7 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
 
       <div className="mt-6">
         {section === "assembly" && (
-          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} />
+          <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
         {section === "wiring" && (
           <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
