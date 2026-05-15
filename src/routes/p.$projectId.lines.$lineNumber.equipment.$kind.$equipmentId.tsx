@@ -26,13 +26,11 @@ function EquipmentDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isChildRoute = pathname.endsWith("/settings");
+  const isChildRoute = pathname.includes(`/${equipmentId}/settings`);
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
 
-  if (isChildRoute) return <Outlet />;
-
   const { data, isLoading } = useQuery({
-    enabled: !!session,
+    enabled: !!session && !isChildRoute,
     queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
     queryFn: async () => {
       const { data: line, error } = await supabase
@@ -119,6 +117,8 @@ function EquipmentDetail() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
+
+  if (isChildRoute) return <Outlet />;
 
   if (!session) return null;
   const plantLabel = kind === "kiln" ? "Kiln" : "SHS";
