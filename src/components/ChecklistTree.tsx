@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
   emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
+  canDeleteRoot = true,
 }: {
   componentId: string;
   items: any[];
@@ -32,6 +33,7 @@ export function ChecklistTree({
   emptyHint?: string;
   showLabels?: boolean;
   defaultOpen?: boolean;
+  canDeleteRoot?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -115,7 +117,8 @@ export function ChecklistTree({
           <ul className="space-y-1">
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen} />
+                onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen}
+                canDeleteRoot={canDeleteRoot} />
             ))}
           </ul>
         </SortableContext>
@@ -124,7 +127,7 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
   const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
@@ -259,8 +262,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   const canExpand = (hasContent || canEdit) && !inMode;
 
+  // Engineers (canDeleteRoot=false) cannot select root items in delete mode.
+  const blockedFromMode = mode === "delete" && !canDeleteRoot && !item.parent_item_id;
+
   const onRowClick = (event: MouseEvent) => {
     event.stopPropagation();
+    if (blockedFromMode) return;
     action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
   };
 
