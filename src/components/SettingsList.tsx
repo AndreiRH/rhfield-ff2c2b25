@@ -355,16 +355,48 @@ function SettingRow({
     onReload();
   };
   const removePhoto = async (p: SettingPhoto) => {
-    await supabase.storage.from("photos").remove([p.storage_path]);
-    await supabase.from("setting_photos").delete().eq("id", p.id);
+    const { error } = await supabase.from("setting_photos").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_deleted", old_value: p.storage_path.split("/").pop() ?? null, user_id: userId });
     onReload();
+    let undone = false;
+    toast.success("Photo deleted", {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          undone = true;
+          const { error: undoError } = await supabase.from("setting_photos")
+            .insert({ id: p.id, equipment_setting_id: setting.id, storage_path: p.storage_path });
+          if (undoError) toast.error(undoError.message); else onReload();
+        },
+      },
+    });
+    setTimeout(async () => {
+      if (!undone) await supabase.storage.from("photos").remove([p.storage_path]);
+    }, 3500);
   };
   const removeFile = async (f: SettingFile) => {
-    await supabase.storage.from("files").remove([f.storage_path]);
-    await supabase.from("setting_files").delete().eq("id", f.id);
+    const { error } = await supabase.from("setting_files").delete().eq("id", f.id);
+    if (error) { toast.error(error.message); return; }
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_deleted", old_value: f.file_name, user_id: userId });
     onReload();
+    let undone = false;
+    toast.success("File deleted", {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          undone = true;
+          const { error: undoError } = await supabase.from("setting_files")
+            .insert({ id: f.id, equipment_setting_id: setting.id, storage_path: f.storage_path, file_name: f.file_name });
+          if (undoError) toast.error(undoError.message); else onReload();
+        },
+      },
+    });
+    setTimeout(async () => {
+      if (!undone) await supabase.storage.from("files").remove([f.storage_path]);
+    }, 3500);
   };
 
   const onRowClick = (e: MouseEvent) => {
