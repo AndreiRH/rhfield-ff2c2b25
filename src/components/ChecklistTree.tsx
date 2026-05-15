@@ -311,7 +311,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         <span
           onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
+          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""}`}
         >{item.label}</span>
       )}
       {/* Always-visible content indicators */}
