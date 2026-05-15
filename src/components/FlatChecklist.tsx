@@ -6,10 +6,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { toast } from "sonner";
-import { calcProgress, itemsFromGroup } from "@/lib/progress";
-import { ProgressBar } from "@/components/ProgressBar";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
