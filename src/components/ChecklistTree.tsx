@@ -328,23 +328,26 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
       {open && !inMode && (
         <div className="border-t bg-muted/10">
           {canEdit && (
-            <div className="flex flex-wrap gap-1 border-b border-dashed px-3 py-1.5">
+            <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-b border-dashed px-2 py-1 sm:flex-wrap sm:gap-1 sm:px-3 sm:py-1.5">
               <ActionBtn onClick={() => { setShowNoteEditor(true); }} icon={<StickyNote className="h-3 w-3" />} label="Note" />
-              <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
+              {depth < 2 && (
+                <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
+              )}
               <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                <button className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
                   <Camera className="h-3 w-3" /> Photo
                 </button>
               </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
                 <Paperclip className="h-3 w-3" /> File
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
-              {clip?.kind === "item" && (
+              {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
-                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <ClipboardPaste className="h-3 w-3" /> Paste "{clip.sourceLabel ?? clip.node.label}"
+                  className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
+                  <ClipboardPaste className="h-3 w-3" /> Paste
                 </button>
               )}
             </div>
