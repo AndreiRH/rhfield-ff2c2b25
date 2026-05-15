@@ -28,13 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       if (s?.user) {
         setTimeout(() => loadRoles(s.user.id), 0);
+        setTimeout(() => { import("@/lib/warm-up").then((m) => m.warmUp(true)); }, 0);
       } else {
         setRoles([]);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      if (data.session?.user) loadRoles(data.session.user.id);
+      if (data.session?.user) {
+        loadRoles(data.session.user.id);
+        import("@/lib/warm-up").then((m) => m.warmUp(true));
+      }
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
