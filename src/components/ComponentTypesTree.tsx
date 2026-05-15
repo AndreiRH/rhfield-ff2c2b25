@@ -303,7 +303,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
         {types.length > 0 && (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={types.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {types.map((t: any) => {
                   if (q && matchingTypeIds && !matchingTypeIds.has(t.id)) return null;
                   return (
