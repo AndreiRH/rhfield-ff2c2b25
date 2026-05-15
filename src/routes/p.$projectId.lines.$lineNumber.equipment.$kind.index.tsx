@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 import {
@@ -139,9 +139,10 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
   const avgCold = totals.n ? Math.round(totals.cold / totals.n) : 0;
   const overall = Math.round((avgMech + avgWiring + avgCold) / 3);
 
+  type Mode = "none" | "reorder" | "copy" | "delete";
+  const [mode, setMode] = useState<Mode>("none");
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [deleteMode, setDeleteMode] = useState(false);
 
   const title = kind === "kiln" ? "Kiln" : "SHS";
 
@@ -152,6 +153,14 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
     });
     if (error) toast.error(error.message);
     else { setNewName(""); setAdding(false); onChange(); }
+  };
+
+  const duplicateEquipment = async (pe: any) => {
+    const { error } = await supabase.from("plant_equipment").insert({
+      line_id: lineId, kind, name: `${pe.name} (copy)`, sort_order: equipment.length,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success(`Duplicated "${pe.name}"`); onChange(); }
   };
 
   return (
@@ -183,21 +192,46 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
       </div>
 
       {canEdit && !adding && (
-        <div className={`mb-3 grid gap-2 ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Add equipment
-          </Button>
-          {isAdmin && (
-            <Button
-              size="sm"
-              variant={deleteMode ? "destructive" : "outline"}
-              disabled={equipment.length === 0}
-              onClick={() => setDeleteMode((d) => !d)}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              {deleteMode ? "Done" : "Delete"}
-            </Button>
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          {equipment.length > 0 && (
+            <>
+              <Button
+                size="sm"
+                variant={mode === "reorder" ? "default" : "outline"}
+                onClick={() => setMode(mode === "reorder" ? "none" : "reorder")}
+                title="Reorder"
+                aria-label="Reorder"
+              >
+                <GripVertical className="h-4 w-4" />
+                {mode === "reorder" && <span className="ml-1">Done</span>}
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === "copy" ? "default" : "outline"}
+                onClick={() => setMode(mode === "copy" ? "none" : "copy")}
+                title="Duplicate"
+                aria-label="Duplicate"
+              >
+                <Copy className="h-4 w-4" />
+                {mode === "copy" && <span className="ml-1">Done</span>}
+              </Button>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant={mode === "delete" ? "destructive" : "outline"}
+                  onClick={() => setMode(mode === "delete" ? "none" : "delete")}
+                  title="Delete"
+                  aria-label="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {mode === "delete" && <span className="ml-1">Done</span>}
+                </Button>
+              )}
+            </>
           )}
+          <Button size="sm" onClick={() => setAdding(true)} title="Add equipment" aria-label="Add equipment">
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
@@ -211,9 +245,19 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
         </div>
       )}
 
-      {deleteMode && (
+      {mode === "delete" && (
         <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          Select an equipment to delete it. Tap "Done" to exit delete mode.
+          Tap an equipment to delete it. Tap the trash icon again to exit delete mode.
+        </p>
+      )}
+      {mode === "copy" && (
+        <p className="mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+          Tap an equipment to duplicate it. Tap the copy icon again to exit.
+        </p>
+      )}
+      {mode === "reorder" && (
+        <p className="mb-3 rounded-md border border-muted-foreground/20 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Drag the handle on each card to reorder. Tap the reorder icon again when done.
         </p>
       )}
 
@@ -227,14 +271,15 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
           projectId={projectId}
           lineNumber={lineNumber}
           kind={kind}
-          deleteMode={deleteMode}
+          mode={mode}
+          onDuplicate={duplicateEquipment}
         />
       )}
     </>
   );
 }
 
-function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
+function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber, kind, mode, onDuplicate }: any) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -270,7 +315,8 @@ function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber
               projectId={projectId}
               lineNumber={lineNumber}
               kind={kind}
-              deleteMode={deleteMode}
+              mode={mode}
+              onDuplicate={onDuplicate}
             />
           ))}
         </div>
@@ -291,7 +337,7 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
   );
 }
 
-function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, deleteMode }: any) {
+function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mode, onDuplicate }: any) {
   const navigate = useNavigate();
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
   const [editing, setEditing] = useState(false);
@@ -326,13 +372,18 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
     });
   };
 
+  const isDelete = mode === "delete";
+  const isCopy = mode === "copy";
+  const isReorder = mode === "reorder";
   return (
     <Card
       ref={setNodeRef}
       style={style}
-      className={`transition ${deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
+      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
       onClick={(e) => {
-        if (deleteMode) { setConfirmDelete(true); return; }
+        if (isDelete) { setConfirmDelete(true); return; }
+        if (isCopy) { onDuplicate?.(pe); return; }
+        if (isReorder) return;
         if (editing) return;
         const target = e.target as HTMLElement;
         if (target.closest("button, a, input, textarea, [role='button'], [data-no-nav]")) return;
@@ -344,7 +395,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
     >
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          {canEdit && !editing && !deleteMode && (
+          {canEdit && !editing && isReorder && (
             <button
               type="button"
               className="-ml-1 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
@@ -362,9 +413,15 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, del
               <Button size="icon" variant="ghost" onClick={save}><Check className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(pe.name); }}><X className="h-4 w-4" /></Button>
             </div>
-          ) : deleteMode ? (
+          ) : isDelete ? (
             <div className="flex flex-1 items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
+              <h3 className="text-lg font-semibold">{pe.name}</h3>
+              <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
+            </div>
+          ) : isCopy ? (
+            <div className="flex flex-1 items-center gap-2">
+              <Copy className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold">{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
             </div>
