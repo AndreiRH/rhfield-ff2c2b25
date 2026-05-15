@@ -290,13 +290,15 @@ function SettingsListInner({
 }
 
 function SettingRow({
-  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload,
+  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload, plantEquipmentId, userId,
 }: {
   setting: Setting; canEdit: boolean; open: boolean;
   onToggleOpen: () => void;
   onTitle: (t: string) => void;
   onBody: (b: string) => void;
   onReload: () => void;
+  plantEquipmentId: string;
+  userId?: string;
 }) {
   const action = useTreeAction()!;
   const mode = action.mode;
@@ -320,6 +322,7 @@ function SettingRow({
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_photos").insert({ equipment_setting_id: setting.id, storage_path: path });
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_added", new_value: file.name, user_id: userId });
     onReload();
   };
   const uploadFile = async (file: File) => {
@@ -327,16 +330,19 @@ function SettingRow({
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_files").insert({ equipment_setting_id: setting.id, storage_path: path, file_name: file.name });
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_added", new_value: file.name, user_id: userId });
     onReload();
   };
   const removePhoto = async (p: SettingPhoto) => {
     await supabase.storage.from("photos").remove([p.storage_path]);
     await supabase.from("setting_photos").delete().eq("id", p.id);
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_deleted", old_value: p.storage_path.split("/").pop() ?? null, user_id: userId });
     onReload();
   };
   const removeFile = async (f: SettingFile) => {
     await supabase.storage.from("files").remove([f.storage_path]);
     await supabase.from("setting_files").delete().eq("id", f.id);
+    await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_deleted", old_value: f.file_name, user_id: userId });
     onReload();
   };
 
