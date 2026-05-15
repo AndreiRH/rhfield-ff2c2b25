@@ -283,28 +283,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
       {open && !inMode && (
         <div className="border-t bg-muted/10">
           {canEdit && (
-            <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-b border-dashed px-2 py-1 sm:flex-wrap sm:gap-1 sm:px-3 sm:py-1.5">
+            <div className="flex flex-nowrap items-center gap-1 border-b border-dashed px-2 py-1 sm:px-3 sm:py-1.5">
               <ActionBtn onClick={() => setShowNoteEditor((v) => !v)}
-                icon={<StickyNote className="h-3 w-3" />} label="Note" active={ownNote} />
+                icon={<StickyNote className="h-3.5 w-3.5" />} label="Note" active={ownNote} iconOnly />
               {depth < 2 && (
-                <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
+                <ActionBtn onClick={() => setAddingSub(true)}
+                  icon={<ListPlus className="h-3.5 w-3.5" />} label="Subtask" iconOnly />
               )}
               <PhotoPicker onPick={uploadPhoto}>
-                <button className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                  <Camera className="h-3 w-3" /> Photo
+                <button title="Photo"
+                  className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  <Camera className="h-3.5 w-3.5" />
                 </button>
               </PhotoPicker>
-              <label className={`inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                <Paperclip className="h-3 w-3" /> File
+              <label title="File"
+                className={`inline-flex cursor-pointer items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                <Paperclip className="h-3.5 w-3.5" />
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
               {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
-                  className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
-                  <ClipboardPaste className="h-3 w-3" /> Paste
-                  {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  {clip.nodes.length > 1 ? <span className="ml-0.5 text-[10px]">{clip.nodes.length}</span> : null}
                 </button>
               )}
             </div>
@@ -384,7 +387,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   );
 }
 
-function ActionBtn({ onClick, icon, label, active }: any) {
+function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
+  if (iconOnly) {
+    return (
+      <button onClick={onClick} title={label}
+        className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}>
+        {icon}
+      </button>
+    );
+  }
   return (
     <button onClick={onClick}
       className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}>

@@ -49,6 +49,12 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
 
+  // When entering copy/delete mode, expand all so users can reach sublayers.
+  useEffect(() => {
+    if (inMode) setOpenIds(new Set(types.map((t: any) => t.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inMode]);
+
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
     try {
@@ -176,7 +182,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
               <Button
                 size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
-                onClick={() => action.setMode(action.mode === "copy" ? "none" : "copy")}
+                onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
+                disabled={action.mode === "copy" && !action.hasSelection}
               >
                 <Copy className="mr-1 h-4 w-4" />
                 {action.mode === "copy" ? `Done${action.count ? ` (${action.count})` : ""}` : "Copy"}
@@ -185,15 +192,16 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
                 size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
+                disabled={action.mode === "delete" && !action.hasSelection}
               >
                 <Trash2 className="mr-1 h-4 w-4" />
                 {action.mode === "delete" ? `Done${action.count ? ` (${action.count})` : ""}` : "Delete"}
               </Button>
             </>
           )}
-          {action.mode === "copy" && (
-            <Button size="sm" variant="default" onClick={commitDone} disabled={!action.hasSelection}>
-              <Check className="mr-1 h-4 w-4" /> Done{action.count ? ` (${action.count})` : ""}
+          {inMode && (
+            <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}>
+              Cancel
             </Button>
           )}
           {canEdit && !adding && !inMode && (
@@ -377,7 +385,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
         )}
       </div>
 
-      {open && (
+      {(open || inMode) && (
         <div className="p-3">
           <ComponentsList
             group={type}

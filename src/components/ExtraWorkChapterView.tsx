@@ -62,6 +62,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     });
   }, [components.map((c: any) => c.id).join(",")]);
 
+  // Auto-expand all components when entering copy/delete mode.
+  useEffect(() => {
+    if (inMode) setOpenIds(new Set(components.map((c: any) => c.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inMode]);
+
   const toggleOne = (id: string) => setOpenIds((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -314,7 +320,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         )}
       </div>
 
-      {open && !inMode && (
+      {(open || inMode) && !inMode && (
         <div className="space-y-3 p-3">
           {canEdit && (
             <div className="flex flex-wrap gap-1">
@@ -375,6 +381,20 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             </div>
           )}
 
+          <div className="rounded-md border border-dashed bg-background p-2">
+            <ChecklistTree
+              componentId={component.id}
+              items={allItems}
+              canEdit={canEdit}
+              onChange={onChange}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* In copy/delete mode: render ONLY the checklist so items can be selected. */}
+      {inMode && allItems.length > 0 && (
+        <div className="p-3">
           <div className="rounded-md border border-dashed bg-background p-2">
             <ChecklistTree
               componentId={component.id}
