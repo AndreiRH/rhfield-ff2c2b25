@@ -238,6 +238,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
 
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
+  const notesCount =
+    ((component.note ?? "").trim() !== "" ? 1 : 0) +
+    allItems.filter((i: any) => (i.note ?? "").trim() !== "").length;
 
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
