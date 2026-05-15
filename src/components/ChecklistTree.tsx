@@ -283,11 +283,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const onRowClick = (event: MouseEvent) => {
     event.stopPropagation();
     if (blockedFromMode) return;
-    const entries = [item, ...descendants].map((node: any) => [
+    const entries: Array<[string, { kind: "item"; payload: { item: any; allItems: any[] } }]> = [item, ...descendants].map((node: any) => [
       node.id,
       { kind: "item" as const, payload: { item: node, allItems } },
-    ] as const);
-    action?.toggleMany(entries as any);
+    ]);
+    action?.toggleMany(entries);
   };
 
   const row = (
