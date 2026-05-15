@@ -244,8 +244,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             </Button>
           )}
           {canEdit && !adding && !inMode && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add type
+            <Button size="sm" onClick={() => setAdding(true)} title="Add type" aria-label="Add type">
+              <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add type</span>
             </Button>
           )}
           {clip && !inMode && canEdit && clip.kind === "componentType" && (

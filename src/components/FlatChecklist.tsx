@@ -227,8 +227,8 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 </Button>
               )}
               {!inMode && !addingItem && (
-                <Button size="sm" onClick={() => setAddingItem(true)}>
-                  <Plus className="mr-1 h-4 w-4" /> Add item
+                <Button size="sm" onClick={() => setAddingItem(true)} title="Add item" aria-label="Add item">
+                  <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add item</span>
                 </Button>
               )}
             </>

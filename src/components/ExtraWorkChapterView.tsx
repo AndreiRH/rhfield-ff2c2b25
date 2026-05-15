@@ -117,8 +117,8 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
             </Button>
           )}
           {canEdit && !adding && !inMode && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add component
+            <Button size="sm" onClick={() => setAdding(true)} title="Add component" aria-label="Add component">
+              <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add component</span>
             </Button>
           )}
         </div>
