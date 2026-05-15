@@ -30,7 +30,11 @@ function EquipmentSettingsPage() {
       const { data: pe, error } = await supabase
         .from("plant_equipment").select("id, name").eq("id", equipmentId).single();
       if (error) throw error;
-      return { pe };
+      const { count: lineCount } = await supabase
+        .from("lines")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId);
+      return { pe, lineCount: lineCount ?? 10 };
     },
   });
 
@@ -76,6 +80,7 @@ function EquipmentSettingsPage() {
               equipmentId={equipmentId}
               canEdit={canEdit}
               userId={user?.id}
+                lineCount={data.lineCount}
             />
           </>
         )}
