@@ -186,7 +186,9 @@ self.addEventListener("fetch", (event) => {
 
   if (req.method !== "GET") return;
 
-  // Supabase REST reads: stale-while-revalidate.
+  // Supabase REST reads: stale-while-revalidate, with snapshot fallback when
+  // both the network and the HTTP cache miss (covers screens you've never
+  // opened online).
   if (isSupabaseRest(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_DATA);
@@ -194,8 +196,17 @@ self.addEventListener("fetch", (event) => {
       const network = fetch(req).then((res) => {
         if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
-      }).catch(() => cached);
-      return cached || network;
+      }).catch(() => null);
+      if (cached) {
+        // Don't await network — let it revalidate in the background.
+        event.waitUntil(network);
+        return cached;
+      }
+      const fresh = await network;
+      if (fresh) return fresh;
+      // No cache, no network → answer from the snapshot DB.
+      return await snapshotResponse(url) ||
+        new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
     })());
     return;
   }
