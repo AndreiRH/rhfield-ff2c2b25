@@ -184,9 +184,12 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
 
 function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, defaultOpen }: any) {
   const action = useTreeAction();
-  const inMode = action?.mode !== "none" && !!action;
+  const mode = action?.mode ?? "none";
+  const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
+  const inReorder = mode === "reorder";
   const selected = !!action?.isSelected(component.id);
-  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || inMode });
+  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || !inReorder });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
