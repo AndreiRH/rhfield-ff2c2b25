@@ -505,13 +505,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
       {/* Render subs in any action mode so they're visible/targetable */}
       {inMode && subs.length > 0 && (
-        <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
-          {subs.map((s: any) => (
-            <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-              onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
-              canDeleteRoot={canDeleteRoot} />
-          ))}
-        </ul>
+        <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-1 border-l-2 border-primary/20 px-2 py-2 ml-4">
+            {subs.map((s: any) => (
+              <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
+                onChange={onChange} depth={depth + 1} sortable showLabels={false}
+                canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen} />
+            ))}
+          </ul>
+        </SortableContext>
       )}
     </li>
   );
