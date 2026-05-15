@@ -233,8 +233,9 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   );
 }
 
-function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, externalSearch }: any) {
-  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || deleteMode });
+function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, copyMode, onCopy, externalSearch }: any) {
+  const inActionMode = deleteMode || copyMode;
+  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || inActionMode });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
@@ -249,7 +250,6 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { set: setClip } = useClipboard();
 
   const rename = async () => {
     if (!name.trim() || name === type.name) { setEditing(false); return; }
@@ -282,18 +282,24 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
       ref={sortableArgs.setNodeRef}
       style={style}
       className={`overflow-hidden rounded-lg border bg-card shadow-sm transition ${
-        deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : "border-border"
+        deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10"
+        : copyMode ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10"
+        : "border-border"
       }`}
-      onClick={deleteMode ? () => setConfirmDelete(true) : undefined}
+      onClick={
+        deleteMode ? () => setConfirmDelete(true)
+        : copyMode ? () => onCopy?.()
+        : undefined
+      }
     >
       <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2">
-        {canEdit && !deleteMode && (
+        {canEdit && !inActionMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        {!deleteMode && (
+        {!inActionMode && (
           <button onClick={onToggleOpen} className="text-muted-foreground hover:text-foreground">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
@@ -301,6 +307,11 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
         {deleteMode ? (
           <div className="flex flex-1 items-center gap-2">
             <Trash2 className="h-4 w-4 text-destructive" />
+            <span className="text-base font-semibold">{type.name}</span>
+          </div>
+        ) : copyMode ? (
+          <div className="flex flex-1 items-center gap-2">
+            <Copy className="h-4 w-4 text-primary" />
             <span className="text-base font-semibold">{type.name}</span>
           </div>
         ) : editing ? (
@@ -323,23 +334,14 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
-        {canEdit && !deleteMode && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setClip(buildTypeClip(type)); }}
-            title="Copy this type with all its components & subtasks"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
-          >
-            <Copy className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
       </div>
 
-      {open && (
+      {open && !inActionMode && (
         <div className="p-3">
           <ComponentsList
             group={type}
             parentKind="component_type"
-            canEdit={canEdit && !deleteMode}
+            canEdit={canEdit && !inActionMode}
             onChange={onChange}
             externalSearch={externalSearch}
             hideTitle
