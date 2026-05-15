@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
@@ -153,6 +153,18 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
               <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
             </h1>
           </div>
+          <Link
+            to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings"
+            params={{
+              projectId: data.line.project_id,
+              lineNumber: String(data.line.number),
+              kind: data.pe.kind,
+              equipmentId: data.pe.id,
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-sky-50"
+          >
+            <SettingsIcon className="h-3.5 w-3.5" /> Settings
+          </Link>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <SectionTab label="Assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
