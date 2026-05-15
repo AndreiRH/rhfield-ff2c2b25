@@ -265,11 +265,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
   const row = (
     <div
-      className={`flex items-center gap-1 px-2 py-1.5 ${inMode ? "cursor-pointer" : ""} ${
+      className={`flex items-center gap-1 px-2 py-1.5 ${(inMode || canExpand) ? "cursor-pointer" : ""} ${
         mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
       }`}
-      onClick={inMode ? onRowClick : undefined}
+      onClick={inMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
       {sortable && canEdit && !inMode && (
         <button {...sortableArgs.attributes} {...sortableArgs.listeners}
