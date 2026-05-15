@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Plus, Cog, CalendarDays, Trash2, Flame, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Cog, CalendarDays, Trash2, Factory } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -134,13 +134,7 @@ function LineOverview() {
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {eq.kind === "kiln" ? (
-                              <Flame className="h-5 w-5 text-orange-500" />
-                            ) : eq.kind === "shs" ? (
-                              <Zap className="h-5 w-5 text-amber-500" />
-                            ) : (
-                              <Cog className="h-5 w-5 text-muted-foreground" />
-                            )}
+                            <Factory className="h-5 w-5 text-muted-foreground" />
                             <h3 className="text-lg font-semibold">{eq.name}</h3>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
