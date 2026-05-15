@@ -122,7 +122,7 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels }: any) {
   const sortableArgs = useSortable({ id: item.id, disabled: !sortable });
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
