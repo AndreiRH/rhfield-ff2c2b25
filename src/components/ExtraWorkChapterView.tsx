@@ -291,6 +291,15 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
         {canEdit && (
+          <button
+            onClick={() => setClip(buildComponentClip(component))}
+            title="Copy this item with all its subtasks"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          >
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+        {canEdit && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent">
