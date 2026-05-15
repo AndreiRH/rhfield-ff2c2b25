@@ -280,14 +280,46 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
-    await supabase.storage.from("photos").remove([p.storage_path]);
-    await supabase.from("item_photos").delete().eq("id", p.id);
+    const { error } = await supabase.from("item_photos").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
     onChange();
+    let undone = false;
+    toast.success("Photo deleted", {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          undone = true;
+          const { error: e } = await supabase.from("item_photos")
+            .insert({ id: p.id, item_id: item.id, storage_path: p.storage_path });
+          if (e) toast.error(e.message); else onChange();
+        },
+      },
+    });
+    setTimeout(async () => {
+      if (!undone) await supabase.storage.from("photos").remove([p.storage_path]);
+    }, 3500);
   };
   const removeFile = async (f: any) => {
-    await supabase.storage.from("files").remove([f.storage_path]);
-    await supabase.from("item_files").delete().eq("id", f.id);
+    const { error } = await supabase.from("item_files").delete().eq("id", f.id);
+    if (error) { toast.error(error.message); return; }
     onChange();
+    let undone = false;
+    toast.success("File deleted", {
+      duration: 3000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          undone = true;
+          const { error: e } = await supabase.from("item_files")
+            .insert({ id: f.id, item_id: item.id, storage_path: f.storage_path, file_name: f.file_name });
+          if (e) toast.error(e.message); else onChange();
+        },
+      },
+    });
+    setTimeout(async () => {
+      if (!undone) await supabase.storage.from("files").remove([f.storage_path]);
+    }, 3500);
   };
 
   const canExpand = hasContent || canEdit;
