@@ -8,7 +8,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus, ChevronsUpDown, ChevronsDownUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
