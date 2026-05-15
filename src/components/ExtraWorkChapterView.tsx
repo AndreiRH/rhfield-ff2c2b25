@@ -108,9 +108,10 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         <div className="flex items-center gap-2">
           {canEdit && !inMode && clip?.kind === "component" && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
-              title={`Paste ${clip.nodes.length} component${clip.nodes.length > 1 ? "s" : ""}`}>
-              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+              title={`Paste ${clip.nodes.length} component${clip.nodes.length > 1 ? "s" : ""}`}
+              aria-label="Paste">
+              <ClipboardPaste className="h-4 w-4" />
+              {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
             </Button>
           )}
           {canEdit && !adding && !inMode && (
@@ -121,7 +122,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         </div>
       </div>
 
-      {!usingExternal && components.length > 1 && !inMode && (
+      {!usingExternal && !hideTitle && components.length > 1 && !inMode && (
         <div className="relative max-w-md">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input

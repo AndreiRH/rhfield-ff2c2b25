@@ -83,9 +83,10 @@ export function ChecklistTree({
         <div className="flex flex-wrap justify-end gap-1">
           {clip?.kind === "item" && !inMode && (
             <Button size="sm" variant="outline" onClick={pasteHere}
-              title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
-              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+              title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
+              aria-label="Paste">
+              <ClipboardPaste className="h-4 w-4" />
+              {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
             </Button>
           )}
           {!adding && !inMode && (
