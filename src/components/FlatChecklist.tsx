@@ -164,11 +164,13 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
           )
         ) : (
           <ChecklistTree
+            key={treeKey}
             componentId={bucket.id}
             items={allItems}
             canEdit={canEdit}
             onChange={onChange}
             showLabels
+            defaultOpen={expandAll}
           />
         )}
       </CardContent>
