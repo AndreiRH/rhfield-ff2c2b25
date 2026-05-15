@@ -197,67 +197,83 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   weights[section] = 1 - progress;
   if (targetSection) weights[targetSection] = progress;
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (commitTimeoutRef.current) {
-      window.clearTimeout(commitTimeoutRef.current);
-      commitTimeoutRef.current = null;
-    }
-    const t = e.touches[0];
-    startRef.current = { x: t.clientX, y: t.clientY, decided: null };
-    widthRef.current = (e.currentTarget as HTMLElement).clientWidth || window.innerWidth;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const start = startRef.current;
-    if (!start) return;
-    const t = e.touches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (start.decided === null) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      if (start.decided === "h") setSwipeState("dragging");
-    }
-    if (start.decided !== "h") return;
-    const cur = SECTION_ORDER.indexOf(section);
-    let val = dx;
-    if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
-      val = dx * 0.25; // resist past edges
-    }
-    setSwipeDx(val);
-  };
-  const onTouchEnd = () => {
-    const decided = startRef.current?.decided;
-    const dx = swipeDx;
-    startRef.current = null;
-    if (decided !== "h") {
-      setSwipeState("idle");
-      setSwipeDx(0);
-      return;
-    }
-    const w = widthRef.current;
-    const ratio = dx / w;
-    const localDir = dx < 0 ? 1 : -1;
-    const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
-    if (Math.abs(ratio) > 0.25 && localTarget) {
-      // Commit: animate content fully off, then swap section silently
-      setSwipeState("animating");
-      setSwipeDx(localDir === 1 ? -w : w);
-      commitTimeoutRef.current = window.setTimeout(() => {
+  // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
+  useEffect(() => {
+    const onStart = (e: TouchEvent) => {
+      // Ignore gestures that start on interactive controls — buttons, links, inputs.
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("button, a, input, textarea, select, [role='button']")) return;
+      if (commitTimeoutRef.current) {
+        window.clearTimeout(commitTimeoutRef.current);
+        commitTimeoutRef.current = null;
+      }
+      const t = e.touches[0];
+      startRef.current = { x: t.clientX, y: t.clientY, decided: null };
+      widthRef.current = window.innerWidth;
+    };
+    const onMove = (e: TouchEvent) => {
+      const start = startRef.current;
+      if (!start) return;
+      const t = e.touches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      if (start.decided === null) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+        if (start.decided === "h") setSwipeState("dragging");
+      }
+      if (start.decided !== "h") return;
+      const cur = SECTION_ORDER.indexOf(section);
+      let val = dx;
+      if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
+        val = dx * 0.25; // resist past edges
+      }
+      setSwipeDx(val);
+    };
+    const onEnd = () => {
+      const decided = startRef.current?.decided;
+      // We need the latest swipeDx; read via functional state update.
+      startRef.current = null;
+      if (decided !== "h") {
         setSwipeState("idle");
-        setSection(localTarget);
         setSwipeDx(0);
-        commitTimeoutRef.current = null;
-      }, 260);
-    } else {
-      // Cancel: animate back to start
-      setSwipeState("animating");
-      setSwipeDx(0);
-      commitTimeoutRef.current = window.setTimeout(() => {
-        setSwipeState("idle");
-        commitTimeoutRef.current = null;
-      }, 260);
-    }
-  };
+        return;
+      }
+      setSwipeDx((dx) => {
+        const w = widthRef.current;
+        const ratio = dx / w;
+        const localDir = dx < 0 ? 1 : -1;
+        const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
+        // Need to swipe more than half the screen to commit; otherwise snap back.
+        if (Math.abs(ratio) > 0.5 && localTarget) {
+          setSwipeState("animating");
+          commitTimeoutRef.current = window.setTimeout(() => {
+            setSwipeState("idle");
+            setSection(localTarget);
+            setSwipeDx(0);
+            commitTimeoutRef.current = null;
+          }, 260);
+          return localDir === 1 ? -w : w;
+        }
+        setSwipeState("animating");
+        commitTimeoutRef.current = window.setTimeout(() => {
+          setSwipeState("idle");
+          commitTimeoutRef.current = null;
+        }, 260);
+        return 0;
+      });
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, [section]);
 
   const dragging = swipeState === "dragging";
   const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
@@ -267,6 +283,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const meta = PHASE_META[section];
   const targetMeta = targetSection ? PHASE_META[targetSection] : null;
   const w = widthRef.current;
+  const PANE_GAP = 32; // visible gap between current pane and the incoming pane during swipe
   const tapNav = (s: Section) => {
     if (commitTimeoutRef.current) { window.clearTimeout(commitTimeoutRef.current); commitTimeoutRef.current = null; }
     setSwipeState("idle");
