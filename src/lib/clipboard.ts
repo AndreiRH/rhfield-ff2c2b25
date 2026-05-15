@@ -7,10 +7,20 @@ export type ItemNode = { label: string; subs: ItemNode[] };
 export type ComponentClipNode = { name: string; items: ItemNode[] };
 export type TypeClipNode = { name: string; components: ComponentClipNode[] };
 
+export type SettingPhotoNode = { storage_path: string };
+export type SettingFileNode = { storage_path: string; file_name: string };
+export type SettingNode = {
+  title: string;
+  body: string;
+  photos: SettingPhotoNode[];
+  files: SettingFileNode[];
+};
+
 export type Clip =
   | { kind: "item"; nodes: ItemNode[]; sourceLabel?: string }
   | { kind: "component"; nodes: ComponentClipNode[]; sourceLabel?: string }
-  | { kind: "componentType"; nodes: TypeClipNode[]; sourceLabel?: string };
+  | { kind: "componentType"; nodes: TypeClipNode[]; sourceLabel?: string }
+  | { kind: "setting"; nodes: SettingNode[]; sourceLabel?: string };
 
 const KEY = "lov.clipboard.v1";
 const EVT = "lov-clipboard-change";
@@ -56,7 +66,8 @@ function labelOf(c: Clip) {
   const suffix = n > 1 ? ` (${n})` : "";
   if (c.kind === "item") return `subtask "${c.sourceLabel ?? c.nodes[0]?.label ?? ""}"${suffix}`;
   if (c.kind === "component") return `component "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
-  return `type "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
+  if (c.kind === "componentType") return `type "${c.sourceLabel ?? c.nodes[0]?.name ?? ""}"${suffix}`;
+  return `setting "${c.sourceLabel ?? c.nodes[0]?.title ?? ""}"${suffix}`;
 }
 
 // ─── Clip builders (from loaded data) ─────────────────────────────────────
@@ -150,3 +161,60 @@ export async function pasteType(clip: Extract<Clip, { kind: "componentType" }>, 
     await insertType(clip.nodes[i], equipment_group_id, sort_order + i);
   }
 }
+
+// ─── Settings clip ────────────────────────────────────────────────────────
+export function buildSettingClip(setting: any): Clip {
+  return { kind: "setting", nodes: [settingToNode(setting)], sourceLabel: setting.title };
+}
+export function buildSettingClipMany(settings: any[]): Clip {
+  return { kind: "setting", nodes: settings.map(settingToNode), sourceLabel: settings[0]?.title };
+}
+function settingToNode(s: any): SettingNode {
+  return {
+    title: s.title,
+    body: s.body ?? "",
+    photos: (s.setting_photos ?? []).map((p: any) => ({ storage_path: p.storage_path })),
+    files: (s.setting_files ?? []).map((f: any) => ({ storage_path: f.storage_path, file_name: f.file_name })),
+  };
+}
+
+async function copyStorage(bucket: "photos" | "files", src: string): Promise<string | null> {
+  // Re-derive a path under a new prefix; copy bytes via download/upload.
+  const { data: blob, error: dErr } = await supabase.storage.from(bucket).download(src);
+  if (dErr || !blob) return null;
+  const filename = src.split("/").pop() ?? `${Date.now()}`;
+  const newPath = `equipment-settings/paste/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${filename}`;
+  const { error: uErr } = await supabase.storage.from(bucket).upload(newPath, blob);
+  if (uErr) return null;
+  return newPath;
+}
+
+export async function pasteSetting(
+  clip: Extract<Clip, { kind: "setting" }>,
+  ctx: { plant_equipment_id: string; sort_order: number; created_by?: string },
+) {
+  for (let i = 0; i < clip.nodes.length; i++) {
+    const node = clip.nodes[i];
+    const { data, error } = await supabase
+      .from("equipment_settings")
+      .insert({
+        plant_equipment_id: ctx.plant_equipment_id,
+        title: node.title,
+        body: node.body,
+        sort_order: ctx.sort_order + i,
+        created_by: ctx.created_by,
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw error ?? new Error("insert failed");
+    for (const p of node.photos) {
+      const np = await copyStorage("photos", p.storage_path);
+      if (np) await supabase.from("setting_photos").insert({ equipment_setting_id: data.id, storage_path: np });
+    }
+    for (const f of node.files) {
+      const np = await copyStorage("files", f.storage_path);
+      if (np) await supabase.from("setting_files").insert({ equipment_setting_id: data.id, storage_path: np, file_name: f.file_name });
+    }
+  }
+}
+
