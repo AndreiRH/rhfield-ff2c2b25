@@ -305,6 +305,15 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
         <div className="hidden w-24 sm:block"><ProgressBar value={prog.pct} size="sm" /></div>
         <span className="w-10 text-right font-mono text-xs tabular-nums">{prog.pct}%</span>
+        {canEdit && !deleteMode && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setClip(buildTypeClip(type)); }}
+            title="Copy this type with all its components & subtasks"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          >
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {open && (
