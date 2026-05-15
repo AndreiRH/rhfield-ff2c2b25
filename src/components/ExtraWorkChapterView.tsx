@@ -25,7 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle }: any) {
+export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle, defaultOpen }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -62,11 +62,11 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     });
   }, [components.map((c: any) => c.id).join(",")]);
 
-  // Auto-expand all components when entering copy/delete mode.
+  // Auto-expand all components when entering copy/delete mode, or when defaultOpen flips on.
   useEffect(() => {
-    if (inMode) setOpenIds(new Set(components.map((c: any) => c.id)));
+    if (inMode || defaultOpen) setOpenIds(new Set(components.map((c: any) => c.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode]);
+  }, [inMode, defaultOpen]);
 
   const toggleOne = (id: string) => setOpenIds((prev) => {
     const next = new Set(prev);
@@ -154,7 +154,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           <div className="space-y-3">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
-                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} defaultOpen={defaultOpen} />
             ))}
           </div>
         </SortableContext>
@@ -182,7 +182,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, defaultOpen }: any) {
   const action = useTreeAction();
   const inMode = action?.mode !== "none" && !!action;
   const selected = !!action?.isSelected(component.id);
@@ -428,6 +428,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
               items={allItems}
               canEdit={canEdit}
               onChange={onChange}
+              defaultOpen={defaultOpen}
             />
           </div>
         </div>

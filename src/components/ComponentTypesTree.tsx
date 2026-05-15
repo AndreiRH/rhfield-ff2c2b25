@@ -288,6 +288,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                       open={q ? true : openIds.has(t.id)}
                       onToggleOpen={() => toggleOne(t.id)}
                       externalSearch={q ? search : undefined}
+                      defaultOpen={allOpen}
                     />
                   );
                 })}
@@ -323,7 +324,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   );
 }
 
-function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch }: any) {
+function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch, defaultOpen }: any) {
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const selected = action.isSelected(type.id);
@@ -438,6 +439,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
             onChange={onChange}
             externalSearch={externalSearch}
             hideTitle
+            defaultOpen={defaultOpen}
           />
         </div>
       )}
