@@ -20,7 +20,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-amber-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500",
     accent: "text-white/90",
-    tint: "bg-amber-50/40",
+    tint: "bg-amber-100/50",
   },
   wiring: {
     label: "Wiring",
@@ -29,7 +29,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-violet-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-violet-600",
     accent: "text-white/90",
-    tint: "bg-violet-50/40",
+    tint: "bg-violet-100/50",
   },
   cold_comm: {
     label: "Cold commissioning",
@@ -38,7 +38,7 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tabActive: "border-white bg-white text-cyan-700 shadow-md ring-2 ring-white/60",
     header: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white border-cyan-600",
     accent: "text-white/90",
-    tint: "bg-cyan-50/40",
+    tint: "bg-cyan-100/50",
   },
 };
 import { toast } from "sonner";
@@ -213,7 +213,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         </div>
       </div>
 
-      <div className={`mt-4 rounded-lg ${meta.tint} p-3 transition-colors`}>
+      <div className={`-mx-4 mt-4 px-4 py-4 transition-colors ${meta.tint}`}>
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
