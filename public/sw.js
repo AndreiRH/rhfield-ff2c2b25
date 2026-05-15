@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v4";
+const VER = "v5";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -159,11 +159,73 @@ async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
 }
 
+function sameOriginAssetUrls(html, baseUrl) {
+  const out = new Set();
+  const re = /(?:src|href)=["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(html))) {
+    try {
+      const u = new URL(m[1], baseUrl);
+      if (u.origin === self.location.origin && !u.hash) out.add(u.href);
+    } catch {}
+  }
+  return [...out];
+}
+
+async function cacheRoutesForOffline(routes, port) {
+  const shell = await caches.open(CACHE_SHELL);
+  const assets = await caches.open(CACHE_ASSETS);
+  let done = 0;
+  for (const route of routes || []) {
+    try {
+      const u = new URL(route, self.location.origin);
+      const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
+      if (res && res.ok) {
+        await shell.put(u.href, res.clone());
+        const text = await res.clone().text().catch(() => "");
+        const urls = sameOriginAssetUrls(text, u.href);
+        await Promise.all(urls.map(async (assetUrl) => {
+          try {
+            const cached = await assets.match(assetUrl);
+            if (!cached) {
+              const ar = await fetch(assetUrl, { credentials: "include" });
+              if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
+            }
+          } catch {}
+        }));
+      }
+    } catch {}
+    done++;
+    try { port?.postMessage({ type: "progress", done, total: routes.length }); } catch {}
+  }
+  try { port?.postMessage({ type: "done", done, total: routes?.length ?? 0 }); } catch {}
+}
+
 // ============================================================
 // Install / activate
 // ============================================================
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE_SHELL).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    const shell = await caches.open(CACHE_SHELL);
+    await shell.addAll(SHELL);
+    try {
+      const rootUrl = new URL("/", self.location.origin).href;
+      const root = await fetch(rootUrl, { cache: "no-store" });
+      if (root && root.ok) {
+        await shell.put(rootUrl, root.clone());
+        await shell.put("/", root.clone());
+        const html = await root.text().catch(() => "");
+        const assets = await caches.open(CACHE_ASSETS);
+        await Promise.all(sameOriginAssetUrls(html, rootUrl).map(async (assetUrl) => {
+          try {
+            const res = await fetch(assetUrl, { cache: "no-store" });
+            if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
+          } catch {}
+        }));
+      }
+    } catch {}
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
@@ -627,12 +689,18 @@ async function flushQueue() {
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
 }
-async function queueRequest(req) {
+async function queueRequest(req, bodyOverride = null) {
   const headers = {};
-  req.headers.forEach((v, k) => { headers[k] = v; });
+  req.headers.forEach((v, k) => {
+    if (bodyOverride != null && k.toLowerCase() === "content-length") return;
+    headers[k] = v;
+  });
   let body = null;
   try {
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (bodyOverride != null) {
+      body = bodyOverride;
+      headers["content-type"] = headers["content-type"] || "application/json";
+    } else if (req.method !== "GET" && req.method !== "HEAD") {
       body = await req.clone().arrayBuffer();
     }
   } catch {}
@@ -653,6 +721,7 @@ self.addEventListener("message", (e) => {
   const d = e.data || {};
   if (d.type === "rhfield-flush")     e.waitUntil(flushQueue());
   if (d.type === "rhfield-queue?")    e.waitUntil(broadcastQueueCount());
+  if (d.type === "rhfield-cache-routes") e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
 });
 
@@ -734,7 +803,10 @@ self.addEventListener("fetch", (event) => {
             broadcastDataChanged();
           } catch {}
 
-          await queueRequest(req);
+          const queuedBody = req.method === "POST" && bodyJson
+            ? JSON.stringify(Array.isArray(bodyJson) ? resultRows : (resultRows[0] ?? bodyJson))
+            : null;
+          await queueRequest(req, queuedBody);
 
           // Build a Supabase-compatible response.
           const accept = req.headers.get("Accept") || "";
@@ -774,15 +846,13 @@ self.addEventListener("fetch", (event) => {
           return res;
         }).catch(() => null);
 
-        if (cached) {
-          event.waitUntil(network);
-          return cached;
-        }
         const fresh = await network;
         if (fresh) return fresh;
-        // Offline + nothing cached → reconstruct from snapshot.
+        // Offline → reconstruct from snapshot first so locally queued edits are visible,
+        // even when an older exact response is already in the HTTP cache.
         const snap = await snapshotResponse(url, req);
         if (snap) return snap;
+        if (cached) return cached;
         return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
       })());
       return;
@@ -937,7 +1007,7 @@ self.addEventListener("fetch", (event) => {
         return fresh;
       } catch {
         const cache = await caches.open(CACHE_SHELL);
-        return (await cache.match(req)) || (await cache.match("/")) ||
+        return (await cache.match(req)) || (await cache.match(req.url)) || (await cache.match("/")) || (await cache.match(new URL("/", self.location.origin).href)) ||
           new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
       }
     })());
