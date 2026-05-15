@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  ChevronsDownUp, ChevronsUpDown, Search,
+  ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste,
 } from "lucide-react";
+import { useClipboard, buildTypeClip, pasteType } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { calcProgress, itemsFromGroup } from "@/lib/progress";
