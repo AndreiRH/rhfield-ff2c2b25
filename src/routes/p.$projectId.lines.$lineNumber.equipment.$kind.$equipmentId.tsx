@@ -16,26 +16,26 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
   assembly: {
     label: "Assembly",
     icon: Wrench,
-    tab: "border-amber-200/70 bg-amber-50/50 hover:bg-amber-100/70 text-amber-900",
-    tabActive: "border-amber-400 bg-amber-100 text-amber-950 shadow-sm",
-    header: "bg-amber-50/60 border-amber-200/70",
-    accent: "text-amber-700",
+    tab: "border-amber-300/60 bg-amber-50 hover:bg-amber-100 text-amber-900",
+    tabActive: "border-amber-500 bg-amber-500 text-white shadow-sm",
+    header: "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500",
+    accent: "text-white/90",
   },
   wiring: {
     label: "Wiring",
     icon: Cable,
-    tab: "border-emerald-200/70 bg-emerald-50/50 hover:bg-emerald-100/70 text-emerald-900",
-    tabActive: "border-emerald-400 bg-emerald-100 text-emerald-950 shadow-sm",
-    header: "bg-emerald-50/60 border-emerald-200/70",
-    accent: "text-emerald-700",
+    tab: "border-violet-300/60 bg-violet-50 hover:bg-violet-100 text-violet-900",
+    tabActive: "border-violet-600 bg-violet-600 text-white shadow-sm",
+    header: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-violet-600",
+    accent: "text-white/90",
   },
   cold_comm: {
     label: "Cold commissioning",
     icon: Snowflake,
-    tab: "border-sky-200/70 bg-sky-50/50 hover:bg-sky-100/70 text-sky-900",
-    tabActive: "border-sky-400 bg-sky-100 text-sky-950 shadow-sm",
-    header: "bg-sky-50/60 border-sky-200/70",
-    accent: "text-sky-700",
+    tab: "border-cyan-300/60 bg-cyan-50 hover:bg-cyan-100 text-cyan-900",
+    tabActive: "border-cyan-600 bg-cyan-600 text-white shadow-sm",
+    header: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white border-cyan-600",
+    accent: "text-white/90",
   },
 };
 import { toast } from "sonner";
@@ -184,7 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {data.line.number} · {plantLabel}</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-white/80">Production line {data.line.number} · {plantLabel}</span>
             <h1 className="text-3xl font-semibold">
               {data.pe.name}
               <span className={`ml-3 text-base font-normal ${meta.accent}`}>{overall}%</span>
