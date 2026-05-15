@@ -206,13 +206,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <SectionTab label="Assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
-          <SectionTab label="Wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
-          <SectionTab label="Cold commissioning" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
+          <SectionTab phase="assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
+          <SectionTab phase="wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
+          <SectionTab phase="cold_comm" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
         </div>
       </div>
 
       <div className="mt-6">
+        <PhaseBanner phase={section} pct={section === "assembly" ? mech : section === "wiring" ? wiring : cold} />
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
@@ -229,7 +230,38 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   );
 }
 
-function SectionTab({ label, pct, active, onClick }: { label: string; pct: number; active: boolean; onClick: () => void }) {
+function PhaseBanner({ phase, pct }: { phase: Section; pct: number }) {
+  const meta = PHASE_META[phase];
+  const Icon = meta.icon;
+  return (
+    <div className={`mb-4 flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ${meta.banner}`}>
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="text-sm font-semibold tracking-wide uppercase">{meta.label}</span>
+      <span className="ml-auto font-mono text-xs tabular-nums opacity-90">{pct}%</span>
+    </div>
+  );
+}
+
+function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: number; active: boolean; onClick: () => void }) {
+  const meta = PHASE_META[phase];
+  const Icon = meta.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${active ? meta.tabActive : meta.tab}`}
+    >
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <Icon className="h-3 w-3 shrink-0" />
+          <span className="truncate text-[11px] font-medium">{meta.label}</span>
+        </span>
+        <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>
+      </div>
+      <ProgressBar value={pct} size="sm" />
+    </button>
+  );
+}
   return (
     <button
       type="button"
