@@ -154,7 +154,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           <div className="space-y-3">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
-                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} defaultOpen={defaultOpen} />
             ))}
           </div>
         </SortableContext>
