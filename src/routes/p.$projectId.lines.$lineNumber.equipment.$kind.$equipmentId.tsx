@@ -207,6 +207,8 @@ function SectionTab({ label, pct, active, onClick }: { label: string; pct: numbe
       className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${
         active
           ? "border-primary bg-primary/10"
+          : pct === 100
+          ? "border-success/40 bg-success/10 hover:bg-success/15"
           : "border-border bg-muted/40 hover:bg-muted hover:border-muted-foreground/40"
       }`}
     >

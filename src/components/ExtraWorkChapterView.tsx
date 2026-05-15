@@ -266,13 +266,13 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
       className={`overflow-hidden rounded-lg border bg-card shadow-sm ${
         action?.mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40")
         : action?.mode === "copy" ? (selected ? "border-primary" : "border-primary/40")
-        : "border-border"
+        : prog.pct === 100 ? "border-success/40" : "border-border"
       }`}>
       <div
         className={`flex items-center gap-2 border-b px-3 py-2 ${
           action?.mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
           action?.mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
-          "bg-muted/40 cursor-pointer"
+          prog.pct === 100 ? "bg-success/10 cursor-pointer" : "bg-muted/40 cursor-pointer"
         }`}
         onClick={inMode ? onTap : toggleOpen}
       >
