@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X, Globe, Lock,
+  StickyNote, ListPlus, X, Globe, Lock, Copy, ClipboardPaste,
 } from "lucide-react";
+import { useClipboard, buildItemClip, pasteItem } from "@/lib/clipboard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
