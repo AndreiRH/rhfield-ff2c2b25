@@ -231,7 +231,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
         {canEdit && (
           <button
             onClick={() => onUpdate({ is_shared: !note.is_shared })}
-            title={note.is_shared ? "Shared across all lines — click to make local" : "Local to this line — click to share across all lines"}
+            title={note.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
             className={`p-1 ${note.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             {note.is_shared ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}

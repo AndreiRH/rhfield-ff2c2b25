@@ -94,7 +94,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
   const lineIds = lines.map((l) => l.id);
 
   if (lineIds.length === 0) {
-    throw new Error("This project has no lines yet — nothing to export.");
+    throw new Error("This project has no production lines yet — nothing to export.");
   }
 
   report({ phase: "tables", message: "Loading equipment & checklists…" });

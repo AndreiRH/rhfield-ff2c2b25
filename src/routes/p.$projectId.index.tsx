@@ -109,7 +109,7 @@ function ProjectDashboard() {
                 <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="p-4">
                     <div className="flex items-baseline justify-between">
-                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line</span>
+                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
                       <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
                     </div>
                     <div className="mt-1 text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>

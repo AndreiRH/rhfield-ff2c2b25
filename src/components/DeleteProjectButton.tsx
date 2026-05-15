@@ -67,7 +67,7 @@ export function DeleteProjectButton({ projectId, projectName }: { projectId: str
           <DialogHeader>
             <DialogTitle>Delete project "{projectName}"?</DialogTitle>
             <DialogDescription>
-              This permanently removes the project and ALL its lines, equipment, components,
+              This permanently removes the project and ALL its production lines, equipment, components,
               checklist items, notes, photos and files. This cannot be undone.
               Re-enter your admin password to confirm.
             </DialogDescription>

@@ -204,7 +204,7 @@ function SettingsListInner({
         )}
 
         <p className="text-xs text-muted-foreground">
-          Setting titles are shared across all lines. Values, photos and files are local to this line.
+          Setting titles are shared across all production lines. Values, photos and files are local to this production line.
         </p>
 
         {rows.length === 0 ? (
@@ -359,7 +359,7 @@ function SettingRow({
             disabled={!canEdit}
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => body !== setting.body && onBody(body)}
-            placeholder="Value (local to this line)…"
+            placeholder="Value (local to this production line)…"
             className="min-h-[60px] resize-y text-sm"
           />
           {photos.length > 0 && (

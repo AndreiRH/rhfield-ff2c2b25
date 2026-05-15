@@ -102,7 +102,7 @@ function LineOverview() {
             <div className="mb-6 border-b pb-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Line</span>
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
                   <h1 className="text-3xl font-semibold tabular-nums">
                     {data.number.toString().padStart(2, "0")}
                     <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgressPct}%</span>
@@ -182,7 +182,7 @@ function HotCommissioningButton({ line, canEdit, onChange }: any) {
       </DialogTrigger>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Hot Comm · Line {String(line.number).padStart(2, "0")}</DialogTitle>
+          <DialogTitle>Hot Comm · Production line {String(line.number).padStart(2, "0")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[75vh] overflow-y-auto">
           <HotCalendar
@@ -250,7 +250,7 @@ function ExtraWorksSection({ line, works, canEdit, onChange }: any) {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{w.name}"?</AlertDialogTitle>
-                      <AlertDialogDescription>This removes the extra work and all its tasks from this line.</AlertDialogDescription>
+                      <AlertDialogDescription>This removes the extra work and all its tasks from this production line.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -54,7 +54,7 @@ function PAPage() {
           <>
             <div className="mb-6 border-b pb-4">
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Line {lineNumber} · {title}
+                Production line {lineNumber} · {title}
               </span>
               <h1 className="text-3xl font-semibold">Provisional Acceptance</h1>
               <p className="mt-1 text-sm text-muted-foreground">

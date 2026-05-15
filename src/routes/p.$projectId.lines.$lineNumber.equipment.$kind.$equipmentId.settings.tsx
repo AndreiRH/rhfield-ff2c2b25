@@ -52,7 +52,7 @@ function EquipmentSettingsPage() {
           <>
             <div className="mb-4 border-b pb-4">
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Line {lineNumber} · {plantLabel} · {data.pe.name}
+                Production line {lineNumber} · {plantLabel} · {data.pe.name}
               </span>
               <h1 className="text-3xl font-semibold">Settings</h1>
             </div>
