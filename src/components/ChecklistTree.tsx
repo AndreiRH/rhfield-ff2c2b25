@@ -387,7 +387,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   );
 }
 
-function ActionBtn({ onClick, icon, label, active }: any) {
+function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
+  if (iconOnly) {
+    return (
+      <button onClick={onClick} title={label}
+        className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}>
+        {icon}
+      </button>
+    );
+  }
   return (
     <button onClick={onClick}
       className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}>
