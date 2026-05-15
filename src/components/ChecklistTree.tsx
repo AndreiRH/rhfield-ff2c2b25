@@ -208,7 +208,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.from("checklist_items")
       .update({ done: next, completed_at: next ? nowIso : null }).in("id", ids);
     if (error) { toast.error(error.message); return; }
-    // Cascade up: if marking done and all siblings are now done, mark parent done too.
+    // Cascade up: marking done propagates when all siblings are done;
+    // unmarking propagates to any done ancestor (an item can't be done if a descendant isn't).
     if (next) {
       const doneSet = new Set(ids);
       let parentId: string | null = item.parent_item_id ?? null;
@@ -223,6 +224,20 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         if (pErr) { toast.error(pErr.message); break; }
         doneSet.add(parentId);
         parentId = parent.parent_item_id ?? null;
+      }
+    } else {
+      const ancestors: string[] = [];
+      let parentId: string | null = item.parent_item_id ?? null;
+      while (parentId) {
+        const parent: any = allItems.find((i: any) => i.id === parentId);
+        if (!parent) break;
+        if (parent.done) ancestors.push(parentId);
+        parentId = parent.parent_item_id ?? null;
+      }
+      if (ancestors.length) {
+        const { error: pErr } = await supabase.from("checklist_items")
+          .update({ done: false, completed_at: null }).in("id", ancestors);
+        if (pErr) toast.error(pErr.message);
       }
     }
     onChange();
