@@ -101,6 +101,112 @@ function isSupabaseStorage(url) { return /\.supabase\.co\/storage\/v1\//.test(ur
 function isSupabaseAuth(url)    { return /\.supabase\.co\/auth\/v1\//.test(url.href); }
 function isSupabaseRealtime(url){ return /\.supabase\.co\/realtime\/v1\//.test(url.href); }
 
+// ---------- snapshot DB read (mirrors src/lib/snapshot-store.ts) ----------
+const SNAP_DB = "rhfield-snapshot";
+const SNAP_STORE = "tables";
+function openSnap() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(SNAP_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(SNAP_STORE)) req.result.createObjectStore(SNAP_STORE);
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+async function readSnap(table) {
+  try {
+    const db = await openSnap();
+    return await new Promise((res, rej) => {
+      const tx = db.transaction(SNAP_STORE, "readonly");
+      const r = tx.objectStore(SNAP_STORE).get(table);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror   = () => rej(r.error);
+    });
+  } catch { return null; }
+}
+
+// Minimal PostgREST URL → JS filter. Supports eq, neq, is, in, gt, gte,
+// lt, lte, order (with .asc/.desc and multiple), limit, offset.
+function applyFilter(rows, col, op, value) {
+  switch (op) {
+    case "eq":  return rows.filter((r) => String(r?.[col]) === value);
+    case "neq": return rows.filter((r) => String(r?.[col]) !== value);
+    case "is":
+      if (value === "null")     return rows.filter((r) => r?.[col] == null);
+      if (value === "not.null") return rows.filter((r) => r?.[col] != null);
+      if (value === "true")     return rows.filter((r) => r?.[col] === true);
+      if (value === "false")    return rows.filter((r) => r?.[col] === false);
+      return rows;
+    case "in": {
+      const inner = value.replace(/^\(|\)$/g, "");
+      const set = new Set(inner.split(",").map((v) => v.replace(/^"|"$/g, "")));
+      return rows.filter((r) => set.has(String(r?.[col])));
+    }
+    case "gt":  return rows.filter((r) => r?.[col] >  cast(value));
+    case "gte": return rows.filter((r) => r?.[col] >= cast(value));
+    case "lt":  return rows.filter((r) => r?.[col] <  cast(value));
+    case "lte": return rows.filter((r) => r?.[col] <= cast(value));
+    default:    return rows;
+  }
+}
+function cast(v) { const n = Number(v); return Number.isFinite(n) ? n : v; }
+
+async function snapshotResponse(url) {
+  // Path: /rest/v1/<table>
+  const m = url.pathname.match(/\/rest\/v1\/([^/?]+)/);
+  if (!m) return null;
+  const table = decodeURIComponent(m[1]);
+  let rows = await readSnap(table);
+  if (!rows) return null;
+  rows = rows.slice(); // copy
+
+  let limit = null, offset = 0;
+  const orderBy = []; // [{col, asc}]
+  for (const [k, v] of url.searchParams) {
+    if (k === "select") continue;
+    if (k === "limit")  { limit = parseInt(v, 10); continue; }
+    if (k === "offset") { offset = parseInt(v, 10); continue; }
+    if (k === "order") {
+      for (const part of v.split(",")) {
+        const [col, dir] = part.split(".");
+        orderBy.push({ col, asc: dir !== "desc" });
+      }
+      continue;
+    }
+    if (k === "or" || k === "and") continue; // not supported, ignore
+    // Filter: <col>=<op>.<value...>
+    const dot = v.indexOf(".");
+    if (dot < 0) continue;
+    const op = v.slice(0, dot);
+    const val = v.slice(dot + 1);
+    rows = applyFilter(rows, k, op, val);
+  }
+  if (orderBy.length) {
+    rows.sort((a, b) => {
+      for (const { col, asc } of orderBy) {
+        const av = a?.[col], bv = b?.[col];
+        if (av === bv) continue;
+        if (av == null) return asc ? -1 : 1;
+        if (bv == null) return asc ?  1 : -1;
+        return (av < bv ? -1 : 1) * (asc ? 1 : -1);
+      }
+      return 0;
+    });
+  }
+  if (offset) rows = rows.slice(offset);
+  if (limit != null) rows = rows.slice(0, limit);
+
+  // PostgREST returns a single object when Accept: application/vnd.pgrst.object+json,
+  // but supabase-js uses .single() with an "Accept" header — we conservatively
+  // always return an array; .single() consumers tolerate the shape mismatch
+  // only when it's exactly one element, which is the normal case.
+  return new Response(JSON.stringify(rows), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" },
+  });
+}
+
 // ---------- outbox queue ----------
 async function queueRequest(req) {
   const headers = {};
@@ -186,7 +292,9 @@ self.addEventListener("fetch", (event) => {
 
   if (req.method !== "GET") return;
 
-  // Supabase REST reads: stale-while-revalidate.
+  // Supabase REST reads: stale-while-revalidate, with snapshot fallback when
+  // both the network and the HTTP cache miss (covers screens you've never
+  // opened online).
   if (isSupabaseRest(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_DATA);
@@ -194,8 +302,17 @@ self.addEventListener("fetch", (event) => {
       const network = fetch(req).then((res) => {
         if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
-      }).catch(() => cached);
-      return cached || network;
+      }).catch(() => null);
+      if (cached) {
+        // Don't await network — let it revalidate in the background.
+        event.waitUntil(network);
+        return cached;
+      }
+      const fresh = await network;
+      if (fresh) return fresh;
+      // No cache, no network → answer from the snapshot DB.
+      return await snapshotResponse(url) ||
+        new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
     })());
     return;
   }
