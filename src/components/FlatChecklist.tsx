@@ -247,6 +247,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
             showLabels
             defaultOpen={expandAll || !!q}
             emptyHint={q ? "No matching items." : "No items yet."}
+            hideRootAdd
           />
         )}
       </Inner>
