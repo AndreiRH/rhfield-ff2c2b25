@@ -221,6 +221,7 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          parent_folder_id: string | null
           project_id: string
           sort_order: number
           updated_at: string
@@ -230,6 +231,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          parent_folder_id?: string | null
           project_id: string
           sort_order?: number
           updated_at?: string
@@ -239,11 +241,20 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          parent_folder_id?: string | null
           project_id?: string
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "common_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "common_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       common_notes: {
         Row: {
