@@ -24,7 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
   emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
-  canDeleteRoot = true,
+  canDeleteRoot = true, hideRootAdd = false,
 }: {
   componentId: string;
   items: any[];
@@ -34,6 +34,7 @@ export function ChecklistTree({
   showLabels?: boolean;
   defaultOpen?: boolean;
   canDeleteRoot?: boolean;
+  hideRootAdd?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
