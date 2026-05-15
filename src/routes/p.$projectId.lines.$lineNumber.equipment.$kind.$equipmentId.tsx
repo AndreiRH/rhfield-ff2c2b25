@@ -245,7 +245,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const localDir = dx < 0 ? 1 : -1;
         const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
         // Need to swipe more than half the screen to commit; otherwise snap back.
-        if (Math.abs(ratio) > 0.5 && localTarget) {
+        if (Math.abs(ratio) > 0.3 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
             setSwipeState("idle");
