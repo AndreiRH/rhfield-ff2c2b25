@@ -161,3 +161,60 @@ export async function pasteType(clip: Extract<Clip, { kind: "componentType" }>, 
     await insertType(clip.nodes[i], equipment_group_id, sort_order + i);
   }
 }
+
+// ─── Settings clip ────────────────────────────────────────────────────────
+export function buildSettingClip(setting: any): Clip {
+  return { kind: "setting", nodes: [settingToNode(setting)], sourceLabel: setting.title };
+}
+export function buildSettingClipMany(settings: any[]): Clip {
+  return { kind: "setting", nodes: settings.map(settingToNode), sourceLabel: settings[0]?.title };
+}
+function settingToNode(s: any): SettingNode {
+  return {
+    title: s.title,
+    body: s.body ?? "",
+    photos: (s.setting_photos ?? []).map((p: any) => ({ storage_path: p.storage_path })),
+    files: (s.setting_files ?? []).map((f: any) => ({ storage_path: f.storage_path, file_name: f.file_name })),
+  };
+}
+
+async function copyStorage(bucket: "photos" | "files", src: string): Promise<string | null> {
+  // Re-derive a path under a new prefix; copy bytes via download/upload.
+  const { data: blob, error: dErr } = await supabase.storage.from(bucket).download(src);
+  if (dErr || !blob) return null;
+  const filename = src.split("/").pop() ?? `${Date.now()}`;
+  const newPath = `equipment-settings/paste/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${filename}`;
+  const { error: uErr } = await supabase.storage.from(bucket).upload(newPath, blob);
+  if (uErr) return null;
+  return newPath;
+}
+
+export async function pasteSetting(
+  clip: Extract<Clip, { kind: "setting" }>,
+  ctx: { plant_equipment_id: string; sort_order: number; created_by?: string },
+) {
+  for (let i = 0; i < clip.nodes.length; i++) {
+    const node = clip.nodes[i];
+    const { data, error } = await supabase
+      .from("equipment_settings")
+      .insert({
+        plant_equipment_id: ctx.plant_equipment_id,
+        title: node.title,
+        body: node.body,
+        sort_order: ctx.sort_order + i,
+        created_by: ctx.created_by,
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw error ?? new Error("insert failed");
+    for (const p of node.photos) {
+      const np = await copyStorage("photos", p.storage_path);
+      if (np) await supabase.from("setting_photos").insert({ equipment_setting_id: data.id, storage_path: np });
+    }
+    for (const f of node.files) {
+      const np = await copyStorage("files", f.storage_path);
+      if (np) await supabase.from("setting_files").insert({ equipment_setting_id: data.id, storage_path: np, file_name: f.file_name });
+    }
+  }
+}
+
