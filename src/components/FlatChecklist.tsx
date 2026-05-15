@@ -196,7 +196,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 aria-label="Copy"
               >
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                {action.mode === "copy" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
               <Button
                 size="sm"
