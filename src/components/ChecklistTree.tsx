@@ -273,12 +273,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     >
       {sortable && canEdit && !inMode && (
         <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+          onClick={(e) => e.stopPropagation()}
           className="cursor-grab touch-none p-1 active:cursor-grabbing">
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
       {!inMode && (
-        <button onClick={() => canExpand && setOpen((v) => !v)}
+        <button onClick={(e) => { e.stopPropagation(); canExpand && setOpen((v) => !v); }}
           className={`p-0.5 ${canExpand ? "text-muted-foreground hover:text-foreground" : "invisible"}`}>
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
