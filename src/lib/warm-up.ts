@@ -74,6 +74,49 @@ async function pageTable(table: string): Promise<Record<string, unknown>[]> {
   return out;
 }
 
+function postToServiceWorker(type: string, payload: Record<string, unknown> = {}) {
+  if (typeof navigator === "undefined" || !navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage({ type, ...payload });
+}
+
+function buildOfflineRoutes(results: Array<readonly [string, Record<string, unknown>[]]>) {
+  const tables = Object.fromEntries(results) as Record<string, Record<string, unknown>[]>;
+  const routes = new Set<string>(["/", "/login"]);
+  const lines = tables.lines ?? [];
+  const plant = tables.plant_equipment ?? [];
+  const extraGroups = (tables.equipment_groups ?? []).filter((g) => g.kind === "extra_work" && !g.deleted_at);
+
+  for (const project of tables.projects ?? []) {
+    const projectId = String(project.id ?? "");
+    if (!projectId) continue;
+    routes.add(`/p/${projectId}`);
+    routes.add(`/p/${projectId}/common`);
+    const projectLines = lines.filter((line) => line.project_id === project.id);
+    for (const line of projectLines) {
+      const lineNumber = String(line.number ?? "");
+      if (!lineNumber) continue;
+      routes.add(`/p/${projectId}/lines/${lineNumber}`);
+      routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/kiln`);
+      routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/shs`);
+      routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/kiln/pa`);
+      routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/shs/pa`);
+      for (const pe of plant.filter((p) => p.line_id === line.id && !p.deleted_at)) {
+        const kind = String(pe.kind ?? "");
+        const id = String(pe.id ?? "");
+        if (!kind || !id) continue;
+        routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/${kind}/${id}`);
+        routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/${kind}/${id}/settings`);
+        routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/${kind}/${id}/settings/log`);
+      }
+      for (const group of extraGroups.filter((g) => g.line_id === line.id)) {
+        const id = String(group.id ?? "");
+        if (id) routes.add(`/p/${projectId}/lines/${lineNumber}/equipment/${id}`);
+      }
+    }
+  }
+  return [...routes];
+}
+
 export function warmUp(force = false): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve();
   if (inflight) return inflight;
@@ -107,6 +150,8 @@ export function warmUp(force = false): Promise<void> {
           }
         }),
       );
+
+      postToServiceWorker("rhfield-cache-routes", { routes: buildOfflineRoutes(results) });
 
       // 2) Collect every storage path, skipping anything already cached locally.
       type Job = { bucket: "photos" | "files"; path: string };
