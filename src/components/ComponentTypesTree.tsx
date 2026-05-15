@@ -215,6 +215,8 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
                       open={q ? true : openIds.has(t.id)}
                       onToggleOpen={() => toggleOne(t.id)}
                       deleteMode={deleteMode}
+                      copyMode={copyMode}
+                      onCopy={() => { setClipTop(buildTypeClip(t)); setCopyMode(false); toast.success(`Copied "${t.name}"`); }}
                       externalSearch={q ? search : undefined}
                     />
                   );
