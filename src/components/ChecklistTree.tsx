@@ -341,6 +341,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
               </label>
+              {clip?.kind === "item" && (
+                <button onClick={pasteAsSub}
+                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <ClipboardPaste className="h-3 w-3" /> Paste "{clip.sourceLabel ?? clip.node.label}"
+                </button>
+              )}
             </div>
           )}
 
