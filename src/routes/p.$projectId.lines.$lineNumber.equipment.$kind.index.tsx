@@ -196,41 +196,39 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
           {equipment.length > 0 && (
             <>
               <Button
-                size="sm"
+                size="icon"
                 variant={mode === "reorder" ? "default" : "outline"}
                 onClick={() => setMode(mode === "reorder" ? "none" : "reorder")}
                 title="Reorder"
                 aria-label="Reorder"
               >
                 <GripVertical className="h-4 w-4" />
-                {mode === "reorder" && <span className="ml-1">Done</span>}
               </Button>
               <Button
-                size="sm"
+                size="icon"
                 variant={mode === "copy" ? "default" : "outline"}
                 onClick={() => setMode(mode === "copy" ? "none" : "copy")}
                 title="Duplicate"
                 aria-label="Duplicate"
               >
                 <Copy className="h-4 w-4" />
-                {mode === "copy" && <span className="ml-1">Done</span>}
               </Button>
               {isAdmin && (
                 <Button
-                  size="sm"
+                  size="icon"
                   variant={mode === "delete" ? "destructive" : "outline"}
                   onClick={() => setMode(mode === "delete" ? "none" : "delete")}
                   title="Delete"
                   aria-label="Delete"
                 >
                   <Trash2 className="h-4 w-4" />
-                  {mode === "delete" && <span className="ml-1">Done</span>}
                 </Button>
               )}
             </>
           )}
           <Button size="sm" onClick={() => setAdding(true)} title="Add equipment" aria-label="Add equipment">
             <Plus className="h-4 w-4" />
+            <span className="ml-1">Add equipment</span>
           </Button>
         </div>
       )}
