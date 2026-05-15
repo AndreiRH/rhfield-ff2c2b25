@@ -695,6 +695,7 @@ self.addEventListener("message", (e) => {
   const d = e.data || {};
   if (d.type === "rhfield-flush")     e.waitUntil(flushQueue());
   if (d.type === "rhfield-queue?")    e.waitUntil(broadcastQueueCount());
+  if (d.type === "rhfield-cache-routes") e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
 });
 
@@ -979,7 +980,7 @@ self.addEventListener("fetch", (event) => {
         return fresh;
       } catch {
         const cache = await caches.open(CACHE_SHELL);
-        return (await cache.match(req)) || (await cache.match("/")) ||
+        return (await cache.match(req)) || (await cache.match(req.url)) || (await cache.match("/")) || (await cache.match(new URL("/", self.location.origin).href)) ||
           new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
       }
     })());
