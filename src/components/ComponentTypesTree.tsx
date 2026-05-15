@@ -236,10 +236,12 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
     opacity: sortableArgs.isDragging ? 0.5 : 1,
   };
 
-  const items = (type.components ?? [])
-    .filter((c: any) => !c.deleted_at)
-    .flatMap((c: any) => c.checklist_items ?? []);
+  const liveComps = (type.components ?? []).filter((c: any) => !c.deleted_at);
+  const items = liveComps.flatMap((c: any) => (c.checklist_items ?? []).filter((i: any) => !i.deleted_at));
   const prog = calcProgress(items);
+  const notesCount =
+    liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
+    items.filter((i: any) => (i.note ?? "").trim() !== "").length;
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
