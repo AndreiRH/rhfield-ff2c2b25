@@ -184,6 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const meta = PHASE_META[section];
   return (
     <>
+      <div className={`pointer-events-none fixed inset-0 -z-10 transition-colors ${meta.tint}`} aria-hidden />
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
@@ -213,7 +214,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         </div>
       </div>
 
-      <div className={`-mx-4 mt-4 px-4 py-4 transition-colors ${meta.tint}`}>
+      <div className="mt-6">
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
