@@ -23,7 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
-  emptyHint = "No items yet.", showLabels = false,
+  emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
 }: {
   componentId: string;
   items: any[];
@@ -31,6 +31,7 @@ export function ChecklistTree({
   onChange: () => void;
   emptyHint?: string;
   showLabels?: boolean;
+  defaultOpen?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
