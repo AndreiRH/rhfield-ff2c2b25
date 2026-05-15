@@ -101,9 +101,14 @@ function EquipmentDetail() {
         .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
       if (phErr) throw phErr;
 
+      const { count: lineCount } = await supabase
+        .from("lines").select("id", { count: "exact", head: true })
+        .eq("project_id", projectId);
+
       const byChapter = (ch: string) => (groups ?? []).find((g: any) => g.chapter === ch) ?? null;
       return {
         line, pe, photos: photos ?? [],
+        lineCount: lineCount ?? 1,
         assembly: byChapter("assembly"),
         wiring: byChapter("wiring"),
         cold: byChapter("cold_comm"),
