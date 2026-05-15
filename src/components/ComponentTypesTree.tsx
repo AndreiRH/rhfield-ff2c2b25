@@ -371,7 +371,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
           ? `cursor-pointer ${selected ? "border-destructive bg-destructive/15" : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"}`
           : action.mode === "copy"
           ? `cursor-pointer ${selected ? "border-primary bg-primary/15" : "border-primary/40 bg-primary/5 hover:bg-primary/10"}`
-          : "border-border"
+          : prog === 100 ? "border-success/40 bg-success/10" : "border-border"
       }`}
     >
       <div
