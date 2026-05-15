@@ -896,7 +896,15 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "setting_files_equipment_setting_id_fkey"
+            columns: ["equipment_setting_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_settings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       setting_photos: {
         Row: {
@@ -920,7 +928,15 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "setting_photos_equipment_setting_id_fkey"
+            columns: ["equipment_setting_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_settings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
