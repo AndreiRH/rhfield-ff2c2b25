@@ -8,7 +8,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus, ChevronsUpDown, ChevronsDownUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -209,6 +209,20 @@ export function CommonFoldersList({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Folders</h2>
         <div className="flex items-center gap-2">
+          {folders.length > 0 && !deleteMode && (() => {
+            const allOpen = openIds.size === folders.length;
+            return (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setOpenIds(allOpen ? new Set() : new Set(folders.map((f) => f.id)))}
+                title={allOpen ? "Collapse all" : "Expand all"}
+                aria-label={allOpen ? "Collapse all" : "Expand all"}
+              >
+                {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+              </Button>
+            );
+          })()}
           {canEdit && isAdmin && folders.length > 0 && (
             <Button
               size="sm"
