@@ -182,10 +182,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   };
 
   const toggle = async () => {
+    const next = !item.done;
+    const nowIso = new Date().toISOString();
+    // Cascade down to all descendants.
+    const ids = [item.id, ...descendants.map((d: any) => d.id)];
     const { error } = await supabase.from("checklist_items")
-      .update({ done: !item.done, completed_at: !item.done ? new Date().toISOString() : null })
-      .eq("id", item.id);
-    if (error) toast.error(error.message); else onChange();
+      .update({ done: next, completed_at: next ? nowIso : null }).in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    // Cascade up: if marking done and all siblings are now done, mark parent done too.
+    if (next) {
+      const doneSet = new Set(ids);
+      let parentId: string | null = item.parent_item_id ?? null;
+      while (parentId) {
+        const parent: any = allItems.find((i: any) => i.id === parentId);
+        if (!parent || parent.done) break;
+        const siblings = allItems.filter((i: any) => i.parent_item_id === parentId);
+        const allDone = siblings.every((s: any) => doneSet.has(s.id) || s.done);
+        if (!allDone) break;
+        const { error: pErr } = await supabase.from("checklist_items")
+          .update({ done: true, completed_at: nowIso }).eq("id", parentId);
+        if (pErr) { toast.error(pErr.message); break; }
+        doneSet.add(parentId);
+        parentId = parent.parent_item_id ?? null;
+      }
+    }
+    onChange();
   };
   const pasteAsSub = async () => {
     if (clip?.kind !== "item") return;
@@ -403,7 +424,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
                     className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
                 </PhotoPicker>
               )}
@@ -414,8 +435,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             <div className="space-y-1 px-3 pb-2">
               {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />)}
               {canEdit && (
-                <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <Plus className="h-3.5 w-3.5" /> Add file
+                <label title="Add file"
+                  className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3 w-3" />
                   <input type="file" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
                 </label>
