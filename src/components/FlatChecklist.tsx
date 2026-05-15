@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search, Plus, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
