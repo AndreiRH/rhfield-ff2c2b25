@@ -109,16 +109,11 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
     onChange();
   };
 
-  const overall = calcProgress(itemsFromGroup(group));
-
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {overall.done}/{overall.total} · {overall.pct}%
-          </span>
-          {types.length > 0 && (
+        {types.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
               {allOpen ? (
                 <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
@@ -126,9 +121,8 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
                 <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
               )}
             </Button>
-          )}
-        </div>
-        <ProgressBar value={overall.pct} size="sm" />
+          </div>
+        )}
 
         {canEdit && !adding && (
           <div className="grid grid-cols-3 gap-2">
