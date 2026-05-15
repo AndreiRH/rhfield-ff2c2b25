@@ -274,7 +274,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const row = (
     <div
       className={`flex items-center gap-1 px-2 py-1.5 ${(inMode || canExpand) ? "cursor-pointer" : ""} ${
-        mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
+        mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
       }`}
       onClick={inMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
@@ -317,9 +317,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         />
       ) : (
         <span
+          onClick={(e) => { if (!inMode) e.stopPropagation(); }}
           onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""}`}
+          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
         >{item.label}</span>
       )}
       {/* Always-visible content indicators */}
@@ -466,7 +467,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               <ul className="space-y-1">
                 {subs.map((s: any) => (
                   <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false} />
+                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
+                    canDeleteRoot={canDeleteRoot} />
                 ))}
               </ul>
               {addingSub && (
