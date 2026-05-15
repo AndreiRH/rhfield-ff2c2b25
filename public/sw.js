@@ -669,12 +669,18 @@ async function flushQueue() {
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
 }
-async function queueRequest(req) {
+async function queueRequest(req, bodyOverride = null) {
   const headers = {};
-  req.headers.forEach((v, k) => { headers[k] = v; });
+  req.headers.forEach((v, k) => {
+    if (bodyOverride != null && k.toLowerCase() === "content-length") return;
+    headers[k] = v;
+  });
   let body = null;
   try {
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (bodyOverride != null) {
+      body = bodyOverride;
+      headers["content-type"] = headers["content-type"] || "application/json";
+    } else if (req.method !== "GET" && req.method !== "HEAD") {
       body = await req.clone().arrayBuffer();
     }
   } catch {}
