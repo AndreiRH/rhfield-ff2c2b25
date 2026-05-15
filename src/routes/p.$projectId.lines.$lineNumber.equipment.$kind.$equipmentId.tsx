@@ -10,7 +10,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, Settings as SettingsIcon } from "lucide-react";
+import { ChevronLeft, Settings as SettingsIcon, Wrench, Cable, Snowflake } from "lucide-react";
+
+const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: string; tabActive: string; banner: string; dot: string; ring: string }> = {
+  assembly: {
+    label: "Assembly",
+    icon: Wrench,
+    tab: "border-amber-300/60 bg-amber-50 hover:bg-amber-100 text-amber-900",
+    tabActive: "border-amber-500 bg-amber-500 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-amber-500 to-orange-500 text-white",
+    dot: "bg-amber-500",
+    ring: "ring-2 ring-amber-400/60",
+  },
+  wiring: {
+    label: "Wiring",
+    icon: Cable,
+    tab: "border-violet-300/60 bg-violet-50 hover:bg-violet-100 text-violet-900",
+    tabActive: "border-violet-600 bg-violet-600 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white",
+    dot: "bg-violet-600",
+    ring: "ring-2 ring-violet-400/60",
+  },
+  cold_comm: {
+    label: "Cold commissioning",
+    icon: Snowflake,
+    tab: "border-cyan-300/60 bg-cyan-50 hover:bg-cyan-100 text-cyan-900",
+    tabActive: "border-cyan-600 bg-cyan-600 text-white shadow-sm",
+    banner: "bg-gradient-to-r from-cyan-600 to-teal-500 text-white",
+    dot: "bg-cyan-600",
+    ring: "ring-2 ring-cyan-400/60",
+  },
+};
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
@@ -176,13 +206,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <SectionTab label="Assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
-          <SectionTab label="Wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
-          <SectionTab label="Cold commissioning" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
+          <SectionTab phase="assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
+          <SectionTab phase="wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
+          <SectionTab phase="cold_comm" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
         </div>
       </div>
 
       <div className="mt-6">
+        <PhaseBanner phase={section} pct={section === "assembly" ? mech : section === "wiring" ? wiring : cold} />
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
@@ -199,22 +230,33 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   );
 }
 
-function SectionTab({ label, pct, active, onClick }: { label: string; pct: number; active: boolean; onClick: () => void }) {
+function PhaseBanner({ phase, pct }: { phase: Section; pct: number }) {
+  const meta = PHASE_META[phase];
+  const Icon = meta.icon;
+  return (
+    <div className={`mb-4 flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ${meta.banner}`}>
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="text-sm font-semibold tracking-wide uppercase">{meta.label}</span>
+      <span className="ml-auto font-mono text-xs tabular-nums opacity-90">{pct}%</span>
+    </div>
+  );
+}
+
+function SectionTab({ phase, pct, active, onClick }: { phase: Section; pct: number; active: boolean; onClick: () => void }) {
+  const meta = PHASE_META[phase];
+  const Icon = meta.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${
-        active
-          ? "border-primary bg-primary/10"
-          : pct === 100
-          ? "border-success/40 bg-success/10 hover:bg-success/15"
-          : "border-border bg-muted/40 hover:bg-muted hover:border-muted-foreground/40"
-      }`}
+      className={`min-w-0 cursor-pointer rounded-md border p-2 text-left transition ${active ? meta.tabActive : meta.tab}`}
     >
-      <div className="mb-1 flex items-baseline justify-between gap-1">
-        <span className="truncate text-[11px] font-medium text-foreground">{label}</span>
-        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <Icon className="h-3 w-3 shrink-0" />
+          <span className="truncate text-[11px] font-medium">{meta.label}</span>
+        </span>
+        <span className="font-mono text-[11px] tabular-nums opacity-80">{pct}%</span>
       </div>
       <ProgressBar value={pct} size="sm" />
     </button>
