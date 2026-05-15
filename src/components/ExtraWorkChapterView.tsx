@@ -271,18 +271,19 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
         className={`flex items-center gap-2 border-b px-3 py-2 ${
           action?.mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
           action?.mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
-          "bg-muted/40"
+          "bg-muted/40 cursor-pointer"
         }`}
-        onClick={inMode ? onTap : undefined}
+        onClick={inMode ? onTap : toggleOpen}
       >
         {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
+            onClick={(e) => e.stopPropagation()}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
         {!inMode && (
-          <button onClick={toggleOpen} className="text-muted-foreground hover:text-foreground">
+          <button onClick={(e) => { e.stopPropagation(); toggleOpen(); }} className="text-muted-foreground hover:text-foreground">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
