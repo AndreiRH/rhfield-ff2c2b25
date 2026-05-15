@@ -148,6 +148,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   const hasPhoto = !!note.photo_path;
   const hasFile = !!note.file_name;
 
+  const maybeAutoDelete = () => {
+    const titleEmpty = !title.trim() || title.trim() === "Note";
+    if (!body.trim() && titleEmpty && !hasPhoto && !hasFile) {
+      onDelete();
+    }
+  };
+
   const uploadPhoto = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("photos").upload(path, file);
