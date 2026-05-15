@@ -143,6 +143,12 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
               <Trash2 className="mr-1 h-4 w-4" />
               {deleteMode ? "Done" : "Delete"}
             </Button>
+            {clip?.kind === "componentType" && !deleteMode && (
+              <Button size="sm" variant="outline" className="col-span-2" onClick={pasteTypeHere}
+                title={`Paste "${clip.sourceLabel ?? clip.node.name}" with all its components & subtasks`}>
+                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste "{clip.sourceLabel ?? clip.node.name}"
+              </Button>
+            )}
           </div>
         )}
 
