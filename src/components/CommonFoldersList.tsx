@@ -180,7 +180,7 @@ export function CommonFoldersList({
 
   const renderFolder = (f: FolderRow, depth: number) => {
     const kids = childrenOf.get(f.id) ?? [];
-    const isOpen = openIds.has(f.id) && !deleteMode;
+    const isOpen = openIds.has(f.id) || deleteMode;
     return (
       <FolderItem
         key={f.id}
@@ -349,9 +349,9 @@ function FolderItem({
         )}
       </div>
 
-      {open && !deleteMode && (
+      {open && (
         <div className="space-y-3 border-t bg-muted/20 p-3">
-          <FolderContents folder={folder} canEdit={canEdit} userId={userId} />
+          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} />}
           {childrenContent && (
             <div className="pl-3 border-l-2 border-muted">
               {childrenContent}
