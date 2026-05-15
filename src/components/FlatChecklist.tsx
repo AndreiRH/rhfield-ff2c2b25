@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
+import { useAuth } from "@/hooks/use-auth";
 
 export function FlatChecklist(props: any) {
   // headerLeading: optional slot rendered on the left of the action bar (e.g. Manual/Checklist toggle).
@@ -23,6 +24,7 @@ export function FlatChecklist(props: any) {
 }
 
 function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading, noCard }: any) {
+  const { isAdmin } = useAuth();
   const directComps = (group?.components ?? []).filter((c: any) => !c.deleted_at);
   const typeComps = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
