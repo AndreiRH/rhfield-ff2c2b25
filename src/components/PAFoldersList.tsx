@@ -47,8 +47,12 @@ interface Note {
 export function PAFoldersList({
   lineId, kind, canEdit, userId,
 }: { lineId: string; kind: string; canEdit: boolean; userId?: string }) {
+  const { isAdmin } = useAuth();
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -77,33 +81,77 @@ export function PAFoldersList({
     await supabase.from("pa_folders").update({ name }).eq("id", id);
   };
 
-  const deleteFolder = async (id: string) => {
-    // remove storage objects under this folder
-    const { data: atts } = await supabase.from("pa_attachments").select("kind, storage_path").eq("folder_id", id);
+  const deleteFolders = async (ids: string[]) => {
+    const { data: atts } = await supabase.from("pa_attachments").select("kind, storage_path").in("folder_id", ids);
     const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
     const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
-    const { data: notes } = await supabase.from("pa_notes").select("photo_path, file_path").eq("folder_id", id);
+    const { data: notes } = await supabase.from("pa_notes").select("photo_path, file_path").in("folder_id", ids);
     (notes ?? []).forEach((n: any) => {
       if (n.photo_path) photos.push(n.photo_path);
       if (n.file_path) files.push(n.file_path);
     });
     if (photos.length) await supabase.storage.from("photos").remove(photos);
     if (files.length) await supabase.storage.from("files").remove(files);
-    await supabase.from("pa_folders").delete().eq("id", id);
-    if (openId === id) setOpenId(null);
-    load();
+    await supabase.from("pa_folders").delete().in("id", ids);
+    if (openId && ids.includes(openId)) setOpenId(null);
+    await load();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const cancelDelete = () => { setDeleteMode(false); setSelected(new Set()); };
+  const commitDelete = () => {
+    if (selected.size === 0) { cancelDelete(); return; }
+    setConfirmDelete(true);
+  };
+  const performDelete = async () => {
+    const ids = Array.from(selected);
+    setConfirmDelete(false);
+    await deleteFolders(ids);
+    cancelDelete();
+    toast.success(`Deleted ${ids.length} folder${ids.length > 1 ? "s" : ""}`);
   };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Folders</h2>
-        {canEdit && (
-          <Button size="sm" onClick={addFolder}>
-            <Plus className="mr-1 h-4 w-4" /> New folder
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEdit && isAdmin && folders.length > 0 && (
+            <Button
+              size="sm"
+              variant={deleteMode ? "destructive" : "outline"}
+              onClick={deleteMode ? commitDelete : () => setDeleteMode(true)}
+              disabled={deleteMode && selected.size === 0}
+              title="Delete"
+              aria-label="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleteMode && <span className="ml-1">Done{selected.size ? ` ${selected.size}` : ""}</span>}
+            </Button>
+          )}
+          {deleteMode && (
+            <Button size="sm" variant="ghost" onClick={cancelDelete}>Cancel</Button>
+          )}
+          {canEdit && !deleteMode && (
+            <Button size="sm" onClick={addFolder}>
+              <Plus className="mr-1 h-4 w-4" /> New folder
+            </Button>
+          )}
+        </div>
       </div>
+
+      {deleteMode && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          Tap any folder to add it to the deletion list. Tap "Done" to delete all selected.
+        </p>
+      )}
 
       {folders.length === 0 ? (
         <p className="text-sm text-muted-foreground">No folders yet. Create one to start adding photos, files and notes.</p>
@@ -113,16 +161,35 @@ export function PAFoldersList({
             <FolderItem
               key={f.id}
               folder={f}
-              open={openId === f.id}
+              open={openId === f.id && !deleteMode}
               onToggle={() => setOpenId(openId === f.id ? null : f.id)}
               canEdit={canEdit}
               userId={userId}
               onRename={(name: string) => renameFolder(f.id, name)}
-              onDelete={() => deleteFolder(f.id)}
+              deleteMode={deleteMode}
+              selected={selected.has(f.id)}
+              onSelectToggle={() => toggleSelect(f.id)}
             />
           ))}
         </ul>
       )}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} folder{selected.size > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the selected folders and all their photos, files and notes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
