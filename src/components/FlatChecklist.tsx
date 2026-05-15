@@ -217,7 +217,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
             emptyHint={q ? "No matching items." : "No items yet."}
           />
         )}
-      </CardContent>
+      </Inner>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
@@ -239,6 +239,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </Wrapper>
   );
 }
