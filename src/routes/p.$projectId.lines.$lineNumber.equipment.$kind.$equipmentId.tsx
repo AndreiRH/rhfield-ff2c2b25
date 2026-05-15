@@ -265,7 +265,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
               {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
             </div>
           ) : (
-            <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} />
+            <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} />
           )}
         </CardContent>
       </Card>
