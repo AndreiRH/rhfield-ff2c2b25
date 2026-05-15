@@ -33,6 +33,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expandAll, setExpandAll] = useState(false);
   const [treeKey, setTreeKey] = useState(0);
+  const [search, setSearch] = useState("");
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const { clip, set: setClip, clear: clearClip } = useClipboard();
@@ -41,6 +42,28 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
     setExpandAll((v) => !v);
     setTreeKey((k) => k + 1);
   };
+
+  // Filter items by search (include matched items + their ancestors + descendants).
+  const q = search.trim().toLowerCase();
+  const filteredItems = q
+    ? (() => {
+        const matches = allItems.filter((i: any) => (i.label ?? "").toLowerCase().includes(q));
+        const include = new Set<string>(matches.map((i: any) => i.id));
+        for (const m of matches) {
+          let cur: any = m;
+          while (cur?.parent_item_id) {
+            include.add(cur.parent_item_id);
+            cur = allItems.find((i: any) => i.id === cur.parent_item_id);
+          }
+        }
+        const stack = matches.map((m: any) => m.id);
+        while (stack.length) {
+          const id = stack.pop()!;
+          for (const c of allItems) if (c.parent_item_id === id) { include.add(c.id); stack.push(c.id); }
+        }
+        return allItems.filter((i: any) => include.has(i.id));
+      })()
+    : allItems;
 
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
