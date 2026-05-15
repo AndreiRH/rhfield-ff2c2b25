@@ -173,7 +173,7 @@ function SettingsListInner({
                 title={action.mode === "copy" ? "Copy selected" : "Copy"}
                 aria-label="Copy">
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+                {action.mode === "copy" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
             {rows.length > 0 && (
@@ -186,7 +186,7 @@ function SettingsListInner({
                 title={action.mode === "delete" ? "Delete selected" : "Delete"}
                 aria-label="Delete">
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && action.count > 0 && <span className="ml-1 text-xs">{action.count}</span>}
+                {action.mode === "delete" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
             {inMode && (

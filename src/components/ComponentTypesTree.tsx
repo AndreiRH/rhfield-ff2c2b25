@@ -196,7 +196,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 aria-label="Copy"
               >
                 <Copy className="h-4 w-4" />
-                {action.mode === "copy" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
               <Button
                 size="sm"
@@ -207,7 +207,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 aria-label="Delete"
               >
                 <Trash2 className="h-4 w-4" />
-                {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
+                {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
               </Button>
             </>
           )}
