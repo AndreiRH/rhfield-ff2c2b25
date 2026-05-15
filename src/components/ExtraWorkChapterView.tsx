@@ -214,6 +214,8 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const photos = component.component_photos ?? [];
   const files = component.component_files ?? [];
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const [note, setNote] = useState(component.note ?? "");
   useEffect(() => { setNote(component.note ?? ""); }, [component.note]);
 
