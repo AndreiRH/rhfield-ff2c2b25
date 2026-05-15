@@ -184,6 +184,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const meta = PHASE_META[section];
   return (
     <>
+      <div className={`pointer-events-none fixed inset-0 -z-10 transition-colors ${meta.tint}`} aria-hidden />
       <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
