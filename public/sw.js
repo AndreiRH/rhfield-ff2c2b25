@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v4";
+const VER = "v5";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -157,6 +157,48 @@ async function broadcastQueueCount() {
 }
 async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
+}
+
+function sameOriginAssetUrls(html, baseUrl) {
+  const out = new Set();
+  const re = /(?:src|href)=["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(html))) {
+    try {
+      const u = new URL(m[1], baseUrl);
+      if (u.origin === self.location.origin && !u.hash) out.add(u.href);
+    } catch {}
+  }
+  return [...out];
+}
+
+async function cacheRoutesForOffline(routes, port) {
+  const shell = await caches.open(CACHE_SHELL);
+  const assets = await caches.open(CACHE_ASSETS);
+  let done = 0;
+  for (const route of routes || []) {
+    try {
+      const u = new URL(route, self.location.origin);
+      const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
+      if (res && res.ok) {
+        await shell.put(u.href, res.clone());
+        const text = await res.clone().text().catch(() => "");
+        const urls = sameOriginAssetUrls(text, u.href);
+        await Promise.all(urls.map(async (assetUrl) => {
+          try {
+            const cached = await assets.match(assetUrl);
+            if (!cached) {
+              const ar = await fetch(assetUrl, { credentials: "include" });
+              if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
+            }
+          } catch {}
+        }));
+      }
+    } catch {}
+    done++;
+    try { port?.postMessage({ type: "progress", done, total: routes.length }); } catch {}
+  }
+  try { port?.postMessage({ type: "done", done, total: routes?.length ?? 0 }); } catch {}
 }
 
 // ============================================================
