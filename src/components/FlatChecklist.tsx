@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { Copy, Trash2, ClipboardPaste, ChevronsUpDown, ChevronsDownUp, Search } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree } from "@/components/ChecklistTree";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
