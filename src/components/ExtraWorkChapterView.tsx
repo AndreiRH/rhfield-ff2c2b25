@@ -182,7 +182,7 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, defaultOpen }: any) {
   const action = useTreeAction();
   const inMode = action?.mode !== "none" && !!action;
   const selected = !!action?.isSelected(component.id);
