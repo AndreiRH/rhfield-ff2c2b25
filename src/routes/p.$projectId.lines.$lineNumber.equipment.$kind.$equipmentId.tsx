@@ -236,24 +236,27 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
     if (error) toast.error(error.message); else { toast.success("Saved"); onChange(); }
   };
 
+  const modeToggle = (
+    <div className="inline-flex rounded-md border p-1">
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("manual")}
+        className={`rounded px-3 py-1 text-xs ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Manual %</button>
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("checklist")}
+        className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Checklist</button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="inline-flex rounded-md border p-1">
-            <button
-              disabled={!canEdit}
-              onClick={() => switchMode("manual")}
-              className={`rounded px-3 py-1 text-xs ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >Manual %</button>
-            <button
-              disabled={!canEdit}
-              onClick={() => switchMode("checklist")}
-              className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >Checklist</button>
-          </div>
-
-          {mode === "manual" ? (
+      {mode === "manual" ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            {modeToggle}
             <div className="flex items-center gap-2">
               <Input
                 type="number" min={0} max={100} value={pct}
@@ -264,11 +267,11 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
               <span className="text-sm text-muted-foreground">%</span>
               {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
             </div>
-          ) : (
-            <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} headerLeading={modeToggle} />
+      )}
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} />
     </div>
