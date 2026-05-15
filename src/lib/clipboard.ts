@@ -7,10 +7,20 @@ export type ItemNode = { label: string; subs: ItemNode[] };
 export type ComponentClipNode = { name: string; items: ItemNode[] };
 export type TypeClipNode = { name: string; components: ComponentClipNode[] };
 
+export type SettingPhotoNode = { storage_path: string };
+export type SettingFileNode = { storage_path: string; file_name: string };
+export type SettingNode = {
+  title: string;
+  body: string;
+  photos: SettingPhotoNode[];
+  files: SettingFileNode[];
+};
+
 export type Clip =
   | { kind: "item"; nodes: ItemNode[]; sourceLabel?: string }
   | { kind: "component"; nodes: ComponentClipNode[]; sourceLabel?: string }
-  | { kind: "componentType"; nodes: TypeClipNode[]; sourceLabel?: string };
+  | { kind: "componentType"; nodes: TypeClipNode[]; sourceLabel?: string }
+  | { kind: "setting"; nodes: SettingNode[]; sourceLabel?: string };
 
 const KEY = "lov.clipboard.v1";
 const EVT = "lov-clipboard-change";
