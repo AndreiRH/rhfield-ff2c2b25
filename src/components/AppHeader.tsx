@@ -11,6 +11,7 @@ export function AppHeader() {
   const { theme, toggle } = useTheme();
   const { online, pending, warm } = useOfflineStatus();
   const syncing = online && warm.phase !== "idle" && warm.phase !== "done" && warm.total > 0;
+  const phaseLabel = warm.phase === "tables" ? "data" : warm.phase === "blobs" ? "files" : "";
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
@@ -25,15 +26,15 @@ export function AppHeader() {
                 online ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"
               }`}
               title={
-                !online ? "Offline — changes will sync when you reconnect"
-                : syncing ? `Caching for offline use: ${warm.done} / ${warm.total}`
+                !online ? `Offline${pending ? ` — ${pending} change(s) waiting to sync` : " — all changes saved locally"}`
+                : syncing ? `Caching ${phaseLabel} for offline use: ${warm.done} / ${warm.total}`
                 : `${pending} change(s) waiting to sync`
               }
             >
               {!online ? (
                 <><CloudOff className="h-3 w-3" /> Offline{pending > 0 ? ` · ${pending}` : ""}</>
               ) : syncing ? (
-                <><RefreshCw className="h-3 w-3 animate-spin" /> Sync {warm.done}/{warm.total}</>
+                <><RefreshCw className="h-3 w-3 animate-spin" /> Sync {phaseLabel} {warm.done}/{warm.total}</>
               ) : (
                 <><RefreshCw className="h-3 w-3 animate-spin" /> Sync {pending}</>
               )}

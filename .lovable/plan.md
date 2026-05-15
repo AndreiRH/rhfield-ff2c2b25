@@ -1,71 +1,147 @@
+## Goal
 
-# Proactive full-data prefetch (everything cached, always)
+Make the Android installed app behave offline as close to online as possible:
 
-## Current state — to answer your question directly
+- When opened online, it downloads **all app data** and **all files/photos** into local phone storage.
+- Offline pages should work even if you never opened those pages online.
+- Offline edits should appear immediately in the app, not only after reconnect.
+- Offline changes should stay queued and sync automatically when the phone reconnects.
 
-**No.** Right now caching is reactive: only what you actually open online ends up in the cache. If you've never visited Project B → Line 4 → Heater settings, that screen is unavailable offline.
+Important limitation: no web app can guarantee storage forever if Android/browser storage is manually cleared or the OS evicts site data under extreme storage pressure. I will request persistent storage where supported and keep everything in IndexedDB/Cache Storage to make eviction much less likely.
 
-## What we'll change
+## What is broken now
 
-Add a **warm-up sync** that runs every time the app opens online (and on reconnect). It walks the entire database you have access to and pulls everything into the local cache before you go offline.
+1. **The sync banner disappearing does not mean every page can render offline.**
+   The app stores flat table snapshots, but many pages use nested data queries. The current service worker only handles simple offline reads, so pages with embedded/nested selects still need the exact response to have been cached by visiting that page online.
 
-### 1. One server function: `prefetchEverything()` (new `src/lib/prefetch.functions.ts`)
+2. **Offline edits are queued but not applied locally.**
+   The service worker saves failed writes in an outbox, but it does not update the local snapshot or the screen state. So the edit is saved for later upload, but the offline UI continues showing old data.
 
-A single `createServerFn` (auth-protected) that returns the full snapshot in one round-trip:
+3. **Offline inserts do not return realistic rows.**
+   Many app flows expect `.insert(...).select().single()` to return the created row ID. Offline, the current queued response only returns `{ queued: true }`, so components cannot render the new item immediately.
 
-- All rows from: `projects`, `lines`, `plant_equipment`, `equipment_groups`, `component_types`, `components`, `checklist_items`, `equipment_settings`, `equipment_notes`, `equipment_photos`, `item_photos`, `item_files`, `component_photos`, `component_files`, `setting_photos`, `setting_files`, `setting_logs`, `pa_folders`, `pa_notes`, `pa_attachments`, `milestones`, `common_notes`, `common_files`, `common_folders`, `common_folder_notes`, `common_folder_attachments`, `profiles`, `user_roles`.
-- Plus a flat list of every storage path referenced (`{ bucket, path }[]`) so the client can pre-fetch the binaries.
+4. **Files added offline need a local blob store.**
+   Existing online media can be cached, but a newly selected offline photo/file must be saved locally first, then uploaded later.
 
-At ~2k rows total today this is one fast request (well under 1s). Even at 10× growth it stays a single payload.
+## Implementation plan
 
-### 2. Client-side warm-up runner (new `src/lib/warm-up.ts`)
+### 1. Upgrade local storage into the source of truth while offline
 
-On app boot (and on `online` / `visibilitychange` to visible):
-1. Call `prefetchEverything()` and store the snapshot in IndexedDB (`rhfield-snapshot`) keyed by table — same shape Supabase returns.
-2. Seed each Supabase REST query URL we know the app uses with that data, so the existing service-worker SWR cache has hits for the very first request from any screen.
-3. For every storage path returned, request a long-lived signed URL (12h) in batched calls (`createSignedUrls`) and `fetch()` each so the SW puts the binary in the `rhfield-blobs` cache. Throttle to ~6 concurrent. Skip ones already cached.
-4. Update header indicator: "Syncing X / Y…" while running, then clears.
+Create a stronger IndexedDB layer for:
 
-### 3. Read path — instant hits from the snapshot
+- Table snapshots
+- Pending database operations
+- Pending file uploads
+- Locally added file/photo blobs
+- Sync metadata: last full sync, sync status, error state, pending count
 
-Two complementary mechanisms keep things instant offline:
+This local store will be used by the service worker and client UI.
 
-- **HTTP cache (already built)**: the SW serves cached `*.supabase.co/rest/v1/...` responses instantly. After warm-up, every list query the app sends has a hit.
-- **Snapshot fallback (new)**: if a screen issues a query the warm-up didn't pre-seed (e.g. a new filter combo), a small wrapper queries the IndexedDB snapshot locally and returns matching rows. This guarantees coverage even for routes/queries we didn't visit.
+### 2. Warm up everything on app open
 
-### 4. Photos / files — always available
+Update the warm-up process so every online app start:
 
-Because step 2.3 fetches every storage object through the SW, opening any equipment / note / attachment offline shows the real image or downloads the real file from cache. Signed URLs are refreshed on every warm-up so they never expire while online.
+- Requests persistent local storage on Android using `navigator.storage.persist()` where available.
+- Downloads every readable table in pages/chunks, not just default limited reads.
+- Stores full table snapshots in IndexedDB.
+- Collects every referenced `photos` and `files` storage path.
+- Downloads every file/photo through signed URLs so the service worker caches them locally.
+- Tracks a clear status: `Syncing`, `Ready offline`, `Offline`, `Pending changes`, or `Sync failed`.
 
-### 5. Header indicator updates
+The “ready” status should only show after data and media warm-up completes.
 
-Extends the existing offline badge:
-- "Syncing 423 / 1,200" with a progress bar while warm-up runs
-- "Up to date · 2 min ago" when done
-- Existing offline / queued-edits states unchanged
+### 3. Make offline reads reconstruct real page data
 
-### 6. Storage budget guard
+Improve the service worker’s offline read engine so it can answer the query shapes the app actually uses:
 
-Before running, check `navigator.storage.estimate()`. If quota is tight (<50 MB free), skip binary prefetch for that run and toast a warning. Text snapshot always runs — it's tiny.
+- `.single()` / `.maybeSingle()` responses
+- count/head queries
+- `eq`, `neq`, `is`, `in`, range/limit/offset/order
+- common `.or(...)` patterns used by notes/folders
+- embedded/nested selects used by dashboards and detail pages
 
-## Files touched
+Specifically, reconstruct nested data from flat snapshots for:
 
-- **new** `src/lib/prefetch.functions.ts` — server function that returns the full snapshot
-- **new** `src/lib/warm-up.ts` — client runner: persists snapshot, fetches binaries, reports progress
-- **new** `src/lib/snapshot-store.ts` — tiny IndexedDB wrapper for the snapshot
-- `src/routes/__root.tsx` — kick off warm-up after auth is ready
-- `src/components/AppHeader.tsx` — sync progress in the existing badge
-- `src/lib/offline.ts` — expose progress state alongside online/pending
+- Projects → lines → equipment groups → components → checklist items
+- Project dashboard line progress data
+- Line overview equipment/groups/components/checklists
+- Equipment detail groups/types/components/checklists/photos/files
+- Equipment settings with setting photos/files
+- PA folders/notes/attachments
+- Common folders/notes/attachments
 
-## Trade-offs (worth knowing)
+This removes the “only pages I opened online work” behavior.
 
-- **Bandwidth**: every app open re-pulls all metadata (~tens of KB) and any new/changed photos. Existing photos already in cache are skipped via a HEAD/cache check.
-- **First install**: warm-up may take a few seconds depending on how many photos exist. The app is usable during that time; offline-completeness is reached when the badge says "Up to date".
-- **Deletes**: rows deleted on the server stay in the local snapshot until the next successful warm-up overwrites it. No phantom data once you're back online.
-- **Multi-tenant scaling**: this approach assumes "all data fits on the device". With your current dataset (~2k rows, single project) that's fine for years. If you ever onboard 100+ projects with thousands of photos each, we'd revisit with a per-project opt-in.
+### 4. Make offline writes update local data immediately
 
-## What I will NOT do
+Update the service worker mutation handler so when offline:
 
-- No CRDT / conflict UI (still last-write-wins, same as today)
-- No background download while the app is closed (browsers don't reliably allow it for PWAs)
-- No changes to existing screens' data-fetching code — they keep using the Supabase client as today; the SW + snapshot transparently serve them
+- `insert` creates local rows with UUIDs/default timestamps and appends them to the snapshot.
+- `update` patches matching rows in the snapshot immediately.
+- `delete` removes rows locally, or applies soft-delete fields where the app uses `deleted_at`.
+- It returns Supabase-compatible JSON for `.select().single()` calls.
+- It queues the exact network operation for replay on reconnect.
+
+This makes offline changes visible immediately after you make them.
+
+### 5. Make the most-used screens optimistic-safe
+
+Adjust key components so they do not rely only on server refetch after a write:
+
+- Checklist add/edit/toggle/delete/reorder
+- Equipment settings add/edit/delete/reorder
+- Equipment notes add/edit/delete/update
+- PA folders/notes/attachments
+- Common folders/notes/attachments
+- Equipment/line/project list mutations
+
+When a user changes something offline, the UI should update immediately from local state and local snapshot.
+
+### 6. Support offline-added photos and files
+
+For Android offline media:
+
+- Save selected photo/file blobs into IndexedDB immediately.
+- Add the matching attachment/photo/file database row locally.
+- Show the local blob in the UI while offline.
+- Queue the upload and database insert for reconnect.
+- On reconnect, upload the blob to the existing private `photos` or `files` storage bucket and keep the same storage path.
+
+### 7. Sync queued changes safely on reconnect
+
+Improve queue replay:
+
+- Replay database writes in original order.
+- Upload local file blobs before rows that reference them where needed.
+- Keep failed retryable operations in the queue.
+- Drop unrecoverable 4xx failures only after marking sync as failed/needs attention.
+- Run a full warm-up again after successful flush so the local snapshot matches the server.
+
+### 8. Improve offline status messaging
+
+Update the header badge/banner so it tells the truth:
+
+- `Syncing data X/Y`
+- `Syncing files X/Y`
+- `Ready offline`
+- `Offline · X pending`
+- `Sync failed · tap/reopen online`
+
+This will make it clear when the phone is actually ready to go offline.
+
+## Validation plan
+
+After implementation, verify these flows:
+
+1. Open app online, wait for `Ready offline`.
+2. Turn Android/network offline.
+3. Open routes that were never visited online.
+4. Add checklist items offline and see them immediately.
+5. Toggle checklist items offline and see progress update.
+6. Add/edit notes/settings offline and see them immediately.
+7. Add a photo/file offline and see it locally.
+8. Reconnect and confirm pending changes upload and remain visible.
+
+## Expected result
+
+After a successful online sync, the installed Android app should feel offline-first: pages, items, notes, settings, photos, and files should be available locally, and edits should appear immediately while offline, then sync when online again.
