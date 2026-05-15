@@ -406,11 +406,13 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        {!inMode && (
-          <button onClick={(e) => { e.stopPropagation(); onToggleOpen?.(); }} className="text-muted-foreground hover:text-foreground">
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleOpen?.(); }}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label={open ? "Collapse" : "Expand"}
+        >
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        )}
+        </button>
         {inSelectMode && (
           <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
             {selected && <Check className="h-3 w-3" />}
@@ -450,7 +452,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
         )}
       </div>
 
-      {(open || inSelectMode) && (
+      {open && (
         <div className="p-3">
           <ComponentsList
             group={type}
