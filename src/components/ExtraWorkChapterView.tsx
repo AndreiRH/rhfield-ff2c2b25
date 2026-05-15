@@ -153,7 +153,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={visible.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
                 open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} defaultOpen={defaultOpen} />
