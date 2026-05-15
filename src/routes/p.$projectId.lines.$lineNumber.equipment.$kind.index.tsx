@@ -281,7 +281,7 @@ function EquipmentSortable({ equipment, canEdit, onChange, projectId, lineNumber
 
 function ChapterTile({ label, pct }: { label: string; pct: number }) {
   return (
-    <div className="min-w-0 rounded-md border bg-card p-3">
+    <div className={`min-w-0 rounded-md border p-3 ${pct === 100 ? "border-success/40 bg-success/10" : "bg-card"}`}>
       <div className="mb-1 flex items-baseline justify-between gap-1">
         <span className="truncate text-xs text-muted-foreground">{label}</span>
         <span className="font-mono text-xs tabular-nums">{pct}%</span>
