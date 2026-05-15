@@ -40,7 +40,7 @@ const PATH_COLUMNS: Record<string, PathSpec[]> = {
   common_folder_notes:        [{ bucket: "photos", col: "photo_path" }, { bucket: "files", col: "file_path" }],
 };
 
-export type WarmPhase = "idle" | "tables" | "blobs" | "done";
+export type WarmPhase = "idle" | "tables" | "routes" | "blobs" | "done";
 export type Progress = { phase: WarmPhase; done: number; total: number; lastSync?: number; error?: string };
 type Listener = (p: Progress) => void;
 const listeners = new Set<Listener>();
@@ -79,6 +79,24 @@ function postToServiceWorker(type: string, payload: Record<string, unknown> = {}
   const msg = { type, ...payload };
   if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(msg);
   else navigator.serviceWorker.ready.then((reg) => reg.active?.postMessage(msg)).catch(() => {});
+}
+
+async function cacheOfflineRoutes(routes: string[]) {
+  if (typeof navigator === "undefined" || !navigator.serviceWorker || routes.length === 0) return;
+  await new Promise<void>((resolve) => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(resolve, Math.max(15000, routes.length * 2500));
+    channel.port1.onmessage = (event) => {
+      const data = event.data || {};
+      if (data.type === "progress") emit({ done: data.done ?? 0, total: data.total ?? routes.length });
+      if (data.type === "done") { window.clearTimeout(timeout); resolve(); }
+    };
+    navigator.serviceWorker.ready.then((reg) => {
+      const sw = navigator.serviceWorker.controller || reg.active;
+      if (!sw) { window.clearTimeout(timeout); resolve(); return; }
+      sw.postMessage({ type: "rhfield-cache-routes", routes }, [channel.port2]);
+    }).catch(() => { window.clearTimeout(timeout); resolve(); });
+  });
 }
 
 function buildOfflineRoutes(results: Array<readonly [string, Record<string, unknown>[]]>) {
@@ -153,7 +171,9 @@ export function warmUp(force = false): Promise<void> {
         }),
       );
 
-      postToServiceWorker("rhfield-cache-routes", { routes: buildOfflineRoutes(results) });
+      const routes = buildOfflineRoutes(results);
+      emit({ phase: "routes", done: 0, total: routes.length });
+      await cacheOfflineRoutes(routes);
 
       // 2) Collect every storage path, skipping anything already cached locally.
       type Job = { bucket: "photos" | "files"; path: string };
