@@ -74,9 +74,19 @@ export function ChecklistTree({
   const onDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldIdx = rootItems.findIndex((i: any) => i.id === active.id);
-    const newIdx = rootItems.findIndex((i: any) => i.id === over.id);
-    const next = arrayMove(rootItems, oldIdx, newIdx);
+    const activeItem = visibleItems.find((i: any) => i.id === active.id);
+    const overItem = visibleItems.find((i: any) => i.id === over.id);
+    if (!activeItem || !overItem) return;
+    const activeParent = activeItem.parent_item_id ?? null;
+    const overParent = overItem.parent_item_id ?? null;
+    if (activeParent !== overParent) return;
+    const siblings = visibleItems
+      .filter((i: any) => (i.parent_item_id ?? null) === activeParent)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order);
+    const oldIdx = siblings.findIndex((i: any) => i.id === active.id);
+    const newIdx = siblings.findIndex((i: any) => i.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(siblings, oldIdx, newIdx);
     await Promise.all(next.map((it: any, i: number) =>
       supabase.from("checklist_items").update({ sort_order: i }).eq("id", it.id)));
     onChange();
