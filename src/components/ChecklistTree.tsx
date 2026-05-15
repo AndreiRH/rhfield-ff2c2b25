@@ -240,6 +240,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
         >{item.label}</span>
       )}
       {canEdit && (
+        <button
+          onClick={() => setClip(buildItemClip(item, allItems))}
+          title="Copy this item with all its subtasks"
+          className="p-1 opacity-60 hover:opacity-100"
+        >
+          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      )}
+      {canEdit && (
         <DeleteItemButton itemLabel={item.label} onConfirm={remove} />
       )}
     </div>
