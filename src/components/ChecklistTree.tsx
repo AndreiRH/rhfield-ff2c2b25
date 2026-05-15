@@ -361,16 +361,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
 
-          {photos.length > 0 && (
+          {showPhotos && photos.length > 0 && (
             <div className="grid grid-cols-3 gap-1 px-3 pb-2">
               {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
                 canEdit={canEdit} onRemove={() => removePhoto(p)} />)}
+              {canEdit && (
+                <PhotoPicker onPick={uploadPhoto}>
+                  <button title="Add another photo"
+                    className="flex aspect-square items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </PhotoPicker>
+              )}
             </div>
           )}
 
-          {files.length > 0 && (
+          {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
               {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />)}
+              {canEdit && (
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Plus className="h-3.5 w-3.5" /> Add file
+                  <input type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                </label>
+              )}
             </div>
           )}
 
