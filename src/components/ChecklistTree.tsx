@@ -264,6 +264,18 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
             <div className="flex flex-wrap gap-1 border-b border-dashed px-3 py-1.5">
               <ActionBtn onClick={() => { setShowNoteEditor(true); }} icon={<StickyNote className="h-3 w-3" />} label="Note" />
               <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
+              {clip?.kind === "item" && (
+                <ActionBtn
+                  onClick={async () => {
+                    try {
+                      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+                      setOpen(true); toast.success("Pasted"); onChange();
+                    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+                  }}
+                  icon={<ClipboardPaste className="h-3 w-3" />}
+                  label={`Paste "${clip.sourceLabel ?? clip.node.label}"`}
+                />
+              )}
               <PhotoPicker onPick={uploadPhoto}>
                 <button className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
                   <Camera className="h-3 w-3" /> Photo
