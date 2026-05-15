@@ -249,7 +249,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={body}
             disabled={!canEdit}
             onChange={(e) => setBody(e.target.value)}
-            onBlur={() => body !== note.body && onUpdate({ body })}
+            onBlur={() => {
+              if (body !== note.body) onUpdate({ body });
+              maybeAutoDelete();
+            }}
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />
