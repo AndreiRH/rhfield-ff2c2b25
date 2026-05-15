@@ -8,14 +8,17 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
+  Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
+  Camera, Paperclip, Check,
 } from "lucide-react";
-import { useClipboard, buildTypeClip, pasteType } from "@/lib/clipboard";
+import {
+  useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
+} from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
-import { calcProgress, itemsFromGroup } from "@/lib/progress";
-import { ProgressBar } from "@/components/ProgressBar";
+import { calcProgress } from "@/lib/progress";
+import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -25,23 +28,32 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any) {
+export function ComponentTypesTree(props: any) {
+  return (
+    <TreeActionProvider>
+      <ComponentTypesTreeInner {...props} />
+    </TreeActionProvider>
+  );
+}
+
+function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [deleteMode, setDeleteMode] = useState(false);
-  const [copyMode, setCopyMode] = useState(false);
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip, set: setClipTop } = useClipboard();
+  const { clip, set: setClipTop, clear: clearClip } = useClipboard();
+  const action = useTreeAction()!;
+  const inMode = action.mode !== "none";
 
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
     try {
       await pasteType(clip, group.id, types.length);
+      clearClip();
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -57,7 +69,6 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
 
   const q = search.trim().toLowerCase();
 
-  // While searching, force-open any type that has matching components.
   const matchingTypeIds = q
     ? new Set(
         types
@@ -109,11 +120,49 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
     onChange();
   };
 
+  // Done handler — commit selection from any kind.
+  const commitDone = async () => {
+    if (!action.hasSelection) { action.setMode("none"); return; }
+    const entries = Array.from(action.selection.values());
+    const kind = entries[0].kind;
+    if (action.mode === "copy") {
+      if (kind === "type") {
+        setClipTop(buildTypeClipMany(entries.map((e) => e.payload)));
+      } else if (kind === "component") {
+        setClipTop(buildComponentClipMany(entries.map((e) => e.payload)));
+      } else if (kind === "item") {
+        setClipTop(buildItemClipMany(entries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
+      }
+      action.setMode("none");
+    } else if (action.mode === "delete") {
+      const table = kind === "type" ? "component_types" : kind === "component" ? "components" : "checklist_items";
+      const ids = entries.map((e) => kind === "item" ? e.payload.item.id : e.payload.id);
+      const labels = entries.map((e) => kind === "item" ? e.payload.item.label : e.payload.name);
+      const { error } = await supabase.from(table as any)
+        .update({ deleted_at: new Date().toISOString() }).in("id", ids);
+      if (error) { toast.error(error.message); return; }
+      action.setMode("none");
+      onChange();
+      toast.success(`Deleted ${ids.length} ${kind}${ids.length > 1 ? "s" : ""}${ids.length === 1 ? `: "${labels[0]}"` : ""}`, {
+        duration: 3000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const { error: undoErr } = await supabase.from(table as any)
+              .update({ deleted_at: null }).in("id", ids);
+            if (undoErr) toast.error(undoErr.message); else { toast.success("Restored"); onChange(); }
+          },
+        },
+      });
+    }
+  };
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        {types.length > 0 && (
-          <div className="flex items-center justify-end gap-2">
+        {/* Top action bar — single global controls. */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {types.length > 0 && !inMode && (
             <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
               {allOpen ? (
                 <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
@@ -121,40 +170,45 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
                 <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
               )}
             </Button>
-          </div>
-        )}
-
-        {canEdit && !adding && (
-          <div className="grid grid-cols-3 gap-2">
+          )}
+          {canEdit && !adding && types.length > 0 && (
+            <>
+              <Button
+                size="sm"
+                variant={action.mode === "copy" ? "default" : "outline"}
+                onClick={() => action.setMode(action.mode === "copy" ? "none" : "copy")}
+              >
+                <Copy className="mr-1 h-4 w-4" />
+                {action.mode === "copy" ? `Done${action.count ? ` (${action.count})` : ""}` : "Copy"}
+              </Button>
+              <Button
+                size="sm"
+                variant={action.mode === "delete" ? "destructive" : "outline"}
+                onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                {action.mode === "delete" ? `Done${action.count ? ` (${action.count})` : ""}` : "Delete"}
+              </Button>
+            </>
+          )}
+          {action.mode === "copy" && (
+            <Button size="sm" variant="default" onClick={commitDone} disabled={!action.hasSelection}>
+              <Check className="mr-1 h-4 w-4" /> Done{action.count ? ` (${action.count})` : ""}
+            </Button>
+          )}
+          {canEdit && !adding && !inMode && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add type
             </Button>
-            <Button
-              size="sm"
-              variant={copyMode ? "default" : "outline"}
-              disabled={types.length === 0}
-              onClick={() => { setCopyMode((c) => !c); setDeleteMode(false); }}
-            >
-              <Copy className="mr-1 h-4 w-4" />
-              {copyMode ? "Done" : "Copy"}
+          )}
+          {clip && !inMode && canEdit && clip.kind === "componentType" && (
+            <Button size="sm" variant="outline" onClick={pasteTypeHere}
+              title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
             </Button>
-            <Button
-              size="sm"
-              variant={deleteMode ? "destructive" : "outline"}
-              disabled={types.length === 0}
-              onClick={() => { setDeleteMode((d) => !d); setCopyMode(false); }}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              {deleteMode ? "Done" : "Delete"}
-            </Button>
-            {clip?.kind === "componentType" && !deleteMode && !copyMode && (
-              <Button size="sm" variant="outline" className="col-span-3" onClick={pasteTypeHere}
-                title={`Paste "${clip.sourceLabel ?? clip.node.name}" with all its components & subtasks`}>
-                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste "{clip.sourceLabel ?? clip.node.name}"
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
         {adding && (
           <div className="flex max-w-md gap-2">
@@ -166,19 +220,18 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
           </div>
         )}
 
-        {deleteMode && (
+        {action.mode === "delete" && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            Tap a component type to delete it. Tap "Done" to exit delete mode.
+            Tap any type, component, or item to add it to the deletion list. Tap "Done" to delete all selected.
           </p>
         )}
-
-        {copyMode && (
+        {action.mode === "copy" && (
           <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-            Tap a component type to copy it (with all components & subtasks). Tap "Done" to exit copy mode.
+            Tap any type, component, or item to add it to the copy. Tap "Done" to copy all selected.
           </p>
         )}
 
-        {types.length > 1 && !deleteMode && (
+        {types.length > 1 && !inMode && (
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -208,9 +261,6 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
                       onChange={onChange}
                       open={q ? true : openIds.has(t.id)}
                       onToggleOpen={() => toggleOne(t.id)}
-                      deleteMode={deleteMode}
-                      copyMode={copyMode}
-                      onCopy={() => { setClipTop(buildTypeClip(t)); setCopyMode(false); toast.success(`Copied "${t.name}"`); }}
                       externalSearch={q ? search : undefined}
                     />
                   );
@@ -227,9 +277,11 @@ export function ComponentTypesTree({ group, canEdit, onChange, emptyHint }: any)
   );
 }
 
-function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, copyMode, onCopy, externalSearch }: any) {
-  const inActionMode = deleteMode || copyMode;
-  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || inActionMode });
+function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSearch }: any) {
+  const action = useTreeAction()!;
+  const inMode = action.mode !== "none";
+  const selected = action.isSelected(type.id);
+  const sortableArgs = useSortable({ id: type.id, disabled: !canEdit || inMode });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
@@ -242,10 +294,15 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
   const notesCount =
     liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
     items.filter((i: any) => (i.note ?? "").trim() !== "").length;
+  const photosCount =
+    liveComps.reduce((acc: number, c: any) => acc + (c.component_photos?.length ?? 0), 0) +
+    items.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
+  const filesCount =
+    liveComps.reduce((acc: number, c: any) => acc + (c.component_files?.length ?? 0), 0) +
+    items.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const rename = async () => {
     if (!name.trim() || name === type.name) { setEditing(false); return; }
@@ -254,112 +311,84 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, deleteMode, 
     else { setEditing(false); onChange(); }
   };
 
-  const remove = async () => {
-    const { error } = await supabase.from("component_types").update({ deleted_at: new Date().toISOString() }).eq("id", type.id);
-    if (error) { toast.error(error.message); return; }
-    setConfirmDelete(false);
-    onChange();
-    toast.success(`"${type.name}" deleted`, {
-      duration: 3000,
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const { error: undoErr } = await supabase
-            .from("component_types").update({ deleted_at: null }).eq("id", type.id);
-          if (undoErr) toast.error(undoErr.message);
-          else { toast.success("Restored"); onChange(); }
-        },
-      },
-    });
-  };
+  const onTap = () => action.toggle(type.id, { kind: "type", payload: type });
 
   return (
     <div
       ref={sortableArgs.setNodeRef}
       style={style}
       className={`overflow-hidden rounded-lg border bg-card shadow-sm transition ${
-        deleteMode ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10"
-        : copyMode ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10"
-        : "border-border"
+        action.mode === "delete"
+          ? `cursor-pointer ${selected ? "border-destructive bg-destructive/15" : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"}`
+          : action.mode === "copy"
+          ? `cursor-pointer ${selected ? "border-primary bg-primary/15" : "border-primary/40 bg-primary/5 hover:bg-primary/10"}`
+          : "border-border"
       }`}
-      onClick={
-        deleteMode ? () => setConfirmDelete(true)
-        : copyMode ? () => onCopy?.()
-        : undefined
-      }
+      onClick={inMode ? onTap : undefined}
     >
       <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2">
-        {canEdit && !inActionMode && (
+        {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
             className="cursor-grab touch-none p-1 active:cursor-grabbing">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        {!inActionMode && (
+        {!inMode && (
           <button onClick={onToggleOpen} className="text-muted-foreground hover:text-foreground">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {deleteMode ? (
-          <div className="flex flex-1 items-center gap-2">
-            <Trash2 className="h-4 w-4 text-destructive" />
-            <span className="text-base font-semibold">{type.name}</span>
-          </div>
-        ) : copyMode ? (
-          <div className="flex flex-1 items-center gap-2">
-            <Copy className="h-4 w-4 text-primary" />
-            <span className="text-base font-semibold">{type.name}</span>
-          </div>
-        ) : editing ? (
+        {inMode && (
+          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (action.mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+            {selected && <Check className="h-3 w-3" />}
+          </span>
+        )}
+        {!inMode && editing ? (
           <div className="flex flex-1 items-center gap-2">
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") rename(); }} className="h-7" />
             <Button size="icon" variant="ghost" onClick={rename}><Check className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" onClick={() => { setEditing(false); setName(type.name); }}><X className="h-4 w-4" /></Button>
           </div>
         ) : (
           <button
-            onClick={onToggleOpen}
-            onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditing(true); } }}
+            onClick={inMode ? undefined : onToggleOpen}
+            onDoubleClick={(e) => { if (canEdit && !inMode) { e.stopPropagation(); setEditing(true); } }}
             className="flex flex-1 items-center gap-2 text-left"
-            title={canEdit ? "Double-click to rename" : undefined}
+            title={canEdit && !inMode ? "Double-click to rename" : undefined}
           >
             <span className="text-base font-semibold">{type.name}</span>
           </button>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-        <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
-          <StickyNote className="h-3 w-3" /> {notesCount}
-        </span>
+        {notesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
+            <StickyNote className="h-3 w-3" /> {notesCount}
+          </span>
+        )}
+        {photosCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos inside">
+            <Camera className="h-3 w-3" /> {photosCount}
+          </span>
+        )}
+        {filesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files inside">
+            <Paperclip className="h-3 w-3" /> {filesCount}
+          </span>
+        )}
       </div>
 
-      {open && !inActionMode && (
+      {open && (
         <div className="p-3">
           <ComponentsList
             group={type}
             parentKind="component_type"
-            canEdit={canEdit && !inActionMode}
+            canEdit={canEdit}
             onChange={onChange}
             externalSearch={externalSearch}
             hideTitle
           />
         </div>
       )}
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{type.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              All components and checklists inside will be hidden. You can undo right after.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

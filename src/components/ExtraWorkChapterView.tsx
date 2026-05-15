@@ -7,18 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Plus, Trash2, Check, X, GripVertical, ChevronDown, ChevronRight,
-  StickyNote, Camera, Paperclip, ChevronsDownUp, ChevronsUpDown, Search, Globe, Lock,
-  Copy, ClipboardPaste,
+  Plus, Check, GripVertical, ChevronDown, ChevronRight,
+  StickyNote, Camera, Paperclip, Search, Globe, Lock,
+  ClipboardPaste, Trash2, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
 import { PhotoPicker } from "@/components/PhotoPicker";
-import { useClipboard, buildComponentClip, pasteComponent } from "@/lib/clipboard";
+import { useClipboard, pasteComponent } from "@/lib/clipboard";
+import { useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -28,12 +25,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Renders the list of components inside an equipment_group (or component_type).
-// Each component is a strongly-styled card with its own checklist + notes/files.
 export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle }: any) {
   const components = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+  const action = useTreeAction();
+  const inMode = action?.mode !== "none" && !!action;
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -41,8 +39,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const [mode, setMode] = useState<"none" | "delete" | "copy">("none");
-  const { clip, set: setClip, clear } = useClipboard();
+  const { clip, clear } = useClipboard();
 
   const pasteComponentHere = async () => {
     if (clip?.kind !== "component") return;
@@ -55,23 +52,16 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   };
 
   const q = search.trim().toLowerCase();
-  const visible = q
-    ? components.filter((c: any) => (c.name ?? "").toLowerCase().includes(q))
-    : components;
+  const visible = q ? components.filter((c: any) => (c.name ?? "").toLowerCase().includes(q)) : components;
 
-  // Auto-include freshly-added components in open set, drop removed ones
   useEffect(() => {
     setOpenIds((prev) => {
       const next = new Set<string>();
       for (const c of components) if (prev.has(c.id)) next.add(c.id);
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [components.map((c: any) => c.id).join(",")]);
 
-  const allOpen = components.length > 0 && components.every((c: any) => openIds.has(c.id));
-  const collapseAll = () => setOpenIds(new Set());
-  const expandAll = () => setOpenIds(new Set(components.map((c: any) => c.id)));
   const toggleOne = (id: string) => setOpenIds((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -110,42 +100,14 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
         ) : <span />}
         <div className="flex items-center gap-2">
-          {components.length > 0 && (
-            <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll}>
-              {allOpen ? (
-                <><ChevronsDownUp className="mr-1 h-4 w-4" /> Collapse all</>
-              ) : (
-                <><ChevronsUpDown className="mr-1 h-4 w-4" /> Expand all</>
-              )}
-            </Button>
-          )}
-          {canEdit && clip?.kind === "component" && mode === "none" && (
+          {canEdit && !inMode && clip?.kind === "component" && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
-              title={`Paste "${clip.sourceLabel ?? clip.node.name}"`}>
+              title={`Paste ${clip.nodes.length} component${clip.nodes.length > 1 ? "s" : ""}`}>
               <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
             </Button>
           )}
-          {canEdit && components.length > 0 && !adding && (
-            <>
-              <Button
-                size="sm"
-                variant={mode === "copy" ? "default" : "outline"}
-                onClick={() => setMode((m) => (m === "copy" ? "none" : "copy"))}
-              >
-                <Copy className="mr-1 h-4 w-4" />
-                {mode === "copy" ? "Done" : "Copy"}
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === "delete" ? "destructive" : "outline"}
-                onClick={() => setMode((m) => (m === "delete" ? "none" : "delete"))}
-              >
-                <Trash2 className="mr-1 h-4 w-4" />
-                {mode === "delete" ? "Done" : "Delete"}
-              </Button>
-            </>
-          )}
-          {canEdit && !adding && mode === "none" && (
+          {canEdit && !adding && !inMode && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-4 w-4" /> Add component
             </Button>
@@ -153,7 +115,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         </div>
       </div>
 
-      {!usingExternal && components.length > 1 && (
+      {!usingExternal && components.length > 1 && !inMode && (
         <div className="relative max-w-md">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -180,25 +142,12 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
         <p className="text-sm text-muted-foreground">No components match "{search}".</p>
       )}
 
-      {mode === "delete" && (
-        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          Tap a component to delete it. Tap "Done" to exit.
-        </p>
-      )}
-      {mode === "copy" && (
-        <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-          Tap a component to copy it (with its checklist). Tap "Done" to exit.
-        </p>
-      )}
-
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={visible.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {visible.map((c: any) => (
               <ComponentBlock key={c.id} component={c} canEdit={canEdit} onChange={onChange}
-                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)}
-                mode={mode}
-                onModeCopy={() => setClip(buildComponentClip(c))} />
+                open={openIds.has(c.id)} onToggleOpen={() => toggleOne(c.id)} />
             ))}
           </div>
         </SortableContext>
@@ -207,7 +156,6 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   );
 }
 
-// Kept for after-sales / extra-works pages
 export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   const allItems = (group.components ?? [])
     .filter((c: any) => !c.deleted_at)
@@ -227,31 +175,39 @@ export function ChapterGroupCard({ group, canEdit, onChange }: any) {
   );
 }
 
-function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen, mode = "none", onModeCopy }: any) {
-  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || mode !== "none" });
+function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggleOpen }: any) {
+  const action = useTreeAction();
+  const inMode = action?.mode !== "none" && !!action;
+  const selected = !!action?.isSelected(component.id);
+  const sortableArgs = useSortable({ id: component.id, disabled: !canEdit || inMode });
   const style = {
     transform: CSS.Transform.toString(sortableArgs.transform),
     transition: sortableArgs.transition,
     opacity: sortableArgs.isDragging ? 0.6 : 1,
   };
-  const inMode = mode !== "none";
 
   const allItems = (component.checklist_items ?? []).filter((i: any) => !i.deleted_at);
   const prog = calcProgress(allItems);
+  const ownNote = (component.note ?? "").trim() !== "";
   const notesCount =
-    ((component.note ?? "").trim() !== "" ? 1 : 0) +
+    (ownNote ? 1 : 0) +
     allItems.filter((i: any) => (i.note ?? "").trim() !== "").length;
+  const photosCount =
+    (component.component_photos?.length ?? 0) +
+    allItems.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
+  const filesCount =
+    (component.component_files?.length ?? 0) +
+    allItems.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
 
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const photos = component.component_photos ?? [];
   const files = component.component_files ?? [];
-  const [showNoteEditor, setShowNoteEditor] = useState(!!component.note);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [note, setNote] = useState(component.note ?? "");
   useEffect(() => { setNote(component.note ?? ""); }, [component.note]);
 
@@ -260,22 +216,6 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     const { error } = await supabase.from("components").update({ name: name.trim() }).eq("id", component.id);
     if (error) toast.error(error.message);
     else { setEditingName(false); onChange(); }
-  };
-  const deleteComponent = async () => {
-    const { error } = await supabase.from("components").update({ deleted_at: new Date().toISOString() }).eq("id", component.id);
-    if (error) { toast.error(error.message); return; }
-    onChange();
-    toast.success(`"${component.name}" deleted`, {
-      duration: 3000,
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const { error: undoErr } = await supabase.from("components")
-            .update({ deleted_at: null }).eq("id", component.id);
-          if (undoErr) toast.error(undoErr.message); else onChange();
-        },
-      },
-    });
   };
   const saveNote = async () => {
     if (note === (component.note ?? "")) return;
@@ -307,21 +247,22 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     onChange();
   };
 
+  const onTap = () => action?.toggle(component.id, { kind: "component", payload: component });
+
   return (
     <div ref={sortableArgs.setNodeRef} style={style}
       className={`overflow-hidden rounded-lg border bg-card shadow-sm ${
-        mode === "delete" ? "border-destructive/40" : mode === "copy" ? "border-primary/40" : "border-border"
+        action?.mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40")
+        : action?.mode === "copy" ? (selected ? "border-primary" : "border-primary/40")
+        : "border-border"
       }`}>
       <div
         className={`flex items-center gap-2 border-b px-3 py-2 ${
-          mode === "delete" ? "bg-destructive/10 cursor-pointer hover:bg-destructive/15" :
-          mode === "copy" ? "bg-primary/10 cursor-pointer hover:bg-primary/15" :
+          action?.mode === "delete" ? `cursor-pointer ${selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10"}` :
+          action?.mode === "copy" ? `cursor-pointer ${selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10"}` :
           "bg-muted/40"
         }`}
-        onClick={inMode ? () => {
-          if (mode === "delete") setConfirmDelete(true);
-          else if (mode === "copy") onModeCopy?.();
-        } : undefined}
+        onClick={inMode ? onTap : undefined}
       >
         {canEdit && !inMode && (
           <button {...sortableArgs.attributes} {...sortableArgs.listeners}
@@ -334,15 +275,17 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        {mode === "delete" && <Trash2 className="h-4 w-4 text-destructive" />}
-        {mode === "copy" && <Copy className="h-4 w-4 text-primary" />}
+        {inMode && (
+          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selected ? (action!.mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+            {selected && <Check className="h-3 w-3" />}
+          </span>
+        )}
         {!inMode && editingName ? (
           <div className="flex flex-1 items-center gap-2">
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }}
               className="h-7" />
             <Button size="icon" variant="ghost" onClick={renameComponent}><Check className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setName(component.name); }}><X className="h-4 w-4" /></Button>
           </div>
         ) : (
           <span
@@ -354,38 +297,37 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </span>
         )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{prog.done}/{prog.total}</span>
-        <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
-          <StickyNote className="h-3 w-3" /> {notesCount}
-        </span>
+        {notesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes inside">
+            <StickyNote className="h-3 w-3" /> {notesCount}
+          </span>
+        )}
+        {photosCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos inside">
+            <Camera className="h-3 w-3" /> {photosCount}
+          </span>
+        )}
+        {filesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files inside">
+            <Paperclip className="h-3 w-3" /> {filesCount}
+          </span>
+        )}
       </div>
 
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{component.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>All items inside will be hidden from every line.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { await deleteComponent(); setConfirmDelete(false); }}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {open && (
+      {open && !inMode && (
         <div className="space-y-3 p-3">
           {canEdit && (
             <div className="flex flex-wrap gap-1">
-              <button onClick={() => setShowNoteEditor(true)}
-                className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+              <button onClick={() => setShowNoteEditor((v) => !v)}
+                className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${ownNote ? "border-primary text-primary" : "text-muted-foreground"}`}>
                 <StickyNote className="h-3 w-3" /> Note
               </button>
               <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+                <button className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${photos.length > 0 ? "border-primary text-primary" : "text-muted-foreground"}`}>
                   <Camera className="h-3 w-3" /> Photo
                 </button>
               </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
+              <label className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent ${files.length > 0 ? "border-primary text-primary" : "text-muted-foreground"}`}>
                 <Paperclip className="h-3 w-3" /> File
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
@@ -393,7 +335,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
             </div>
           )}
 
-          {(showNoteEditor || component.note) && (
+          {showNoteEditor && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Note</span>
@@ -411,8 +353,9 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                   </button>
                 )}
               </div>
-              <Textarea value={note} disabled={!canEdit}
-                onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
+              <Textarea value={note} disabled={!canEdit} autoFocus
+                onChange={(e) => setNote(e.target.value)}
+                onBlur={() => { saveNote(); if (!note.trim()) setShowNoteEditor(false); }}
                 placeholder="Component note…" className="min-h-[50px] text-xs" />
             </div>
           )}
@@ -449,3 +392,5 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
 export default function ExtraWorkChapterView({ group, canEdit, onChange }: any) {
   return <ChapterGroupCard group={group} canEdit={canEdit} onChange={onChange} />;
 }
+
+export { Trash2, Copy };

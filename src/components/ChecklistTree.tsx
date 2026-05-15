@@ -1,20 +1,17 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Plus, Trash2, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X, Globe, Lock, Copy, ClipboardPaste,
+  Plus, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
+  StickyNote, ListPlus, X, Globe, Lock, ClipboardPaste, Check,
 } from "lucide-react";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
-import { useClipboard, buildItemClip, pasteItem } from "@/lib/clipboard";
+import { useClipboard, pasteItem } from "@/lib/clipboard";
+import { useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -23,10 +20,6 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-
-type Mode = "none" | "delete" | "copy";
-const ModeCtx = createContext<Mode>("none");
-const useMode = () => useContext(ModeCtx);
 
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
@@ -40,8 +33,9 @@ export function ChecklistTree({
 }) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
-  const [mode, setMode] = useState<Mode>("none");
   const { clip, clear } = useClipboard();
+  const action = useTreeAction();
+  const inMode = action?.mode !== "none" && !!action;
 
   const rootItems = items
     .filter((i: any) => !i.parent_item_id)
@@ -82,80 +76,48 @@ export function ChecklistTree({
   };
 
   return (
-    <ModeCtx.Provider value={mode}>
-      <div className="space-y-2">
-        {canEdit && (
-          <div className="flex flex-wrap justify-end gap-1">
-            {clip?.kind === "item" && mode === "none" && (
-              <Button size="sm" variant="outline" onClick={pasteHere}
-                title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
-                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
-              </Button>
-            )}
-            {!adding && rootItems.length > 0 && (
-              <>
-                <Button
-                  size="sm"
-                  variant={mode === "copy" ? "default" : "outline"}
-                  onClick={() => setMode((m) => (m === "copy" ? "none" : "copy"))}
-                >
-                  <Copy className="mr-1 h-4 w-4" />
-                  {mode === "copy" ? "Done" : "Copy"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={mode === "delete" ? "destructive" : "outline"}
-                  onClick={() => setMode((m) => (m === "delete" ? "none" : "delete"))}
-                >
-                  <Trash2 className="mr-1 h-4 w-4" />
-                  {mode === "delete" ? "Done" : "Delete"}
-                </Button>
-              </>
-            )}
-            {!adding && mode === "none" && (
-              <Button size="sm" onClick={() => setAdding(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Add item
-              </Button>
-            )}
-          </div>
-        )}
-        {adding && (
-          <div className="flex gap-2">
-            <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
-              placeholder="Checklist item"
-              onKeyDown={(e) => e.key === "Enter" && addItem()} />
-            <Button size="sm" onClick={addItem}>Add</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setText(""); }}>Cancel</Button>
-          </div>
-        )}
+    <div className="space-y-2">
+      {canEdit && (
+        <div className="flex flex-wrap justify-end gap-1">
+          {clip?.kind === "item" && !inMode && (
+            <Button size="sm" variant="outline" onClick={pasteHere}
+              title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
+              <ClipboardPaste className="mr-1 h-4 w-4" /> Paste
+              {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
+            </Button>
+          )}
+          {!adding && !inMode && (
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Add item
+            </Button>
+          )}
+        </div>
+      )}
+      {adding && (
+        <div className="flex gap-2">
+          <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
+            placeholder="Checklist item"
+            onKeyDown={(e) => e.key === "Enter" && addItem()} />
+          <Button size="sm" onClick={addItem}>Add</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setText(""); }}>Cancel</Button>
+        </div>
+      )}
 
-        {mode === "delete" && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            Tap any item to delete it (subtasks included). Tap "Done" to exit.
-          </p>
-        )}
-        {mode === "copy" && (
-          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-            Tap any item to copy it (with its subtasks). Tap "Done" to exit.
-          </p>
-        )}
+      {rootItems.length === 0 && !adding && (
+        <p className="text-sm text-muted-foreground">{emptyHint}</p>
+      )}
 
-        {rootItems.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">{emptyHint}</p>
-        )}
-
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={rootItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-            <ul className="space-y-1">
-              {rootItems.map((it: any) => (
-                <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
-                  onChange={onChange} depth={0} sortable />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
-      </div>
-    </ModeCtx.Provider>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={rootItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-1">
+            {rootItems.map((it: any) => (
+              <TreeNode key={it.id} item={it} allItems={items} canEdit={canEdit}
+                onChange={onChange} depth={0} sortable />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+    </div>
   );
 }
 
@@ -164,9 +126,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
-  const { clip, set: setClip, clear: clearClip } = useClipboard();
-  const mode = useMode();
+  const { clip, clear: clearClip } = useClipboard();
+  const action = useTreeAction();
+  const mode = action?.mode ?? "none";
   const inMode = mode !== "none";
+  const selected = !!action?.isSelected(item.id);
 
   const subs = allItems
     .filter((i: any) => i.parent_item_id === item.id)
@@ -174,13 +138,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
 
   const photos = item.item_photos ?? [];
   const files = item.item_files ?? [];
+  const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState(false);
-  const [showNoteEditor, setShowNoteEditor] = useState(!!item.note);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
 
@@ -200,24 +164,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
       .update({ done: !item.done, completed_at: !item.done ? new Date().toISOString() : null })
       .eq("id", item.id);
     if (error) toast.error(error.message); else onChange();
-  };
-  const remove = async () => {
-    const { error } = await supabase.from("checklist_items")
-      .update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    if (error) { toast.error(error.message); return; }
-    setConfirmDelete(false);
-    onChange();
-    toast.success(`"${item.label}" deleted`, {
-      duration: 3000,
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const { error: undoErr } = await supabase.from("checklist_items")
-            .update({ deleted_at: null }).eq("id", item.id);
-          if (undoErr) toast.error(undoErr.message); else onChange();
-        },
-      },
-    });
   };
   const pasteAsSub = async () => {
     if (clip?.kind !== "item") return;
@@ -269,16 +215,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
 
   const canExpand = (hasContent || canEdit) && !inMode;
 
-  const onRowClick = () => {
-    if (mode === "delete") setConfirmDelete(true);
-    else if (mode === "copy") setClip(buildItemClip(item, allItems));
-  };
+  const onRowClick = () => action?.toggle(item.id, { kind: "item", payload: { item, allItems } });
 
   const row = (
     <div
       className={`flex items-center gap-1 px-2 py-1.5 ${inMode ? "cursor-pointer" : ""} ${
-        mode === "delete" ? "border-destructive/40 bg-destructive/5 hover:bg-destructive/10" :
-        mode === "copy" ? "border-primary/40 bg-primary/5 hover:bg-primary/10" : ""
+        mode === "delete" ? (selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
+        mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") : ""
       }`}
       onClick={inMode ? onRowClick : undefined}
     >
@@ -294,8 +237,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
       )}
-      {mode === "delete" && <Trash2 className="h-3.5 w-3.5 text-destructive" />}
-      {mode === "copy" && <Copy className="h-3.5 w-3.5 text-primary" />}
+      {inMode && (
+        <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? (mode === "delete" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/30"}`}>
+          {selected && <Check className="h-2.5 w-2.5" />}
+        </span>
+      )}
       {!inMode && <Checkbox checked={item.done} disabled={!canEdit} onCheckedChange={toggle} />}
       {!inMode && editingLabel && canEdit ? (
         <Input
@@ -316,29 +262,39 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground line-through" : ""}`}
         >{item.label}</span>
       )}
+      {/* compact indicators when collapsed */}
+      {!inMode && !open && (
+        <span className="flex items-center gap-1.5">
+          {ownNote && <StickyNote className="h-3 w-3 text-primary" aria-label="has note" />}
+          {photos.length > 0 && <Camera className="h-3 w-3 text-primary" aria-label="has photos" />}
+          {files.length > 0 && <Paperclip className="h-3 w-3 text-primary" aria-label="has files" />}
+        </span>
+      )}
     </div>
   );
 
   return (
     <li ref={sortable ? sortableArgs.setNodeRef : undefined} style={style}
       className={`rounded-md border bg-card ${
-        mode === "delete" ? "border-destructive/40" : mode === "copy" ? "border-primary/40" : ""
+        mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
+        mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
       }`}>
       {row}
       {open && !inMode && (
         <div className="border-t bg-muted/10">
           {canEdit && (
             <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-b border-dashed px-2 py-1 sm:flex-wrap sm:gap-1 sm:px-3 sm:py-1.5">
-              <ActionBtn onClick={() => { setShowNoteEditor(true); }} icon={<StickyNote className="h-3 w-3" />} label="Note" />
+              <ActionBtn onClick={() => setShowNoteEditor((v) => !v)}
+                icon={<StickyNote className="h-3 w-3" />} label="Note" active={ownNote} />
               {depth < 2 && (
                 <ActionBtn onClick={() => setAddingSub(true)} icon={<ListPlus className="h-3 w-3" />} label="Subtask" />
               )}
               <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+                <button className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${photos.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
                   <Camera className="h-3 w-3" /> Photo
                 </button>
               </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+              <label className={`inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${files.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
                 <Paperclip className="h-3 w-3" /> File
                 <input type="file" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
@@ -346,14 +302,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
               {clip?.kind === "item" && depth < 2 && (
                 <button onClick={pasteAsSub}
                   className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  title={`Paste "${clip.sourceLabel ?? clip.node.label}"`}>
+                  title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
                   <ClipboardPaste className="h-3 w-3" /> Paste
+                  {clip.nodes.length > 1 ? ` ${clip.nodes.length}` : ""}
                 </button>
               )}
             </div>
           )}
 
-          {(showNoteEditor || item.note) && (
+          {showNoteEditor && (
             <div className="space-y-1 px-3 py-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Note</span>
@@ -371,8 +328,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
                   </button>
                 )}
               </div>
-              <Textarea value={note} disabled={!canEdit}
-                onChange={(e) => setNote(e.target.value)} onBlur={saveNote}
+              <Textarea value={note} disabled={!canEdit} autoFocus
+                onChange={(e) => setNote(e.target.value)}
+                onBlur={() => { saveNote(); if (!note.trim()) setShowNoteEditor(false); }}
                 placeholder="Note…" className="min-h-[50px] text-xs" />
             </div>
           )}
@@ -422,29 +380,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable }: any) {
           ))}
         </ul>
       )}
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{item.label}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This item is shared across all lines. It will be removed from every line, along with its subtasks.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={remove}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </li>
   );
 }
 
-function ActionBtn({ onClick, icon, label }: any) {
+function ActionBtn({ onClick, icon, label, active }: any) {
   return (
     <button onClick={onClick}
-      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground">
+      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] hover:bg-accent hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}>
       {icon} {label}
     </button>
   );
