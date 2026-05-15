@@ -416,7 +416,10 @@ function SettingRow({
           />
         ) : (
           <button type="button"
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (inSelectMode) action.toggle(setting.id, { kind: "setting", payload: setting });
+            }}
             onDoubleClick={(e) => { e.stopPropagation(); if (!inMode && canEdit) { if (!open) onToggleOpen(); setEditingTitle(true); } }}
             className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium cursor-default">
             <span className="truncate">{setting.title || "Untitled"}</span>
