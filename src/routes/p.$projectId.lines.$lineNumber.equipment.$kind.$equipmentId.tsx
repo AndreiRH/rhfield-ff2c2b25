@@ -181,63 +181,116 @@ const SECTION_ORDER: Section[] = ["assembly", "wiring", "cold_comm"];
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [section, setSection] = useState<Section>("assembly");
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
-  const touchRef = useRef<{ x: number; y: number } | null>(null);
+  const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null } | null>(null);
+  const widthRef = useRef(1);
+  const [swipeDx, setSwipeDx] = useState(0);
+  const [swiping, setSwiping] = useState(false);
 
-  const goRelative = (delta: number) => {
-    const i = SECTION_ORDER.indexOf(section);
-    const next = SECTION_ORDER[i + delta];
-    if (next) setSection(next);
-  };
+  const sectionIdx = SECTION_ORDER.indexOf(section);
+  const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
+  const targetSection: Section | null = dir !== 0 ? (SECTION_ORDER[sectionIdx + dir] ?? null) : null;
+  const progress = targetSection ? Math.min(1, Math.abs(swipeDx) / widthRef.current) : 0;
+  // Past 50% the target visuals take over so the bottom tab "follows" the swipe past the midpoint.
+  const displayedSection: Section = progress > 0.5 && targetSection ? targetSection : section;
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
-    touchRef.current = { x: t.clientX, y: t.clientY };
+    startRef.current = { x: t.clientX, y: t.clientY, decided: null };
+    widthRef.current = (e.currentTarget as HTMLElement).clientWidth || window.innerWidth;
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const start = touchRef.current;
-    touchRef.current = null;
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = startRef.current;
     if (!start) return;
-    const t = e.changedTouches[0];
+    const t = e.touches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-    goRelative(dx < 0 ? 1 : -1);
+    if (start.decided === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (start.decided === "h") setSwiping(true);
+    }
+    if (start.decided !== "h") return;
+    const cur = SECTION_ORDER.indexOf(section);
+    let val = dx;
+    if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
+      val = dx * 0.25; // resist past edges
+    }
+    setSwipeDx(val);
+  };
+  const onTouchEnd = () => {
+    const decided = startRef.current?.decided;
+    const dx = swipeDx;
+    startRef.current = null;
+    setSwiping(false);
+    if (decided !== "h") { setSwipeDx(0); return; }
+    const ratio = dx / widthRef.current;
+    if (Math.abs(ratio) > 0.25) {
+      const d = ratio < 0 ? 1 : -1;
+      const next = SECTION_ORDER[SECTION_ORDER.indexOf(section) + d];
+      if (next) setSection(next);
+    }
+    setSwipeDx(0);
   };
 
-  const meta = PHASE_META[section];
+  const meta = PHASE_META[displayedSection];
+  const targetMeta = targetSection ? PHASE_META[targetSection] : null;
+
   return (
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <div className={`pointer-events-none fixed inset-0 -z-10 transition-colors ${meta.tint}`} aria-hidden />
-      <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-white/80">Production line {data.line.number} · {plantLabel}</span>
-            <h1 className="text-3xl font-semibold">
-              {data.pe.name}
-              <span className={`ml-3 text-base font-normal ${meta.accent}`}>{overall}%</span>
-            </h1>
-          </div>
-          <Link
-            to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings"
-            params={{
-              projectId: data.line.project_id,
-              lineNumber: String(data.line.number),
-              kind: data.pe.kind,
-              equipmentId: data.pe.id,
-            }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
-          >
-            <SettingsIcon className="h-3.5 w-3.5" /> Settings
-          </Link>
-        </div>
-        <div className="mt-3 flex items-stretch gap-2">
-          <SectionTab phase="assembly" pct={mech} active={section === "assembly"} onClick={() => setSection("assembly")} />
-          <SectionTab phase="wiring" pct={wiring} active={section === "wiring"} onClick={() => setSection("wiring")} />
-          <SectionTab phase="cold_comm" pct={cold} active={section === "cold_comm"} onClick={() => setSection("cold_comm")} />
-        </div>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      {/* Background tint: current layer + target layer fading in with progress */}
+      <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
+        <div
+          className={`absolute inset-0 ${PHASE_META[section].tint}`}
+          style={{ transition: swiping ? "none" : "opacity 250ms ease-out", opacity: 1 }}
+        />
+        {targetMeta && (
+          <div
+            className={`absolute inset-0 ${targetMeta.tint}`}
+            style={{ opacity: progress, transition: swiping ? "none" : "opacity 250ms ease-out" }}
+          />
+        )}
       </div>
 
-      <div className="mt-6">
+      {/* Header stack: current header + target header overlay fading in */}
+      <div className="relative">
+        <div className={`rounded-lg border ${PHASE_META[section].header} px-3 pb-4 pt-3 transition-colors`}>
+          <HeaderInner
+            data={data}
+            plantLabel={plantLabel}
+            overall={overall}
+            accent={PHASE_META[section].accent}
+            mech={mech} wiring={wiring} cold={cold}
+            displayedSection={displayedSection}
+            setSection={setSection}
+          />
+        </div>
+        {targetMeta && (
+          <div
+            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+            style={{ opacity: progress, transition: swiping ? "none" : "opacity 250ms ease-out" }}
+            aria-hidden
+          >
+            <HeaderInner
+              data={data}
+              plantLabel={plantLabel}
+              overall={overall}
+              accent={targetMeta.accent}
+              mech={mech} wiring={wiring} cold={cold}
+              displayedSection={displayedSection}
+              setSection={setSection}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Content slides with finger; snaps back/commits on release */}
+      <div
+        className="mt-6"
+        style={{
+          transform: `translateX(${swipeDx}px)`,
+          transition: swiping ? "none" : "transform 250ms ease-out",
+        }}
+      >
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
@@ -251,6 +304,39 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
     </div>
+  );
+}
+
+function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, displayedSection, setSection }: any) {
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <span className="font-mono text-xs uppercase tracking-widest text-white/80">Production line {data.line.number} · {plantLabel}</span>
+          <h1 className="text-3xl font-semibold">
+            {data.pe.name}
+            <span className={`ml-3 text-base font-normal ${accent}`}>{overall}%</span>
+          </h1>
+        </div>
+        <Link
+          to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings"
+          params={{
+            projectId: data.line.project_id,
+            lineNumber: String(data.line.number),
+            kind: data.pe.kind,
+            equipmentId: data.pe.id,
+          }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
+        >
+          <SettingsIcon className="h-3.5 w-3.5" /> Settings
+        </Link>
+      </div>
+      <div className="mt-3 flex items-stretch gap-2">
+        <SectionTab phase="assembly" pct={mech} active={displayedSection === "assembly"} onClick={() => setSection("assembly")} />
+        <SectionTab phase="wiring" pct={wiring} active={displayedSection === "wiring"} onClick={() => setSection("wiring")} />
+        <SectionTab phase="cold_comm" pct={cold} active={displayedSection === "cold_comm"} onClick={() => setSection("cold_comm")} />
+      </div>
+    </>
   );
 }
 
