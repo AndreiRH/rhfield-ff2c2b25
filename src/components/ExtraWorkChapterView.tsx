@@ -206,6 +206,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const toggleOpen = () => { if (onToggleOpen) onToggleOpen(); else setInternalOpen((o) => !o); };
+  const { set: setClip } = useClipboard();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(component.name);
 
