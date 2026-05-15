@@ -178,15 +178,16 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [section, setSection] = useState<Section>("assembly");
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
 
+  const meta = PHASE_META[section];
   return (
     <>
-      <div className="border-b pb-4">
+      <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3 transition-colors`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {data.line.number} · {plantLabel}</span>
             <h1 className="text-3xl font-semibold">
               {data.pe.name}
-              <span className="ml-3 text-base font-normal text-muted-foreground">{overall}%</span>
+              <span className={`ml-3 text-base font-normal ${meta.accent}`}>{overall}%</span>
             </h1>
           </div>
           <Link
@@ -197,7 +198,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
               kind: data.pe.kind,
               equipmentId: data.pe.id,
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-sky-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
           >
             <SettingsIcon className="h-3.5 w-3.5" /> Settings
           </Link>
@@ -210,7 +211,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       </div>
 
       <div className="mt-6">
-        <PhaseBanner phase={section} pct={section === "assembly" ? mech : section === "wiring" ? wiring : cold} />
         {section === "assembly" && (
           <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />
         )}
@@ -224,18 +224,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
     </>
-  );
-}
-
-function PhaseBanner({ phase, pct }: { phase: Section; pct: number }) {
-  const meta = PHASE_META[phase];
-  const Icon = meta.icon;
-  return (
-    <div className={`mb-4 flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ${meta.banner}`}>
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="text-sm font-semibold tracking-wide uppercase">{meta.label}</span>
-      <span className="ml-auto font-mono text-xs tabular-nums opacity-90">{pct}%</span>
-    </div>
   );
 }
 
