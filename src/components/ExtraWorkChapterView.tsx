@@ -293,7 +293,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </span>
         )}
         {!inMode && editingName ? (
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Input value={name} autoFocus onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") renameComponent(); }}
               className="h-7" />
@@ -301,7 +301,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           </div>
         ) : (
           <span
-            onDoubleClick={() => !inMode && canEdit && setEditingName(true)}
+            onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingName(true); }}
             title={!inMode && canEdit ? "Double-click to rename" : undefined}
             className="flex flex-1 items-center gap-2 font-semibold"
           >
