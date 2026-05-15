@@ -95,7 +95,16 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     if (action.mode === "delete") { setConfirmDelete(true); return; }
     if (action.mode === "copy") {
       const entries = Array.from(action.selection.values());
-      setClip(buildItemClipMany(entries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
+      const selectedIds = new Set(entries.map((e) => e.payload.item.id));
+      const topLevelEntries = entries.filter((e) => {
+        let parentId = e.payload.item.parent_item_id;
+        while (parentId) {
+          if (selectedIds.has(parentId)) return false;
+          parentId = e.payload.allItems.find((i: any) => i.id === parentId)?.parent_item_id;
+        }
+        return true;
+      });
+      setClip(buildItemClipMany(topLevelEntries.map((e) => ({ item: e.payload.item, allItems: e.payload.allItems }))));
       action.setMode("none");
       toast.success(`Copied ${entries.length} item${entries.length > 1 ? "s" : ""}`);
     }
