@@ -36,7 +36,7 @@ export function ComponentTypesTree(props: any) {
   );
 }
 
-function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint }: any) {
+function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount }: any) {
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
