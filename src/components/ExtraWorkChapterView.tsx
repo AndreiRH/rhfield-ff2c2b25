@@ -31,7 +31,9 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
   const action = useTreeAction();
-  const inMode = action?.mode !== "none" && !!action;
+  const mode = action?.mode ?? "none";
+  const inMode = mode !== "none";
+  const inSelectMode = mode === "delete" || mode === "copy";
 
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
