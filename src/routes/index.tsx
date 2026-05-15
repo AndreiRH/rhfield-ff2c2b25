@@ -27,7 +27,7 @@ function ProjectsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, name, lines(id, equipment_groups(id, components(id, checklist_items(done, deleted_at))))")
+        .select("id, name, lines(id, equipment_groups(id, components(id, checklist_items(id, done, deleted_at, parent_item_id))))")
         .order("created_at");
       if (error) throw error;
       return data;
