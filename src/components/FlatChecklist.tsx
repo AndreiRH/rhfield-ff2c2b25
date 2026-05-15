@@ -27,7 +27,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount }: any) {
     .flatMap((t: any) => (t.components ?? []).filter((c: any) => !c.deleted_at));
   const bucket = directComps[0] ?? typeComps[0] ?? null;
   const allItems = (bucket?.checklist_items ?? []).filter((i: any) => !i.deleted_at);
-  const overall = calcProgress(itemsFromGroup(group));
 
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
