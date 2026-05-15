@@ -509,13 +509,21 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   return (
     <li className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
-        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="p-0.5 text-muted-foreground hover:text-foreground"
+          title={open ? "Collapse" : "Expand"}
+        >
+          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </button>
+        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <Input
           value={title}
           disabled={!canEdit}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title !== note.title && onUpdate({ title })}
-          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
+          className="h-7 flex-1 min-w-0 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
         />
         {canEdit && (
           <button
@@ -532,32 +540,34 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
           </button>
         )}
       </div>
-      <div className="space-y-2 p-3">
-        <Textarea
-          value={body}
-          disabled={!canEdit}
-          onChange={(e) => setBody(e.target.value)}
-          onBlur={() => body !== note.body && onUpdate({ body })}
-          placeholder="Write something…"
-          className="min-h-[60px] resize-y text-sm"
-        />
-        {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
-        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
-        {canEdit && (
-          <div className="flex gap-2">
-            <PhotoPicker onPick={uploadPhoto}>
-              <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Camera className="h-3 w-3" /> Photo
-              </button>
-            </PhotoPicker>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-              <Paperclip className="h-3 w-3" /> File
-              <input type="file" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-            </label>
-          </div>
-        )}
-      </div>
+      {open && (
+        <div className="space-y-2 p-3">
+          <Textarea
+            value={body}
+            disabled={!canEdit}
+            onChange={(e) => setBody(e.target.value)}
+            onBlur={() => body !== note.body && onUpdate({ body })}
+            placeholder="Write something…"
+            className="min-h-[60px] resize-y text-sm"
+          />
+          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+          {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
+          {canEdit && (
+            <div className="flex gap-2">
+              <PhotoPicker onPick={uploadPhoto}>
+                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                  <Camera className="h-3 w-3" /> Photo
+                </button>
+              </PhotoPicker>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                <Paperclip className="h-3 w-3" /> File
+                <input type="file" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }
