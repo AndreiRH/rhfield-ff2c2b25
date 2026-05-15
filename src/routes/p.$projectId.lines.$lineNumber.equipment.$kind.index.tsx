@@ -168,7 +168,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
           <Link
             to="/p/$projectId/lines/$lineNumber/equipment/$kind/pa"
             params={{ projectId, lineNumber, kind }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-sky-50"
+            className="inline-flex w-fit shrink-0 items-center self-start whitespace-nowrap rounded-md border border-sky-200 bg-slate-100 px-2 py-1 text-xs font-medium leading-none text-sky-900 hover:bg-sky-50"
           >
             Provisional acceptance
           </Link>
