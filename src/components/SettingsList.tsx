@@ -311,10 +311,18 @@ function SettingsListInner({
       return next;
     });
 
-  const pasteHere = async () => {
+  const pasteHere = async (groupTemplateId: string | null = null) => {
     if (clip?.kind !== "setting") return;
     try {
-      await pasteSetting(clip, { plant_equipment_id: equipmentId, sort_order: rows.length, created_by: userId });
+      const groupRows = groupTemplateId
+        ? rows.filter((r) => r.group_template_id === groupTemplateId)
+        : rows;
+      await pasteSetting(clip, {
+        plant_equipment_id: equipmentId,
+        sort_order: groupRows.length,
+        created_by: userId,
+        group_template_id: groupTemplateId,
+      });
       lockTo(settingPasteLocationKey);
       toast.success("Pasted"); load();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
@@ -367,7 +375,7 @@ function SettingsListInner({
           {canEdit && (
           <>
             {clip?.kind === "setting" && !inMode && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) && (
-              <Button size="sm" variant="outline" onClick={pasteHere}
+              <Button size="sm" variant="outline" onClick={() => pasteHere(null)}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
                 aria-label="Paste">
                 <ClipboardPaste className="h-4 w-4" />
@@ -486,6 +494,8 @@ function SettingsListInner({
                       onRename={(name) => updateGroupName(g, name)}
                       onAddSetting={() => addRow(g.template_id)}
                       itemCount={items.length}
+                      pasteCount={clip?.kind === "setting" && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) ? clip.nodes.length : 0}
+                      onPaste={() => pasteHere(g.template_id)}
                       collapsed={collapsedGroups.has(g.template_id)}
                       onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
@@ -546,13 +556,15 @@ function SettingsListInner({
 }
 
 function SettingsGroupSection({
-  group, canEdit, onRename, onAddSetting, itemCount, collapsed, onToggleCollapsed, children,
+  group, canEdit, onRename, onAddSetting, itemCount, pasteCount, onPaste, collapsed, onToggleCollapsed, children,
 }: {
   group: SettingGroup;
   canEdit: boolean;
   onRename: (name: string) => void;
   onAddSetting: () => void;
   itemCount: number;
+  pasteCount: number;
+  onPaste: () => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   children: ReactNode;
@@ -636,10 +648,22 @@ function SettingsGroupSection({
             )}
           </button>
         )}
+        {canEdit && !inMode && pasteCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onPaste(); }}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={`Paste ${pasteCount} setting${pasteCount > 1 ? "s" : ""} into this group`}
+            aria-label="Paste into group"
+          >
+            <ClipboardPaste className="h-3 w-3" />
+            {pasteCount > 1 ? <span>{pasteCount}</span> : null}
+          </button>
+        )}
         {canEdit && !inMode && (
           <button
             type="button"
-            onClick={onAddSetting}
+            onClick={(e) => { e.stopPropagation(); onAddSetting(); }}
             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Add setting to this group"
             aria-label="Add setting to this group"

@@ -227,7 +227,7 @@ async function copyStorage(bucket: "photos" | "files", src: string): Promise<str
 
 export async function pasteSetting(
   clip: Extract<Clip, { kind: "setting" }>,
-  ctx: { plant_equipment_id: string; sort_order: number; created_by?: string },
+  ctx: { plant_equipment_id: string; sort_order: number; created_by?: string; group_template_id?: string | null },
 ) {
   for (let i = 0; i < clip.nodes.length; i++) {
     const node = clip.nodes[i];
@@ -239,6 +239,7 @@ export async function pasteSetting(
         body: node.body,
         sort_order: ctx.sort_order + i,
         created_by: ctx.created_by,
+        group_template_id: ctx.group_template_id ?? null,
       })
       .select("id")
       .single();
