@@ -375,7 +375,7 @@ function SettingsListInner({
           {canEdit && (
           <>
             {clip?.kind === "setting" && !inMode && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) && (
-              <Button size="sm" variant="outline" onClick={pasteHere}
+              <Button size="sm" variant="outline" onClick={() => pasteHere(null)}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
                 aria-label="Paste">
                 <ClipboardPaste className="h-4 w-4" />
