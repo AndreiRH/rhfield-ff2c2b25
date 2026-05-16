@@ -86,8 +86,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
     ? new Set(
         types
           .filter((t: any) =>
-            (t.components ?? []).some(
-              (c: any) => !c.deleted_at && (c.name ?? "").toLowerCase().includes(q),
+            (t.checklist_items ?? []).some(
+              (i: any) => !i.deleted_at && (i.label ?? "").toLowerCase().includes(q),
             ),
           )
           .map((t: any) => t.id),
