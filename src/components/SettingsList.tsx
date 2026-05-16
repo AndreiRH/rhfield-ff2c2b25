@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ interface Setting {
   title: string;
   body: string;
   sort_order: number;
+  group_name: string | null;
   setting_photos: SettingPhoto[];
   setting_files: SettingFile[];
 }
@@ -109,6 +110,13 @@ function SettingsListInner({
         plant_equipment_id: equipmentId, equipment_setting_id: id, setting_title: title,
         action: "value_changed", old_value: oldBody, new_value: body, user_id: userId,
       });
+    });
+  };
+  const updateGroup = (id: string, group: string) => {
+    const g = group.trim() === "" ? null : group.trim();
+    setRows((n) => n.map((x) => (x.id === id ? { ...x, group_name: g } : x)));
+    supabase.from("equipment_settings").update({ group_name: g }).eq("id", id).then(({ error }) => {
+      if (error) toast.error(error.message);
     });
   };
 
@@ -270,22 +278,22 @@ function SettingsListInner({
           <p className="text-sm text-muted-foreground">No settings yet.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={rows.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-2">
-                {rows.map((s) => (
-                  <SettingRow
-                    key={s.id} setting={s} canEdit={canEdit}
-                    open={openIds.has(s.id)}
-                    onToggleOpen={() => toggleOpen(s.id)}
-                    onTitle={(t: string) => updateTitle(s.id, t)}
-                    onBody={(b: string) => updateBody(s.id, b)}
-                    onReload={load}
-                    plantEquipmentId={equipmentId}
-                    userId={userId}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
+            <SettingsGroupedList
+              rows={rows}
+              renderRow={(s) => (
+                <SettingRow
+                  key={s.id} setting={s} canEdit={canEdit}
+                  open={openIds.has(s.id)}
+                  onToggleOpen={() => toggleOpen(s.id)}
+                  onTitle={(t: string) => updateTitle(s.id, t)}
+                  onBody={(b: string) => updateBody(s.id, b)}
+                  onGroup={(g: string) => updateGroup(s.id, g)}
+                  onReload={load}
+                  plantEquipmentId={equipmentId}
+                  userId={userId}
+                />
+              )}
+            />
           </DndContext>
         )}
       </CardContent>
@@ -311,12 +319,13 @@ function SettingsListInner({
 }
 
 function SettingRow({
-  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload, plantEquipmentId, userId,
+  setting, canEdit, open, onToggleOpen, onTitle, onBody, onGroup, onReload, plantEquipmentId, userId,
 }: {
   setting: Setting; canEdit: boolean; open: boolean;
   onToggleOpen: () => void;
   onTitle: (t: string) => void;
   onBody: (b: string) => void;
+  onGroup: (g: string) => void;
   onReload: () => void;
   plantEquipmentId: string;
   userId?: string;
@@ -332,7 +341,8 @@ function SettingRow({
 
   const [title, setTitle] = useState(setting.title);
   const [body, setBody] = useState(setting.body);
-  useEffect(() => { setTitle(setting.title); setBody(setting.body); }, [setting.title, setting.body]);
+  const [groupDraft, setGroupDraft] = useState(setting.group_name ?? "");
+  useEffect(() => { setTitle(setting.title); setBody(setting.body); setGroupDraft(setting.group_name ?? ""); }, [setting.title, setting.body, setting.group_name]);
   const [editingTitle, setEditingTitle] = useState(false);
 
   const photos = setting.setting_photos ?? [];
@@ -480,6 +490,22 @@ function SettingRow({
       </div>
       {open && !inMode && (
         <div className="space-y-2 p-3">
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Group</span>
+              <Input
+                value={groupDraft}
+                onChange={(e) => setGroupDraft(e.target.value)}
+                onBlur={() => {
+                  const next = groupDraft.trim();
+                  const cur = setting.group_name ?? "";
+                  if (next !== cur) onGroup(next);
+                }}
+                placeholder="(none)"
+                className="h-6 flex-1 max-w-[200px] border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+              />
+            </div>
+          )}
           <Textarea
             value={body}
             disabled={!canEdit}
@@ -555,5 +581,88 @@ function SettingRow({
         </div>
       )}
     </li>
+  );
+}
+
+function SettingsGroupedList({
+  rows, renderRow,
+}: {
+  rows: Setting[];
+  renderRow: (s: Setting) => ReactNode;
+}) {
+  // Preserve global sort_order; bucket by group_name; ungrouped first.
+  const groups: { key: string; name: string | null; items: Setting[] }[] = [];
+  const seen = new Map<string, number>();
+  for (const r of rows) {
+    const name = r.group_name && r.group_name.trim() !== "" ? r.group_name : null;
+    const key = name ?? "__ungrouped__";
+    let idx = seen.get(key);
+    if (idx === undefined) {
+      idx = groups.length;
+      seen.set(key, idx);
+      groups.push({ key, name, items: [] });
+    }
+    groups[idx].items.push(r);
+  }
+  // Render ungrouped first (if present), then named groups in first-seen order.
+  groups.sort((a, b) => {
+    if (a.name === null && b.name !== null) return -1;
+    if (b.name === null && a.name !== null) return 1;
+    return 0;
+  });
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g) =>
+        g.name === null ? (
+          <SortableContext key={g.key} items={g.items.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+            <ul className="space-y-2">{g.items.map((s) => renderRow(s))}</ul>
+          </SortableContext>
+        ) : (
+          <SettingsGroupSection key={g.key} name={g.name} items={g.items} renderRow={renderRow} />
+        ),
+      )}
+    </div>
+  );
+}
+
+function SettingsGroupSection({
+  name, items, renderRow,
+}: {
+  name: string;
+  items: Setting[];
+  renderRow: (s: Setting) => ReactNode;
+}) {
+  const storageKey = `settings_group_collapsed_${name}`;
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(storageKey) === "1";
+  });
+  const toggle = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center justify-between rounded-md px-1 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        aria-expanded={!collapsed}
+      >
+        <span>{name}</span>
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {!collapsed && (
+        <SortableContext items={items.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-2 animate-accordion-down overflow-hidden">
+            {items.map((s) => renderRow(s))}
+          </ul>
+        </SortableContext>
+      )}
+    </div>
   );
 }

@@ -605,6 +605,7 @@ export type Database = {
           deleted_at: string | null
           file_name: string | null
           file_path: string | null
+          group_name: string | null
           id: string
           photo_path: string | null
           plant_equipment_id: string
@@ -620,6 +621,7 @@ export type Database = {
           deleted_at?: string | null
           file_name?: string | null
           file_path?: string | null
+          group_name?: string | null
           id?: string
           photo_path?: string | null
           plant_equipment_id: string
@@ -635,6 +637,7 @@ export type Database = {
           deleted_at?: string | null
           file_name?: string | null
           file_path?: string | null
+          group_name?: string | null
           id?: string
           photo_path?: string | null
           plant_equipment_id?: string
