@@ -311,10 +311,18 @@ function SettingsListInner({
       return next;
     });
 
-  const pasteHere = async () => {
+  const pasteHere = async (groupTemplateId: string | null = null) => {
     if (clip?.kind !== "setting") return;
     try {
-      await pasteSetting(clip, { plant_equipment_id: equipmentId, sort_order: rows.length, created_by: userId });
+      const groupRows = groupTemplateId
+        ? rows.filter((r) => r.group_template_id === groupTemplateId)
+        : rows;
+      await pasteSetting(clip, {
+        plant_equipment_id: equipmentId,
+        sort_order: groupRows.length,
+        created_by: userId,
+        group_template_id: groupTemplateId,
+      });
       lockTo(settingPasteLocationKey);
       toast.success("Pasted"); load();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
