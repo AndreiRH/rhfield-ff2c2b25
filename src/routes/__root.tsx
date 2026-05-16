@@ -38,6 +38,39 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const msg = error?.message || "";
+  const isChunkLoad =
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /Importing a module script failed/i.test(msg) ||
+    /ChunkLoadError/i.test(msg);
+  const offline = typeof navigator !== "undefined" && !navigator.onLine;
+  if (isChunkLoad) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            {offline ? "This page isn't available offline yet" : "This page didn't load"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {offline
+              ? "Reconnect to the internet once so the app can cache this page for offline use."
+              : "Reload to fetch the latest version."}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => { try { router.invalidate(); } catch {} reset(); window.location.reload(); }}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Reload
+            </button>
+            <a href="/" className="inline-flex items-center justify-center rounded-md border bg-background px-4 py-2 text-sm font-medium">
+              Go home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
