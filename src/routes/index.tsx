@@ -27,7 +27,27 @@ function ProjectsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, name, lines(id, equipment_groups(id, components(id, checklist_items(id, done, deleted_at, parent_item_id))))")
+        .select(`
+          id, name,
+          lines(
+            id,
+            plant_equipment(
+              id, deleted_at, mech_mode, mech_manual_pct,
+              equipment_groups(
+                id, chapter, deleted_at,
+                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
+                component_types(
+                  id, deleted_at,
+                  components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+                )
+              )
+            ),
+            equipment_groups(
+              id, kind, deleted_at,
+              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+            )
+          )
+        `)
         .order("created_at");
       if (error) throw error;
       return data;
