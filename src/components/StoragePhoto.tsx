@@ -249,41 +249,32 @@ export function StoragePhoto({
 
 // ---------------- StorageFile ----------------
 
-export function StorageFile({
-  bucket = "files",
-  path,
-  name,
-}: {
-  bucket?: string;
-  path: string | null | undefined;
-  name: string;
-}) {
-  const open = async () => {
-    if (!path) return;
-    // Try local blob first (works offline and for just-picked files).
-    let blob = getCachedLocalBlob(bucket, path) ?? await getLocalBlob(bucket, path);
-    if (!blob && navigator.onLine) {
-      try {
-        const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
-        if (data?.signedUrl) { window.open(data.signedUrl, "_blank", "noopener"); return; }
-      } catch {}
-    }
-    if (!blob) {
-      // Last resort — try downloading via SDK (SW will intercept).
-      try {
-        const { data } = await supabase.storage.from(bucket).download(path);
-        if (data) blob = data;
-      } catch {}
-    }
-    if (!blob) { alert("File not available offline."); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  return { open };
+export async function openStorageFile(
+  bucket: string,
+  path: string | null | undefined,
+  name: string,
+) {
+  if (!path) return;
+  let blob = getCachedLocalBlob(bucket, path) ?? await getLocalBlob(bucket, path);
+  if (!blob && navigator.onLine) {
+    try {
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
+      if (data?.signedUrl) { window.open(data.signedUrl, "_blank", "noopener"); return; }
+    } catch {}
+  }
+  if (!blob) {
+    try {
+      const { data } = await supabase.storage.from(bucket).download(path);
+      if (data) blob = data;
+    } catch {}
+  }
+  if (!blob) { alert("File not available offline."); return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
