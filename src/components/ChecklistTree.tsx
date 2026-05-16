@@ -26,11 +26,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
 
 export function ChecklistTree({
-  componentId, items, canEdit, onChange,
+  componentId, componentTypeId, items, canEdit, onChange,
   emptyHint = "No items yet.", showLabels = false, defaultOpen = false,
   canDeleteRoot = true, hideRootAdd = false,
 }: {
-  componentId: string;
+  componentId?: string;
+  componentTypeId?: string;
   items: any[];
   canEdit: boolean;
   onChange: () => void;
@@ -40,6 +41,9 @@ export function ChecklistTree({
   canDeleteRoot?: boolean;
   hideRootAdd?: boolean;
 }) {
+  const parentCols = componentTypeId
+    ? { component_type_id: componentTypeId }
+    : { component_id: componentId! };
   const visibleItems = liveChecklistItems(items);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -54,7 +58,7 @@ export function ChecklistTree({
   const addItem = async () => {
     if (!text.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
-      id: localUuid(), component_id: componentId, label: text.trim(), sort_order: rootItems.length,
+      id: localUuid(), ...parentCols, label: text.trim(), sort_order: rootItems.length,
     });
     if (error) toast.error(error.message);
     else { setText(""); setAdding(false); onChange(); }
@@ -63,7 +67,7 @@ export function ChecklistTree({
   const pasteHere = async () => {
     if (clip?.kind !== "item") return;
     try {
-      await pasteItem(clip, { component_id: componentId, parent_item_id: null, sort_order: rootItems.length });
+      await pasteItem(clip, { ...parentCols, parent_item_id: null, sort_order: rootItems.length });
       clear();
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
@@ -245,10 +249,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     }
     onChange();
   };
+  const itemParentCols = item.component_type_id
+    ? { component_type_id: item.component_type_id as string }
+    : { component_id: item.component_id as string };
   const pasteAsSub = async () => {
     if (clip?.kind !== "item") return;
     try {
-      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+      await pasteItem(clip, { ...itemParentCols, parent_item_id: item.id, sort_order: subs.length });
       clearClip();
       setOpen(true);
       toast.success("Pasted"); onChange();
@@ -262,7 +269,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const addSub = async () => {
     if (!subText.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
-      id: localUuid(), component_id: item.component_id, label: subText.trim(),
+      id: localUuid(), ...itemParentCols, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
     });
     if (error) toast.error(error.message);

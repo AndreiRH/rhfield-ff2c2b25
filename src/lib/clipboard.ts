@@ -6,7 +6,9 @@ import { localUuid } from "@/lib/local-id";
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type ItemNode = { label: string; subs: ItemNode[] };
 export type ComponentClipNode = { name: string; items: ItemNode[] };
-export type TypeClipNode = { name: string; components: ComponentClipNode[] };
+// Types can carry either nested components (legacy) or items directly
+// (new flat hierarchy). Both shapes survive a roundtrip through localStorage.
+export type TypeClipNode = { name: string; components: ComponentClipNode[]; items?: ItemNode[] };
 
 export type SettingPhotoNode = { storage_path: string };
 export type SettingFileNode = { storage_path: string; file_name: string };
@@ -110,22 +112,31 @@ function typeToNode(type: any): TypeClipNode {
     .filter((c: any) => !c.deleted_at)
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
     .map(componentToNode);
-  return { name: type.name, components };
+  const items = (type.checklist_items ?? [])
+    .filter((i: any) => !i.deleted_at && !i.parent_item_id)
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    .map((i: any) => itemToNode(i, type.checklist_items ?? []));
+  return { name: type.name, components, items };
 }
 
 // ─── Paste helpers ────────────────────────────────────────────────────────
-async function insertItemTree(node: ItemNode, ctx: { component_id: string; parent_item_id: string | null; sort_order: number }) {
+export type ItemParentCols =
+  | { component_id: string; component_type_id?: undefined }
+  | { component_type_id: string; component_id?: undefined };
+
+async function insertItemTree(node: ItemNode, ctx: ItemParentCols & { parent_item_id: string | null; sort_order: number }) {
   const id = localUuid();
+  const { parent_item_id, sort_order, ...parentCols } = ctx;
   const { data, error } = await supabase.from("checklist_items").insert({
     id,
-    component_id: ctx.component_id,
-    parent_item_id: ctx.parent_item_id,
+    ...parentCols,
+    parent_item_id,
     label: node.label,
-    sort_order: ctx.sort_order,
+    sort_order,
   }).select("id").single();
   if (error || !data) throw error ?? new Error("insert failed");
   for (let i = 0; i < node.subs.length; i++) {
-    await insertItemTree(node.subs[i], { component_id: ctx.component_id, parent_item_id: data.id, sort_order: i });
+    await insertItemTree(node.subs[i], { ...parentCols, parent_item_id: data.id, sort_order: i } as ItemParentCols & { parent_item_id: string | null; sort_order: number });
   }
 }
 async function insertComponent(node: ComponentClipNode, parent: { equipment_id?: string; component_type_id?: string }, sort_order: number) {
@@ -147,12 +158,17 @@ async function insertType(node: TypeClipNode, equipment_group_id: string, sort_o
     id, equipment_group_id, name: node.name, sort_order,
   }).select("id").single();
   if (error || !data) throw error ?? new Error("insert failed");
+  // New shape: items directly under the type.
+  for (let i = 0; i < (node.items ?? []).length; i++) {
+    await insertItemTree(node.items![i], { component_type_id: data.id, parent_item_id: null, sort_order: i });
+  }
+  // Legacy shape: nested components, for backward compatibility with old clips.
   for (let i = 0; i < node.components.length; i++) {
     await insertComponent(node.components[i], { component_type_id: data.id }, i);
   }
 }
 
-export async function pasteItem(clip: Extract<Clip, { kind: "item" }>, ctx: { component_id: string; parent_item_id: string | null; sort_order: number }) {
+export async function pasteItem(clip: Extract<Clip, { kind: "item" }>, ctx: ItemParentCols & { parent_item_id: string | null; sort_order: number }) {
   for (let i = 0; i < clip.nodes.length; i++) {
     await insertItemTree(clip.nodes[i], { ...ctx, sort_order: ctx.sort_order + i });
   }

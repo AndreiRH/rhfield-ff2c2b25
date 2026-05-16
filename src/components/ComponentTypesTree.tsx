@@ -17,6 +17,7 @@ import {
 } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
+import { ChecklistTree } from "@/components/ChecklistTree";
 import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
@@ -85,8 +86,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
     ? new Set(
         types
           .filter((t: any) =>
-            (t.components ?? []).some(
-              (c: any) => !c.deleted_at && (c.name ?? "").toLowerCase().includes(q),
+            (t.checklist_items ?? []).some(
+              (i: any) => !i.deleted_at && (i.label ?? "").toLowerCase().includes(q),
             ),
           )
           .map((t: any) => t.id),
@@ -368,17 +369,13 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     opacity: sortableArgs.isDragging ? 0.5 : 1,
   };
 
-  const liveComps = (type.components ?? []).filter((c: any) => !c.deleted_at);
-  const items = liveComps.flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
+  const items = liveChecklistItems(type.checklist_items ?? []);
   const prog = calcProgress(items);
   const notesCount =
-    liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
     items.filter((i: any) => (i.note ?? "").trim() !== "").length;
   const photosCount =
-    liveComps.reduce((acc: number, c: any) => acc + (c.component_photos?.length ?? 0), 0) +
     items.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
   const filesCount =
-    liveComps.reduce((acc: number, c: any) => acc + (c.component_files?.length ?? 0), 0) +
     items.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
 
   const [editing, setEditing] = useState(false);
@@ -468,13 +465,12 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
 
       {open && (
         <div className="bg-muted/20 p-3">
-          <ComponentsList
-            group={type}
-            parentKind="component_type"
+          <ChecklistTree
+            componentTypeId={type.id}
+            items={type.checklist_items ?? []}
             canEdit={canEdit}
             onChange={onChange}
-            externalSearch={externalSearch}
-            hideTitle
+            emptyHint="No items yet. Add the first one to start tracking checks."
             defaultOpen={defaultOpen}
           />
         </div>
