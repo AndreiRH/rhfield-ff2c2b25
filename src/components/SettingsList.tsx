@@ -449,7 +449,9 @@ function SettingsListInner({
 
         {(action.mode === "delete" || action.mode === "copy") && (
           <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
-            Tap settings to {action.mode === "delete" ? "delete" : "copy"}, then tap the {action.mode === "delete" ? "trash" : "copy"} icon again.
+            {action.mode === "delete"
+              ? "Tap settings or group headers to delete, then tap the trash icon again."
+              : "Tap settings to copy, then tap the copy icon again."}
           </p>
         )}
         {action.mode === "reorder" && (
