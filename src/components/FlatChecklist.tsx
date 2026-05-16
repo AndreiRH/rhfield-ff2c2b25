@@ -207,7 +207,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 <Trash2 className="h-4 w-4" />
                 {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
-              {clip?.kind === "item" && !inMode && (
+              {clip?.kind === "item" && !inMode && (!clip.lockedAt || clip.lockedAt === pasteLocationKey) && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
                   aria-label="Paste">
