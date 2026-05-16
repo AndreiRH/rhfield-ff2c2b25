@@ -10,7 +10,7 @@ import { useOfflineStatus, retryFailedOutbox, discardFailedOutbox } from "@/lib/
 // Click (when online) toggles a small, semi-transparent popover with phase
 // counts. Click outside closes it.
 export function SyncCloud() {
-  const { online, pending, warm } = useOfflineStatus();
+  const { online, pending, failed, warm } = useOfflineStatus();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
