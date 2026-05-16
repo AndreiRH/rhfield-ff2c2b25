@@ -7,8 +7,20 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 type Role = "admin" | "engineer" | "pm";
 const ALL_ROLES: Role[] = ["admin", "engineer", "pm"];
@@ -54,6 +66,21 @@ function UsersPage() {
     onError: (e: any) => toast.error(e.message ?? "Failed to update role"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("User deleted");
+      setConfirmDelete(null);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to delete user"),
+  });
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; email: string } | null>(null);
+
   if (!session || !isAdmin) return null;
 
   return (
@@ -73,16 +100,17 @@ function UsersPage() {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="hidden sm:grid grid-cols-[1fr_repeat(3,72px)] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              <div className="hidden sm:grid grid-cols-[1fr_repeat(3,72px)_40px] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
                 <div>User</div>
                 {ALL_ROLES.map((r) => <div key={r} className="text-center">{r}</div>)}
+                <div />
               </div>
               {(data ?? []).map((u) => {
                 const isMe = u.user_id === me?.id;
                 return (
                   <div
                     key={u.user_id}
-                    className="flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_repeat(3,72px)] sm:items-center sm:gap-2"
+                    className="flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_repeat(3,72px)_40px] sm:items-center sm:gap-2"
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium break-words">
@@ -111,6 +139,18 @@ function UsersPage() {
                           </label>
                         );
                       })}
+                      {!isMe && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setConfirmDelete({ id: u.user_id, email: u.email })}
+                          aria-label={`Delete ${u.email}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {isMe && <div className="hidden sm:block" />}
                     </div>
                   </div>
                 );
@@ -122,6 +162,30 @@ function UsersPage() {
           </Card>
         )}
       </main>
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(v) => { if (!v) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {confirmDelete?.email}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They can re-register with the same email after deletion.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmDelete) deleteMutation.mutate(confirmDelete.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
