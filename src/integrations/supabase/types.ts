@@ -75,6 +75,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "checklist_items_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "checklist_items_parent_item_id_fkey"
             columns: ["parent_item_id"]
             isOneToOne: false
