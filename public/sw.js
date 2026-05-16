@@ -995,9 +995,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   // ---------------- Supabase Storage ----------------
-  if (isSupabaseStorage(url)) {
+  if (isSupabaseStorage(url) || isLocalSyntheticStorage(url)) {
     // createSignedUrl(s) — POST /storage/v1/object/sign/<bucket>[/<path>]
-    if (req.method === "POST" && /\/storage\/v1\/object\/sign\//.test(url.pathname)) {
+    if (isSupabaseStorage(url) && req.method === "POST" && /\/storage\/v1\/object\/sign\//.test(url.pathname)) {
       event.respondWith((async () => {
         let netRes = null;
         try { netRes = await fetch(req.clone()); } catch {}
@@ -1028,7 +1028,7 @@ self.addEventListener("fetch", (event) => {
     }
 
     // Storage uploads: POST/PUT /storage/v1/object/<bucket>/<path>
-    if ((req.method === "POST" || req.method === "PUT") && /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname)
+    if (isSupabaseStorage(url) && (req.method === "POST" || req.method === "PUT") && /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname)
         && !/\/storage\/v1\/object\/sign\//.test(url.pathname)) {
       event.respondWith((async () => {
         const info = storagePathFromUrl(url);
@@ -1062,7 +1062,7 @@ self.addEventListener("fetch", (event) => {
     }
 
     // Storage REMOVE: DELETE /storage/v1/object/<bucket>  body={prefixes:[...]}
-    if (req.method === "DELETE") {
+    if (isSupabaseStorage(url) && req.method === "DELETE") {
       event.respondWith((async () => {
         let body = null;
         try { body = JSON.parse(await req.clone().text() || "null"); } catch {}
