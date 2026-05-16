@@ -66,9 +66,9 @@ export function useOfflineStatus() {
       }
       if (d.type === "rhfield-flush-complete") {
         if (d.failures > 0 && d.failureSamples?.length) {
-          // Surface dropped writes so silent data loss never happens again.
+          // Surface rejected writes so silent data loss never happens again.
           console.warn(
-            `[offline] ${d.failures} queued change(s) were rejected by the server and dropped:`,
+            `[offline] ${d.failures} queued change(s) were rejected by the server and kept pending:`,
             d.failureSamples,
           );
         }
