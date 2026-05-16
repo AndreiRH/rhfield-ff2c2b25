@@ -19,7 +19,18 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v9";
+const VER = "v10";
+
+// A stored blob is only servable as media if it has a real media MIME.
+// Anything else (multipart/form-data, application/octet-stream, empty) is
+// treated as corruption and ignored — the SW will fall through to network.
+function isServableMediaType(t) {
+  if (!t || typeof t !== "string") return false;
+  return /^(image|video|audio)\//i.test(t) || t === "application/pdf";
+}
+function isValidStoredBlob(stored) {
+  return !!(stored && stored.blob && stored.blob.size > 0 && isServableMediaType(stored.type || stored.blob.type));
+}
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
