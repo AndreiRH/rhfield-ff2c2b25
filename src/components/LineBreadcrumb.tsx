@@ -15,6 +15,8 @@ type Props = {
   lineNumber: number | string;
   /** Trailing segments rendered after the Line pill (e.g. ["Kiln", "Switchboards"]). */
   segments?: string[];
+  /** Current page heading. If the last segment equals this, it is omitted to avoid duplication. */
+  currentTitle?: string;
   /** Optional override for the wrapper text color (defaults to text-muted-foreground). */
   className?: string;
 };
@@ -24,7 +26,7 @@ type Props = {
  * all lines in the project. Selecting a different line keeps the rest of the
  * URL path identical. Middle segments collapse to "…" on mobile.
  */
-export function LineBreadcrumb({ projectId, lineNumber, segments = [], className }: Props) {
+export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTitle, className }: Props) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentN = Number(lineNumber);
@@ -48,8 +50,12 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], className
     navigate({ to: newPath });
   };
 
-  const middle = segments.slice(0, -1);
-  const last = segments[segments.length - 1];
+  const visible =
+    currentTitle && segments.length > 0 && segments[segments.length - 1] === currentTitle
+      ? segments.slice(0, -1)
+      : segments;
+  const middle = visible.slice(0, -1);
+  const last = visible[visible.length - 1];
 
   return (
     <nav
@@ -73,7 +79,7 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], className
               onSelect={() => goToLine(l.number)}
               className="flex items-center justify-between gap-3"
             >
-              <span>Production line {String(l.number).padStart(2, "0")}</span>
+              <span>Line {l.number}</span>
               {l.number === currentN && <Check className="h-3.5 w-3.5" aria-hidden />}
             </DropdownMenuItem>
           ))}

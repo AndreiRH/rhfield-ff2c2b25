@@ -388,6 +388,7 @@ function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, we
             projectId={data.line.project_id}
             lineNumber={data.line.number}
             segments={[plantLabel, data.pe.name]}
+            currentTitle={data.pe.name}
             className="text-white/80"
           />
           <h1 className="text-3xl font-semibold">

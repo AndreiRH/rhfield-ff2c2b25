@@ -66,6 +66,7 @@ function EquipmentSettingsPage() {
                   projectId={projectId}
                   lineNumber={lineNumber}
                   segments={[plantLabel, data.pe.name, "Settings"]}
+                  currentTitle="Settings"
                 />
                 <h1 className="text-3xl font-semibold">Settings</h1>
               </div>
