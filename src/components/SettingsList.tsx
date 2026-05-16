@@ -187,7 +187,7 @@ function SettingsListInner({
         <div className="flex flex-wrap items-center justify-end gap-2">
           {canEdit && (
           <>
-            {clip?.kind === "setting" && !inMode && (
+            {clip?.kind === "setting" && !inMode && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) && (
               <Button size="sm" variant="outline" onClick={pasteHere}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
                 aria-label="Paste">
