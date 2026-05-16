@@ -477,7 +477,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                   <Paperclip className="h-3.5 w-3.5" />{showLabels ? <span>Files {files.length}</span> : <span className="ml-0.5 text-[10px]">{files.length}</span>}
                 </button>
               )}
-              {clip?.kind === "item" && depth < 2 && (
+              {clip?.kind === "item" && depth < 2 && (!clip.lockedAt || clip.lockedAt === subPasteLocationKey) && (
                 <button onClick={pasteAsSub}
                   className={`inline-flex shrink-0 items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
