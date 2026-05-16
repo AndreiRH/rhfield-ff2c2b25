@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { localUuid } from "@/lib/local-id";
 import { equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
@@ -107,6 +108,7 @@ function EquipmentDetail() {
       if (missing.length > 0) {
         const { error: insErr } = await supabase.from("equipment_groups").insert(
           missing.map((ch) => ({
+            id: localUuid(),
             line_id: line.id,
             chapter: ch,
             kind: pe.kind,
