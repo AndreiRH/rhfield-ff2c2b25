@@ -484,6 +484,8 @@ function SettingsListInner({
                         else deleteGroup(g, false);
                       }}
                       lineCount={lineCount}
+                      collapsed={collapsedGroups.has(g.template_id)}
+                      onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
                       <ul className="space-y-2">
                         {items.map((s) => (
