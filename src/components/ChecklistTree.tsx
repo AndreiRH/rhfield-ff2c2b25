@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { rememberLocalFile } from "@/lib/local-blobs";
 import { useClipboard, pasteItem } from "@/lib/clipboard";
 import { useTreeAction } from "@/components/TreeAction";
 import { liveChecklistItems } from "@/lib/progress";
