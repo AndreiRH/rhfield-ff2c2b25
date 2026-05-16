@@ -145,11 +145,12 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     });
   };
 
+  const pasteLocationKey = bucket ? `flat:${bucket.id}` : "";
   const pasteHere = async () => {
     if (!bucket || clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { component_id: bucket.id, parent_item_id: null, sort_order: allItems.filter((i: any) => !i.parent_item_id).length });
-      clearClip();
+      lockTo(pasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
