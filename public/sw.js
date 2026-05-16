@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v10";
+const VER = "v11";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -317,6 +317,30 @@ self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n)));
+
+    // v11: sweep corrupted blobs persisted by earlier SW versions
+    // (multipart/form-data, application/octet-stream, zero-byte, etc.).
+    try {
+      const db = await openSnap();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(SNAP_BLOBS, "readwrite");
+        const store = tx.objectStore(SNAP_BLOBS);
+        const req = store.openCursor();
+        req.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (!cursor) return;
+          if (!isValidStoredBlob(cursor.value)) cursor.delete();
+          cursor.continue();
+        };
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    } catch {}
+
+    // Also purge the blob HTTP cache — it may hold corrupted responses
+    // keyed by signed URLs that would never be re-matched/evicted.
+    try { await caches.delete(CACHE_BLOBS); } catch {}
+
     await self.clients.claim();
     broadcastQueueCount();
   })());
@@ -1304,7 +1328,14 @@ self.addEventListener("fetch", (event) => {
             if (local) return local;
             const cache = await caches.open(CACHE_BLOBS);
             const cached = await cache.match(req);
-            if (cached) return cached;
+            if (cached) {
+              const ct = cached.headers.get("Content-Type") || "";
+              if (!isServableMediaType(ct)) {
+                cache.delete(req).catch(() => {});
+              } else {
+                return cached;
+              }
+            }
             return res;
           } catch {
             // fall through to offline path
@@ -1317,7 +1348,14 @@ self.addEventListener("fetch", (event) => {
         if (local) return local;
         const cache = await caches.open(CACHE_BLOBS);
         const cached = await cache.match(req);
-        if (cached) return cached;
+        if (cached) {
+          const ct = cached.headers.get("Content-Type") || "";
+          if (!isServableMediaType(ct)) {
+            cache.delete(req).catch(() => {});
+          } else {
+            return cached;
+          }
+        }
         if (info && latestAuthHeader && isSupabaseStorage(url)) {
           try {
             const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
