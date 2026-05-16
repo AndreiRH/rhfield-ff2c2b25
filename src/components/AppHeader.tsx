@@ -37,11 +37,13 @@ export function AppHeader() {
             </span>
           )}
           {online && pending === 0 && syncing && (
-            <RefreshCw
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground/60"
-              aria-label="Syncing"
+            <span
+              className="inline-flex items-center text-muted-foreground/60"
               title={`Syncing ${phaseLabel} ${warm.done}/${warm.total}`}
-            />
+              aria-label="Syncing"
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            </span>
           )}
           {user && (
             <>
