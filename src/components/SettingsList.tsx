@@ -414,7 +414,7 @@ function SettingsListInner({
                 {action.mode === "copy" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
-            {rows.length > 0 && isAdmin && (
+            {(rows.length > 0 || groups.length > 0) && isAdmin && (
               <Button size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={() => {
