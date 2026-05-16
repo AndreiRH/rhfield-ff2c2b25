@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, liveChecklistItems } from "@/lib/progress";
+import { lineOverallPct } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +27,27 @@ function ProjectsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, name, lines(id, equipment_groups(id, components(id, checklist_items(id, done, deleted_at, parent_item_id))))")
+        .select(`
+          id, name,
+          lines(
+            id,
+            plant_equipment(
+              id, deleted_at, mech_mode, mech_manual_pct,
+              equipment_groups(
+                id, chapter, deleted_at,
+                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
+                component_types(
+                  id, deleted_at,
+                  components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+                )
+              )
+            ),
+            equipment_groups(
+              id, kind, deleted_at,
+              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+            )
+          )
+        `)
         .order("created_at");
       if (error) throw error;
       return data;
@@ -54,12 +74,10 @@ function ProjectsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(projects ?? []).map((p) => {
-              const items = (p.lines ?? []).flatMap((l: any) =>
-                (l.equipment_groups ?? []).flatMap((eg: any) =>
-                  (eg.components ?? []).flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []))
-                )
-              );
-              const prog = calcProgress(items);
+              const lineParts = (p.lines ?? []).map((l: any) => lineOverallPct(l));
+              const pct = lineParts.length === 0
+                ? 0
+                : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
@@ -67,11 +85,11 @@ function ProjectsPage() {
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{prog.done}/{prog.total}</span>
+                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{p.lines?.length ?? 0} lines</span>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
-                        <ProgressBar value={prog.pct} size="md" />
-                        <div className="mt-2 text-sm tabular-nums">{prog.pct}% complete</div>
+                        <ProgressBar value={pct} size="md" />
+                        <div className="mt-2 text-sm tabular-nums">{pct}% complete</div>
                       </CardContent>
                     </Card>
                   </Link>
