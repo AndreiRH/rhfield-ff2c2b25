@@ -913,8 +913,7 @@ self.addEventListener("fetch", (event) => {
                 const inserted = serverRows && serverRows.length
                   ? serverRows
                   : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withLocalDefaults(table, r));
-                const cur = await readTable(table);
-                await writeTable(table, cur.concat(inserted));
+                await mergeRows(table, inserted);
               } else if (req.method === "PATCH" && bodyJson) {
                 await applyUpdate(table, url, bodyJson);
               } else if (req.method === "DELETE") {
