@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { PhotoTile, FileChip } from "@/components/ChecklistTree";
+import { rememberLocalFile } from "@/lib/local-blobs";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
   useClipboard, buildSettingClipMany, pasteSetting,
