@@ -194,11 +194,6 @@ function SettingsListInner({
                 {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
               </Button>
             )}
-            {!inMode && (
-              <Button size="sm" onClick={addRow} title="Add setting" aria-label="Add setting">
-                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add setting</span>
-              </Button>
-            )}
             {rows.length > 0 && !inMode && (
               <Button size="sm" variant="outline" onClick={toggleAll}
                 title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
@@ -244,6 +239,11 @@ function SettingsListInner({
               <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
                 title="Cancel" aria-label="Cancel">
                 <X className="h-4 w-4" />
+              </Button>
+            )}
+            {!inMode && (
+              <Button size="sm" onClick={addRow} title="Add setting" aria-label="Add setting">
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add setting</span>
               </Button>
             )}
           </>
