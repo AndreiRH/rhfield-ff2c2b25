@@ -104,7 +104,7 @@ export function ChecklistTree({
     <div className="space-y-2">
       {canEdit && !hideRootAdd && (
         <div className="flex flex-wrap justify-end gap-1">
-          {clip?.kind === "item" && !inMode && (
+          {clip?.kind === "item" && !inMode && (!clip.lockedAt || clip.lockedAt === rootPasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteHere}
               title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">
