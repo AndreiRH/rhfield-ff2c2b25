@@ -66,6 +66,21 @@ function UsersPage() {
     onError: (e: any) => toast.error(e.message ?? "Failed to update role"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("User deleted");
+      setConfirmDelete(null);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to delete user"),
+  });
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; email: string } | null>(null);
+
   if (!session || !isAdmin) return null;
 
   return (
