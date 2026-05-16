@@ -497,11 +497,7 @@ function SettingsListInner({
                       canEdit={canEdit}
                       onRename={(name) => updateGroupName(g, name)}
                       onAddSetting={() => addRow(g.template_id)}
-                      onRequestDelete={() => {
-                        if (items.length > 0) setConfirmGroupDelete(g);
-                        else deleteGroup(g, false);
-                      }}
-                      lineCount={lineCount}
+                      itemCount={items.length}
                       collapsed={collapsedGroups.has(g.template_id)}
                       onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
