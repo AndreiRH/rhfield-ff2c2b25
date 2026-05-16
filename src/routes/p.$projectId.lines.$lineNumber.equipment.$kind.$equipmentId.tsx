@@ -190,8 +190,19 @@ function EquipmentDetail() {
 type Section = "assembly" | "wiring" | "cold_comm";
 const SECTION_ORDER: Section[] = ["assembly", "wiring", "cold_comm"];
 
+const LAST_TAB_KEY = "equipment_last_tab";
+function readLastTab(): Section {
+  if (typeof window === "undefined") return "assembly";
+  const v = window.localStorage.getItem(LAST_TAB_KEY);
+  return v === "wiring" || v === "cold_comm" || v === "assembly" ? v : "assembly";
+}
+
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
-  const [section, setSection] = useState<Section>("assembly");
+  const [section, setSectionState] = useState<Section>(() => readLastTab());
+  const setSection = (s: Section) => {
+    setSectionState(s);
+    try { window.localStorage.setItem(LAST_TAB_KEY, s); } catch {}
+  };
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
   const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null } | null>(null);
   const widthRef = useRef(1);
