@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { localUuid } from "@/lib/local-id";
 import { equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
@@ -149,7 +150,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
   const addEquipment = async () => {
     if (!newName.trim()) return;
     const { error } = await supabase.from("plant_equipment").insert({
-      line_id: lineId, kind, name: newName.trim(), sort_order: equipment.length,
+      id: localUuid(), line_id: lineId, kind, name: newName.trim(), sort_order: equipment.length,
     });
     if (error) toast.error(error.message);
     else { setNewName(""); setAdding(false); onChange(); }
@@ -157,7 +158,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
 
   const duplicateEquipment = async (pe: any) => {
     const { error } = await supabase.from("plant_equipment").insert({
-      line_id: lineId, kind, name: `${pe.name} (copy)`, sort_order: equipment.length,
+      id: localUuid(), line_id: lineId, kind, name: `${pe.name} (copy)`, sort_order: equipment.length,
     });
     if (error) toast.error(error.message);
     else { toast.success(`Duplicated "${pe.name}"`); onChange(); }
