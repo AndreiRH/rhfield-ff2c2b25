@@ -707,9 +707,13 @@ function storagePathFromUrl(url) {
   //   /storage/v1/object/sign/<bucket>/<path>       (signed-URL GET)
   //   /storage/v1/object/authenticated/<bucket>/<path>
   //   /storage/v1/object/public/<bucket>/<path>
-  const m = url.pathname.match(/\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  //   /storage/v1/render/image/sign/<bucket>/<path> (image transform signed URL)
+  //   /object/sign/<bucket>/<path>                  (local synthetic signed URL)
+  let m = url.pathname.match(/\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  if (!m) m = url.pathname.match(/\/storage\/v1\/render\/image\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  if (!m) m = url.pathname.match(/\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
   if (!m) return null;
-  return { bucket: decodeURIComponent(m[1]), path: decodeURIComponent(m[2].split("?")[0]) };
+  return { bucket: decodeURIComponent(m[1]), path: decodeURIComponent(m[2]) };
 }
 
 // ============================================================
