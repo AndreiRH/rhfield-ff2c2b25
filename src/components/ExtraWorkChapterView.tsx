@@ -241,6 +241,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   };
   const uploadPhoto = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_photos").insert({ id: localUuid(), component_id: component.id, storage_path: path });
@@ -248,6 +249,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   };
   const uploadFile = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("component_files").insert({ id: localUuid(), component_id: component.id, storage_path: path, file_name: file.name });
