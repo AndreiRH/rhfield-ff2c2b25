@@ -526,35 +526,29 @@ function SettingsListInner({
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {action.count} setting{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectionKind === "group"
+                ? `Delete ${action.count} group${action.count > 1 ? "s" : ""}?`
+                : `Delete ${action.count} setting${action.count > 1 ? "s" : ""}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
-              Values, photos, and files attached to the selected settings on this line will also be removed.
+              {selectionKind === "group" ? (
+                <>
+                  The selected group{action.count > 1 ? "s" : ""} will be removed from <strong>all {lineCount ?? 10} production lines</strong>.
+                  Settings currently inside will be moved to ungrouped.
+                </>
+              ) : (
+                <>
+                  This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
+                  Values, photos, and files attached to the selected settings on this line will also be removed.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={!!confirmGroupDelete} onOpenChange={(o) => !o && setConfirmGroupDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete group "{confirmGroupDelete?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This group will be removed from <strong>all {lineCount ?? 10} production lines</strong>.
-              Settings currently inside this group will be moved to ungrouped.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmGroupDelete && deleteGroup(confirmGroupDelete, true)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete group
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
