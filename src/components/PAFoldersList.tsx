@@ -444,7 +444,7 @@ function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolea
 
 function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
   return (
-    <li className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
+    <li data-nest className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
       <button onClick={() => openStorageFile("files", att.storage_path, att.file_name ?? "file")} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
         <Paperclip className="h-3 w-3 shrink-0" /> <span className="min-w-0 flex-1 truncate">{att.file_name ?? "file"}</span>
       </button>
