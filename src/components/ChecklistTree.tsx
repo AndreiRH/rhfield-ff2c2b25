@@ -158,7 +158,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
-  const { clip, clear: clearClip } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const subPasteLocationKey = `tree-item:${item.id}`;
   const selected = !!action?.isSelected(item.id);
 
   const subs = allItems
