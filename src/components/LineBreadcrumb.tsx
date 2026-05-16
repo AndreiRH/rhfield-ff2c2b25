@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { Check, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -23,12 +23,13 @@ type Props = {
 
 /**
  * Breadcrumb where the Line segment is an interactive pill with a dropdown of
- * all lines in the project. Selecting a different line keeps the rest of the
- * URL path identical. Middle segments collapse to "…" on mobile.
+ * all lines in the project. Selecting a different line performs a hard
+ * navigation to the same URL with the new line id, guaranteeing a full
+ * remount with fresh data. Middle segments collapse to "…" on mobile.
  */
 export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTitle, className }: Props) {
-  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const searchStr = useRouterState({ select: (s) => s.location.searchStr ?? "" });
   const currentN = Number(lineNumber);
 
   const { data: lines } = useQuery({
@@ -46,8 +47,14 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
 
   const goToLine = (n: number) => {
     if (n === currentN) return;
-    const newPath = pathname.replace(/(\/lines\/)(\d+)/, `$1${n}`);
-    navigate({ to: newPath });
+    // Rebuild the URL with the new line number. Equipment IDs in the path are
+    // line-specific, so strip anything past /equipment/<kind> to land on a
+    // page that's valid for any line.
+    let newPath = pathname.replace(/(\/lines\/)(\d+)/, `$1${n}`);
+    newPath = newPath.replace(/(\/equipment\/[^/]+)\/.*$/, "$1");
+    // Hard navigation forces a full remount and fresh data fetch.
+    const qs = searchStr ? (searchStr.startsWith("?") ? searchStr : `?${searchStr}`) : "";
+    window.location.href = newPath + qs;
   };
 
   const visible =
@@ -72,17 +79,43 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
           <span>Line {currentN}</span>
           <ChevronDown className="h-3 w-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[12rem]">
-          {(lines ?? []).map((l) => (
-            <DropdownMenuItem
-              key={l.id}
-              onSelect={() => goToLine(l.number)}
-              className="flex items-center justify-between gap-3"
-            >
-              <span>Line {l.number}</span>
-              {l.number === currentN && <Check className="h-3.5 w-3.5" aria-hidden />}
-            </DropdownMenuItem>
-          ))}
+        <DropdownMenuContent
+          align="start"
+          sideOffset={8}
+          className={cn(
+            "min-w-[11rem] overflow-hidden rounded-xl border border-border/60",
+            "bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+            Switch line
+          </div>
+          {(lines ?? []).map((l) => {
+            const active = l.number === currentN;
+            return (
+              <DropdownMenuItem
+                key={l.id}
+                onSelect={() => goToLine(l.number)}
+                className={cn(
+                  "group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2",
+                  "font-sans text-sm normal-case tracking-normal",
+                  "transition-colors focus:bg-primary focus:text-primary-foreground",
+                  "data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
+                  active && "bg-primary/10 font-medium text-primary",
+                )}
+              >
+                <span>Line {l.number}</span>
+                {active ? (
+                  <Check className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <span className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 
