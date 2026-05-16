@@ -112,7 +112,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
         ) : <span />}
         <div className="flex items-center gap-2">
-          {canEdit && !inMode && clip?.kind === "component" && (
+          {canEdit && !inMode && clip?.kind === "component" && (!clip.lockedAt || clip.lockedAt === compPasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
               title={`Paste ${clip.nodes.length} component${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">
