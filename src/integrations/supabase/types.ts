@@ -18,7 +18,8 @@ export type Database = {
         Row: {
           completed_at: string | null
           completed_by: string | null
-          component_id: string
+          component_id: string | null
+          component_type_id: string | null
           created_at: string
           deleted_at: string | null
           done: boolean
@@ -34,7 +35,8 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           completed_by?: string | null
-          component_id: string
+          component_id?: string | null
+          component_type_id?: string | null
           created_at?: string
           deleted_at?: string | null
           done?: boolean
@@ -50,7 +52,8 @@ export type Database = {
         Update: {
           completed_at?: string | null
           completed_by?: string | null
-          component_id?: string
+          component_id?: string | null
+          component_type_id?: string | null
           created_at?: string
           deleted_at?: string | null
           done?: boolean
