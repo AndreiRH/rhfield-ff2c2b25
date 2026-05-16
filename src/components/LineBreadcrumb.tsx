@@ -28,6 +28,7 @@ type Props = {
  * remount with fresh data. Middle segments collapse to "…" on mobile.
  */
 export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTitle, className }: Props) {
+  const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const searchStr = useRouterState({ select: (s) => s.location.searchStr ?? "" });
   const currentN = Number(lineNumber);
@@ -45,16 +46,46 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
     },
   });
 
-  const goToLine = (n: number) => {
+  const goToLine = async (n: number, targetLineId: string) => {
     if (n === currentN) return;
-    // Rebuild the URL with the new line number. Equipment IDs in the path are
-    // line-specific, so strip anything past /equipment/<kind> to land on a
-    // page that's valid for any line.
     let newPath = pathname.replace(/(\/lines\/)(\d+)/, `$1${n}`);
-    newPath = newPath.replace(/(\/equipment\/[^/]+)\/.*$/, "$1");
-    // Hard navigation forces a full remount and fresh data fetch.
+
+    // If we're on an equipment detail (or sub-page), map the current
+    // equipmentId to the same-named equipment on the target line so the
+    // user stays on the same equipment, just for a different line.
+    const eqMatch = pathname.match(/\/equipment\/([^/]+)\/([0-9a-f-]{36})/i);
+    if (eqMatch) {
+      const [, , equipmentId] = eqMatch;
+      const { data: cur } = await supabase
+        .from("plant_equipment")
+        .select("name, kind")
+        .eq("id", equipmentId)
+        .maybeSingle();
+      if (cur?.name) {
+        const { data: target } = await supabase
+          .from("plant_equipment")
+          .select("id")
+          .eq("line_id", targetLineId)
+          .eq("kind", cur.kind)
+          .eq("name", cur.name)
+          .maybeSingle();
+        if (target?.id) {
+          newPath = newPath.replace(
+            /(\/equipment\/[^/]+\/)[0-9a-f-]{36}/i,
+            `$1${target.id}`,
+          );
+        } else {
+          // Equivalent equipment doesn't exist on target line — fall back
+          // to that line's equipment list for the same kind.
+          newPath = newPath.replace(/(\/equipment\/[^/]+)\/.*$/, "$1");
+        }
+      }
+    }
+
     const qs = searchStr ? (searchStr.startsWith("?") ? searchStr : `?${searchStr}`) : "";
-    window.location.href = newPath + qs;
+    // Soft client-side navigation — no full reload. The line layout
+    // uses lineNumber as a React key so the page tree remounts cleanly.
+    router.history.push(newPath + qs);
   };
 
   const visible =
