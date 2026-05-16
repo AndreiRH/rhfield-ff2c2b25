@@ -47,7 +47,8 @@ export function ChecklistTree({
   const visibleItems = liveChecklistItems(items);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
-  const { clip, clear } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const rootPasteLocationKey = `tree-root:${(parentCols as any).component_id ?? (parentCols as any).component_type_id ?? ""}`;
   const action = useTreeAction();
   const inMode = action?.mode !== "none" && !!action;
 
