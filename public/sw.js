@@ -1127,6 +1127,17 @@ self.addEventListener("fetch", (event) => {
           }
           return res;
         } catch {
+          if (info && latestAuthHeader && isSupabaseStorage(url)) {
+            try {
+              const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
+              const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
+              if (res && res.ok) {
+                const b = await res.clone().blob();
+                await putBlob(`${info.bucket}/${info.path}`, b);
+                return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
+              }
+            } catch {}
+          }
           return new Response("", { status: 504 });
         }
       })());
