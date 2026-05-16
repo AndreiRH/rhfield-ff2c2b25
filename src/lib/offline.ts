@@ -6,7 +6,14 @@ import { onWarmUpProgress, warmUp, getWarmUpState } from "./warm-up";
 
 type SwQueueMessage = { type: "rhfield-queue"; count: number };
 type SwDataChangedMessage = { type: "rhfield-data-changed" };
-type SwMessage = SwQueueMessage | SwDataChangedMessage;
+type SwFlushCompleteMessage = {
+  type: "rhfield-flush-complete";
+  remaining: number;
+  failures: number;
+  failureSamples: Array<{ url: string; method: string; status: number; body: string }>;
+  stalled: boolean;
+};
+type SwMessage = SwQueueMessage | SwDataChangedMessage | SwFlushCompleteMessage;
 
 function send(type: string) {
   navigator.serviceWorker?.controller?.postMessage({ type });
@@ -38,14 +45,16 @@ export function useOfflineStatus() {
 
     const onOnline  = () => {
       setOnline(true);
+      // Flush first; warm-up runs only after a clean flush (see onMsg below).
+      // If there's nothing queued, the SW still replies with flush-complete
+      // and we proceed to warm-up immediately.
       triggerFlush();
-      warmUp(true).then(() => qc.invalidateQueries());
     };
     const onOffline = () => setOnline(false);
     const onVis     = () => {
       if (document.visibilityState === "visible") {
         send("rhfield-queue?");
-        if (navigator.onLine) { triggerFlush(); warmUp(); }
+        if (navigator.onLine) triggerFlush();
       }
     };
     const onMsg = (e: MessageEvent<SwMessage>) => {
@@ -53,9 +62,22 @@ export function useOfflineStatus() {
       if (!d) return;
       if (d.type === "rhfield-queue") setPending(d.count);
       if (d.type === "rhfield-data-changed") {
-        // SW updated the local snapshot (write replay or optimistic write).
-        // Refetch active queries so screens reflect the change immediately.
         qc.invalidateQueries();
+      }
+      if (d.type === "rhfield-flush-complete") {
+        if (d.failures > 0 && d.failureSamples?.length) {
+          // Surface dropped writes so silent data loss never happens again.
+          console.warn(
+            `[offline] ${d.failures} queued change(s) were rejected by the server and dropped:`,
+            d.failureSamples,
+          );
+        }
+        // Only re-pull the snapshot if the queue actually drained cleanly.
+        // Otherwise we'd overwrite still-valid local data with the (incomplete)
+        // server state, hiding the user's offline edits.
+        if (!d.stalled && d.remaining === 0) {
+          warmUp(true).then(() => qc.invalidateQueries());
+        }
       }
     };
 
