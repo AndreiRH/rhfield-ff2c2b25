@@ -193,7 +193,7 @@ function AiSearchPage() {
           <ChevronLeft className="h-4 w-4" /> {projectQ.data?.project?.name ?? "Project"}
         </Link>
 
-        <div className="mb-6 flex items-start justify-between gap-3 border-b pb-4">
+        <div className="mb-4 flex items-start justify-between gap-3 border-b pb-4">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               {projectQ.data?.project?.name ?? ""}
@@ -202,10 +202,60 @@ function AiSearchPage() {
               <Sparkles className="h-7 w-7 text-primary" /> AI Search
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ask in plain language. Find and export settings, checklists, notes and attachments across the project.
+              Ask in plain language. Works offline using a local cache of this project.
             </p>
           </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <div className="inline-flex items-center gap-1">
+              {isOnline ? (
+                <><Wifi className="h-3.5 w-3.5 text-success" /> Online</>
+              ) : (
+                <><WifiOff className="h-3.5 w-3.5 text-warning-foreground" /> Offline</>
+              )}
+            </div>
+            <div className="mt-1">
+              Cache: {cacheInfo ? `${cacheInfo.rows} rows · ${formatBytes(cacheInfo.bytes)}` : "—"}
+            </div>
+            <div>
+              Synced: {lastSync ? new Date(lastSync).toLocaleString() : "never"}
+            </div>
+            <div className="mt-1 flex justify-end gap-1">
+              <Button size="sm" variant="outline" onClick={doSync} disabled={!!syncing || !isOnline} className="h-7 gap-1 px-2 text-xs">
+                {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Sync now
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  if (!confirm("Clear all locally cached data and files for this project?")) return;
+                  await clearProjectCache(projectId);
+                  await refreshCacheInfo();
+                  toast.success("Local cache cleared.");
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                Clear
+              </Button>
+            </div>
+            {syncing && (
+              <div className="mt-1 text-[10px]">
+                {syncing.phase}{syncing.total ? ` ${syncing.done}/${syncing.total}` : "…"}
+              </div>
+            )}
+          </div>
         </div>
+
+        {!isOnline && (
+          <div className="mb-3 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+            Offline mode — searching the locally cached copy of this project. Natural-language understanding is simplified; use keywords and the line filter for best results.
+          </div>
+        )}
+        {usedOffline && isOnline && (
+          <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Showing offline-cached results (online search was unavailable).
+          </div>
+        )}
 
         <Card className="mb-4">
           <CardContent className="space-y-3 p-4">
