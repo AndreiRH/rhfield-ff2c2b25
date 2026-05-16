@@ -69,7 +69,7 @@ export function ChecklistTree({
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { ...parentCols, parent_item_id: null, sort_order: rootItems.length });
-      clear();
+      lockTo(rootPasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
