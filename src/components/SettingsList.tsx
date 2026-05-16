@@ -550,7 +550,7 @@ function SettingsListInner({
 }
 
 function SettingsGroupSection({
-  group, canEdit, onRename, onAddSetting, onRequestDelete, children,
+  group, canEdit, onRename, onAddSetting, onRequestDelete, collapsed, onToggleCollapsed, children,
 }: {
   group: SettingGroup;
   canEdit: boolean;
@@ -558,6 +558,8 @@ function SettingsGroupSection({
   onAddSetting: () => void;
   onRequestDelete: () => void;
   lineCount?: number;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   children: ReactNode;
 }) {
   const action = useTreeAction()!;
@@ -568,18 +570,7 @@ function SettingsGroupSection({
     useSortable({ id: sortableId, disabled: !inReorder });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
-  const storageKey = `settings_group_collapsed_${group.template_id}`;
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(storageKey) === "1";
-  });
-  const toggle = () => {
-    setCollapsed((c) => {
-      const next = !c;
-      try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
-      return next;
-    });
-  };
+  const toggle = onToggleCollapsed;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(group.name);
