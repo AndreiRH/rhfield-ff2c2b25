@@ -14,6 +14,7 @@ import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import { useClipboard, buildItemClipMany, pasteItem } from "@/lib/clipboard";
 import { useAuth } from "@/hooks/use-auth";
 import { liveChecklistItems } from "@/lib/progress";
+import { localUuid } from "@/lib/local-id";
 
 export function FlatChecklist(props: any) {
   // headerLeading: optional slot rendered on the left of the action bar (e.g. Manual/Checklist toggle).
@@ -160,7 +161,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     if (!bucket || !newItemText.trim()) return;
     const rootCount = allItems.filter((i: any) => !i.parent_item_id).length;
     const { error } = await supabase.from("checklist_items").insert({
-      component_id: bucket.id, label: newItemText.trim(), sort_order: rootCount,
+      id: localUuid(), component_id: bucket.id, label: newItemText.trim(), sort_order: rootCount,
     });
     if (error) { toast.error(error.message); return; }
     setNewItemText(""); setAddingItem(false); onChange();
