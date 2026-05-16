@@ -124,6 +124,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
 
   const uploadPhoto = async (file: File) => {
     const path = `${basePath}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
@@ -132,6 +133,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
   const uploadFile = async (file: File) => {
     const path = `${basePath}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
