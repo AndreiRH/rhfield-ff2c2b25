@@ -397,7 +397,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
 
 function renderSection(s: Section, data: any, canEdit: boolean, userId: string | undefined, onChange: () => void) {
   if (s === "assembly") {
-    return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} />;
+    return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} lineNumber={lineNumber} equipmentId={equipmentId} />;
   }
   if (s === "wiring") {
     return <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
