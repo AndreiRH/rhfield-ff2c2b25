@@ -112,6 +112,13 @@ function SettingsListInner({
       });
     });
   };
+  const updateGroup = (id: string, group: string) => {
+    const g = group.trim() === "" ? null : group.trim();
+    setRows((n) => n.map((x) => (x.id === id ? { ...x, group_name: g } : x)));
+    supabase.from("equipment_settings").update({ group_name: g }).eq("id", id).then(({ error }) => {
+      if (error) toast.error(error.message);
+    });
+  };
 
   const removeOne = async (s: Setting) => {
     for (const p of s.setting_photos ?? []) {
