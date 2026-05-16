@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v6";
+const VER = "v7";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -280,6 +280,7 @@ self.addEventListener("activate", (e) => {
 // ============================================================
 function isSupabaseRest(url)    { return /\.supabase\.co\/rest\/v1\//.test(url.href); }
 function isSupabaseStorage(url) { return /\.supabase\.co\/storage\/v1\//.test(url.href); }
+function isLocalSyntheticStorage(url) { return url.origin === self.location.origin && /^\/object\/(?:sign|authenticated|public)\//.test(url.pathname); }
 function isSupabaseAuth(url)    { return /\.supabase\.co\/auth\/v1\//.test(url.href); }
 function isSupabaseRealtime(url){ return /\.supabase\.co\/realtime\/v1\//.test(url.href); }
 
