@@ -100,3 +100,28 @@ export function equipmentProgress(pe: any): { mech: number; wiring: number; cold
   const overall = Math.round((mech + wiring + cold) / 3);
   return { mech, wiring, cold, overall };
 }
+
+// Average progress (0-100) for a single line, matching the project-detail page.
+export function lineOverallPct(line: any): number {
+  const peList = (line.plant_equipment ?? []).filter((p: any) => !p.deleted_at);
+  const peParts = peList.map((pe: any) => equipmentProgress(pe).overall);
+
+  const extraGroups = (line.equipment_groups ?? []).filter((eg: any) => eg.kind === "extra_work" && !eg.deleted_at);
+  const extraParts = extraGroups.map((eg: any) => {
+    const items = (eg.components ?? [])
+      .filter((c: any) => !c.deleted_at)
+      .flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
+    return calcProgress(items).pct;
+  });
+
+  const all = [...peParts, ...extraParts];
+  if (all.length === 0) return 0;
+  return Math.round(all.reduce((s, n) => s + n, 0) / all.length);
+}
+
+// Average project progress (0-100) across all of a project's lines.
+export function projectOverallPct(lines: any[]): number {
+  const parts = (lines ?? []).map(lineOverallPct);
+  if (parts.length === 0) return 0;
+  return Math.round(parts.reduce((s, n) => s + n, 0) / parts.length);
+}
