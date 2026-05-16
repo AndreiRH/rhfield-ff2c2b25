@@ -597,6 +597,39 @@ export type Database = {
           },
         ]
       }
+      equipment_setting_groups: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          plant_equipment_id: string
+          sort_order: number
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          plant_equipment_id: string
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          plant_equipment_id?: string
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipment_settings: {
         Row: {
           body: string
@@ -605,7 +638,7 @@ export type Database = {
           deleted_at: string | null
           file_name: string | null
           file_path: string | null
-          group_name: string | null
+          group_template_id: string | null
           id: string
           photo_path: string | null
           plant_equipment_id: string
@@ -621,7 +654,7 @@ export type Database = {
           deleted_at?: string | null
           file_name?: string | null
           file_path?: string | null
-          group_name?: string | null
+          group_template_id?: string | null
           id?: string
           photo_path?: string | null
           plant_equipment_id: string
@@ -637,7 +670,7 @@ export type Database = {
           deleted_at?: string | null
           file_name?: string | null
           file_path?: string | null
-          group_name?: string | null
+          group_template_id?: string | null
           id?: string
           photo_path?: string | null
           plant_equipment_id?: string
