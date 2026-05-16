@@ -296,6 +296,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const uploadAttachment = async (file: File, kind: "photo" | "file") => {
     const path = `${basePath}/${kind}/${Date.now()}-${file.name}`;
     const bucket = kind === "photo" ? "photos" : "files";
+    rememberLocalFile(bucket, path, file);
     const { error } = await supabase.storage.from(bucket).upload(path, file);
     if (error) { toast.error(error.message); return; }
     const { error: dbErr } = await supabase.from("pa_attachments").insert({
