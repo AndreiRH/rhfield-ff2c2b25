@@ -179,7 +179,10 @@ async function broadcast(msg) {
   cs.forEach((c) => c.postMessage(msg));
 }
 async function broadcastQueueCount() {
-  try { await broadcast({ type: "rhfield-queue", count: await outboxCount() }); } catch {}
+  try {
+    const s = await outboxStats();
+    await broadcast({ type: "rhfield-queue", count: s.pending, failed: s.failed });
+  } catch {}
 }
 async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
