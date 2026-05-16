@@ -147,6 +147,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
@@ -156,6 +157,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 
   const uploadFile = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
