@@ -1217,7 +1217,10 @@ self.addEventListener("fetch", (event) => {
         let netRes = null;
         try { netRes = await fetch(req); } catch {}
 
-        if (info && blob) {
+        // Only persist locally when the network upload succeeded AND the body
+        // is a real media blob. Avoids storing multipart/form-data or
+        // application/octet-stream bytes as if they were the image itself.
+        if (info && blob && netRes && netRes.ok && isServableMediaType(blob.type)) {
           try { await putBlob(`${info.bucket}/${info.path}`, blob); } catch {}
         }
 
