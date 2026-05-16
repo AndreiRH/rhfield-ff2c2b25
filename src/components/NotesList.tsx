@@ -283,40 +283,21 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
 }
 
 function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
   return (
-    <div className="relative">
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" className="max-h-40 w-full rounded border object-cover" />
-        </a>
-      ) : (
-        <div className="h-24 animate-pulse rounded bg-muted" />
-      )}
-      {canEdit && (
-        <button onClick={onRemove}
-          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="max-h-40 w-full rounded border object-cover"
+      canEdit={canEdit}
+      onRemove={onRemove}
+    />
   );
 }
 
 function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
-  const open = async () => {
-    if (!path) return;
-    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
     <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
+      <button onClick={() => openStorageFile("files", path, name)} className="flex flex-1 items-center gap-1 text-left hover:underline">
         <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
       </button>
       {canEdit && (
