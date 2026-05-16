@@ -17,6 +17,7 @@ import {
 } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
+import { ChecklistTree } from "@/components/ChecklistTree";
 import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
