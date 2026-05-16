@@ -50,8 +50,12 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
     navigate({ to: newPath });
   };
 
-  const middle = segments.slice(0, -1);
-  const last = segments[segments.length - 1];
+  const visible =
+    currentTitle && segments.length > 0 && segments[segments.length - 1] === currentTitle
+      ? segments.slice(0, -1)
+      : segments;
+  const middle = visible.slice(0, -1);
+  const last = visible[visible.length - 1];
 
   return (
     <nav
