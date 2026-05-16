@@ -1261,54 +1261,77 @@ self.addEventListener("fetch", (event) => {
       return;
     }
 
-    // Storage GET (signed URL or otherwise): blob-store first, then cache, then network.
+    // Storage GET (signed URL or otherwise): network-first when online,
+    // fall back to local blob/cache when offline or network fails.
     if (req.method === "GET") {
       event.respondWith((async () => {
         const info = storagePathFromUrl(url);
-        if (info) {
+
+        const serveStored = async () => {
+          if (!info) return null;
           const stored = await getBlob(`${info.bucket}/${info.path}`);
-          if (stored?.blob) {
-            return new Response(stored.blob, {
-              status: 200,
-              headers: {
-                "Content-Type": stored.type || "application/octet-stream",
-                "X-RHfield-LocalBlob": "1",
-                "Cache-Control": "no-cache",
-              },
-            });
+          if (!isValidStoredBlob(stored)) return null;
+          return new Response(stored.blob, {
+            status: 200,
+            headers: {
+              "Content-Type": stored.type || stored.blob.type || "application/octet-stream",
+              "X-RHfield-LocalBlob": "1",
+              "Cache-Control": "no-cache",
+            },
+          });
+        };
+
+        // When online, try the network first so a fresh/correct image
+        // replaces any stale or corrupted local copy.
+        if (self.navigator && self.navigator.onLine !== false) {
+          try {
+            const res = await fetch(req);
+            if (res && res.ok) {
+              const cache = await caches.open(CACHE_BLOBS);
+              cache.put(req, res.clone()).catch(() => {});
+              if (info) {
+                try {
+                  const b = await res.clone().blob();
+                  if (isServableMediaType(b.type) && b.size > 0) {
+                    await putBlob(`${info.bucket}/${info.path}`, b);
+                  }
+                } catch {}
+              }
+              return res;
+            }
+            // Non-OK network response: try local fallbacks before returning it.
+            const local = await serveStored();
+            if (local) return local;
+            const cache = await caches.open(CACHE_BLOBS);
+            const cached = await cache.match(req);
+            if (cached) return cached;
+            return res;
+          } catch {
+            // fall through to offline path
           }
         }
+
+        // Offline (or network threw): prefer local blob, then HTTP cache,
+        // then a last-ditch authenticated direct fetch.
+        const local = await serveStored();
+        if (local) return local;
         const cache = await caches.open(CACHE_BLOBS);
         const cached = await cache.match(req);
         if (cached) return cached;
-        try {
-          const res = await fetch(req);
-          if (res && res.ok) {
-            cache.put(req, res.clone()).catch(() => {});
-            // Also persist the bytes into the local blob store so they
-            // survive HTTP cache eviction.
-            if (info) {
-              try {
-                const b = await res.clone().blob();
+        if (info && latestAuthHeader && isSupabaseStorage(url)) {
+          try {
+            const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
+            const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
+            if (res && res.ok) {
+              const b = await res.clone().blob();
+              if (isServableMediaType(b.type) && b.size > 0) {
                 await putBlob(`${info.bucket}/${info.path}`, b);
-              } catch {}
-            }
-          }
-          return res;
-        } catch {
-          if (info && latestAuthHeader && isSupabaseStorage(url)) {
-            try {
-              const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
-              const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
-              if (res && res.ok) {
-                const b = await res.clone().blob();
-                await putBlob(`${info.bucket}/${info.path}`, b);
-                return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
               }
-            } catch {}
-          }
-          return new Response("", { status: 504 });
+              return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
+            }
+          } catch {}
         }
+        return new Response("", { status: 504 });
       })());
       return;
     }
