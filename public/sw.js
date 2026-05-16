@@ -760,10 +760,6 @@ async function flushQueue() {
   let stalled = false;
   const failureSamples = [];
   for (const item of items) {
-    // Skip items previously marked as failed — we keep them in the queue so the
-    // user knows something needs attention and so a follow-up `warmUp` doesn't
-    // overwrite their local snapshot with server data missing these rows.
-    if (item.failed) { failures++; continue; }
     try {
       const res = await fetch(item.url, {
         method: item.method,
