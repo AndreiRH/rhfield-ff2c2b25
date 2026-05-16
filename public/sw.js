@@ -775,10 +775,12 @@ async function propagateUpdateLocally(table, matched, patch) {
     pa_folders: ["name", "sort_order"],
   };
   const sharePatch = Object.fromEntries(Object.entries(patch).filter(([key]) => allowedByTable[table]?.includes(key)));
-  if ((table === "components" || table === "checklist_items") && !(patch.note_shared || matched.some((r) => r.note_shared))) {
+  const noteShareActive = (table === "components" || table === "checklist_items") && (patch.note_shared || matched.some((r) => r.note_shared));
+  if ((table === "components" || table === "checklist_items") && !noteShareActive) {
     delete sharePatch.note;
     delete sharePatch.note_shared;
   }
+  if (noteShareActive && !("note" in sharePatch) && matched[0] && "note" in matched[0]) sharePatch.note = matched[0].note;
   if (Object.keys(sharePatch).length === 0) return;
   await writeTable(table, current.map((r) => templates.has(r.template_id) && !sourceIds.has(r.id) ? { ...r, ...sharePatch, updated_at: new Date().toISOString() } : r));
 }
