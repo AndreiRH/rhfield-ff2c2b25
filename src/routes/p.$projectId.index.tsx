@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, equipmentProgress, liveChecklistItems } from "@/lib/progress";
+import { lineOverallPct } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,20 +14,7 @@ import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton"
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
 
-function lineProgress(line: any): number {
-  const peList = (line.plant_equipment ?? []).filter((p: any) => !p.deleted_at);
-  const peParts = peList.map((pe: any) => equipmentProgress(pe).overall);
-
-  const extraGroups = (line.equipment_groups ?? []).filter((eg: any) => eg.kind === "extra_work" && !eg.deleted_at);
-  const extraParts = extraGroups.map((eg: any) => {
-    const items = (eg.components ?? []).filter((c: any) => !c.deleted_at).flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
-    return calcProgress(items).pct;
-  });
-
-  const all = [...peParts, ...extraParts];
-  if (all.length === 0) return 0;
-  return Math.round(all.reduce((s, n) => s + n, 0) / all.length);
-}
+const lineProgress = lineOverallPct;
 
 function ProjectDashboard() {
   const { projectId } = Route.useParams();
