@@ -222,24 +222,18 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 }
 
 function NotePhoto({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
-  if (!url) return <div className="h-20 animate-pulse rounded bg-muted" />;
-  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="max-h-32 w-full rounded border object-cover" /></a>;
+  return (
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="max-h-32 w-full rounded border object-cover"
+    />
+  );
 }
 
 function NoteFile({ path, name }: { path: string | null; name: string }) {
-  const open = async () => {
-    if (!path) return;
-    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
-    <button onClick={open} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-[11px] hover:bg-accent">
+    <button onClick={() => openStorageFile("files", path, name)} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-[11px] hover:bg-accent">
       <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
     </button>
   );
