@@ -183,7 +183,7 @@ function SettingsListInner({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end sm:gap-1">
           {canEdit && (
           <>
             {clip?.kind === "setting" && !inMode && (
@@ -195,8 +195,8 @@ function SettingsListInner({
               </Button>
             )}
             {!inMode && (
-              <Button size="sm" onClick={addRow}>
-                <Plus className="mr-1 h-4 w-4" /> Add setting
+              <Button size="sm" onClick={addRow} title="Add setting" aria-label="Add setting">
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add setting</span>
               </Button>
             )}
             {rows.length > 0 && !inMode && (
