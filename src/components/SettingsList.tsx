@@ -183,7 +183,7 @@ function SettingsListInner({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end sm:gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {canEdit && (
           <>
             {clip?.kind === "setting" && !inMode && (
