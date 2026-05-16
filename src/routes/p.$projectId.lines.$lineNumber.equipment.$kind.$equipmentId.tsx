@@ -42,6 +42,10 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tint: "bg-cyan-100/50",
   },
 };
+
+function groupWeight(group: any) {
+  return (group?.components?.length ?? 0) + (group?.component_types?.length ?? 0);
+}
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
