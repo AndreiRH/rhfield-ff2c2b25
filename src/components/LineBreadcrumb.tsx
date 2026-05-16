@@ -15,6 +15,8 @@ type Props = {
   lineNumber: number | string;
   /** Trailing segments rendered after the Line pill (e.g. ["Kiln", "Switchboards"]). */
   segments?: string[];
+  /** Current page heading. If the last segment equals this, it is omitted to avoid duplication. */
+  currentTitle?: string;
   /** Optional override for the wrapper text color (defaults to text-muted-foreground). */
   className?: string;
 };
