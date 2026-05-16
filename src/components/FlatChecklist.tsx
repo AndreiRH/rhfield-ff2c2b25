@@ -172,7 +172,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
       <Inner className={noCard ? "space-y-3" : "space-y-3 p-4"}>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {bucket && allItems.length > 0 && (
-            <Button size="sm" variant="outline" onClick={toggleExpandAll} title={expandAll ? "Collapse all" : "Expand all"} aria-label={expandAll ? "Collapse all" : "Expand all"}>
+            <Button size="sm" variant="outline" className="mr-auto" onClick={toggleExpandAll} title={expandAll ? "Collapse all" : "Expand all"} aria-label={expandAll ? "Collapse all" : "Expand all"}>
               {expandAll ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
             </Button>
           )}
