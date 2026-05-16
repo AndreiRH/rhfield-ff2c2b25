@@ -6,7 +6,7 @@
 // outbox flushes (so the local snapshot rejoins the server state).
 
 import { supabase } from "@/integrations/supabase/client";
-import { putTable, hasBlob, setMeta } from "./snapshot-store";
+import { putTable, hasBlob, putBlob, setMeta } from "./snapshot-store";
 
 const TABLES = [
   "projects", "lines", "plant_equipment", "equipment_groups",
@@ -208,14 +208,14 @@ export function warmUp(force = false): Promise<void> {
         list.push(j.path);
         byBucket.set(j.bucket, list);
       }
-      const signed: string[] = [];
+      const signed: Array<Job & { signedUrl: string }> = [];
       for (const [bucket, paths] of byBucket) {
         const chunk = 200;
         for (let i = 0; i < paths.length; i += chunk) {
           const slice = paths.slice(i, i + chunk);
           try {
             const { data } = await supabase.storage.from(bucket).createSignedUrls(slice, 60 * 60 * 12);
-            for (const r of data ?? []) if (r.signedUrl) signed.push(r.signedUrl);
+            for (const r of data ?? []) if (r.signedUrl && r.path) signed.push({ bucket, path: r.path, signedUrl: r.signedUrl });
           } catch {}
         }
       }
@@ -224,7 +224,17 @@ export function warmUp(force = false): Promise<void> {
       async function worker() {
         while (i < signed.length) {
           const idx = i++;
-          try { await fetch(signed[idx], { cache: "no-store" }); } catch {}
+          const job = signed[idx];
+          try {
+            let res: Response | null = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                res = await fetch(job.signedUrl, { cache: "no-store" });
+                if (res.ok) break;
+              } catch {}
+            }
+            if (res?.ok) await putBlob(job.bucket, job.path, await res.blob());
+          } catch {}
           emit({ done: current.done + 1 });
         }
       }
