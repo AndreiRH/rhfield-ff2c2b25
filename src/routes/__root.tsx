@@ -162,6 +162,7 @@ function RootComponent() {
       <ThemeProvider>
         <AuthProvider>
           <Outlet />
+          <LightboxRoot />
           <Toaster richColors position="bottom-center" />
         </AuthProvider>
       </ThemeProvider>
