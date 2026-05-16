@@ -849,9 +849,18 @@ self.addEventListener("fetch", (event) => {
             broadcastDataChanged();
           } catch {}
 
-          const queuedBody = req.method === "POST" && bodyJson
-            ? JSON.stringify(Array.isArray(bodyJson) ? resultRows : (resultRows[0] ?? bodyJson))
-            : null;
+          // For POST replay, send the ORIGINAL client payload + the locally-
+          // generated id (so children can FK to it). Do NOT send the synthetic
+          // created_at/updated_at/etc. from withLocalDefaults — many tables
+          // don't have those columns and PostgREST would 400 the whole row.
+          let queuedBody = null;
+          if (req.method === "POST" && bodyJson) {
+            if (Array.isArray(bodyJson)) {
+              queuedBody = JSON.stringify(bodyJson.map((orig, i) => serverBody(orig, resultRows[i])));
+            } else {
+              queuedBody = JSON.stringify(serverBody(bodyJson, resultRows[0]));
+            }
+          }
           await queueRequest(req, queuedBody);
 
           // Build a Supabase-compatible response.
