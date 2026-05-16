@@ -54,13 +54,10 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
 
-  // When entering any action mode, expand all so users can reach sublayers.
-  // The expand/collapse button stays available so users can minimise mid-action.
+  // Preserve the user's current expand/collapse state when entering an
+  // action mode (reorder, delete, copy). The expand/collapse button stays
+  // available so users can change it themselves if needed.
   const inSelectMode = action.mode === "delete" || action.mode === "copy";
-  useEffect(() => {
-    if (inMode) setOpenIds(new Set(types.map((t: any) => t.id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode]);
 
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;

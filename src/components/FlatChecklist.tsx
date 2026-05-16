@@ -75,11 +75,8 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   // exit selection mode when bucket changes
   useEffect(() => { if (inMode) action.setMode("none"); /* eslint-disable-next-line */ }, [bucket?.id]);
 
-  // Auto-expand on entering any action mode (user can still collapse via the toggle).
-  useEffect(() => {
-    if (inMode) { setExpandAll(true); setTreeKey((k) => k + 1); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inMode]);
+  // Preserve the user's current expand/collapse state when entering an
+  // action mode — don't force-expand items.
 
   const ensureBucket = async () => {
     if (bucket || !group || creating) return;
