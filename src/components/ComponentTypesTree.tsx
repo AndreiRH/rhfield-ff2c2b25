@@ -369,17 +369,13 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     opacity: sortableArgs.isDragging ? 0.5 : 1,
   };
 
-  const liveComps = (type.components ?? []).filter((c: any) => !c.deleted_at);
-  const items = liveComps.flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []));
+  const items = liveChecklistItems(type.checklist_items ?? []);
   const prog = calcProgress(items);
   const notesCount =
-    liveComps.filter((c: any) => (c.note ?? "").trim() !== "").length +
     items.filter((i: any) => (i.note ?? "").trim() !== "").length;
   const photosCount =
-    liveComps.reduce((acc: number, c: any) => acc + (c.component_photos?.length ?? 0), 0) +
     items.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
   const filesCount =
-    liveComps.reduce((acc: number, c: any) => acc + (c.component_files?.length ?? 0), 0) +
     items.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
 
   const [editing, setEditing] = useState(false);
