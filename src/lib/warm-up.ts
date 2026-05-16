@@ -186,10 +186,14 @@ export function warmUp(force = false): Promise<void> {
           for (const { bucket, col } of specs) {
             const path = (row?.[col] ?? null) as string | null;
             if (!path) continue;
-            const key = `${bucket}:${path}`;
+            const actualBucket =
+              (table === "pa_attachments" || table === "common_folder_attachments") && row?.kind === "photo"
+                ? "photos"
+                : bucket;
+            const key = `${actualBucket}:${path}`;
             if (seen.has(key)) continue;
             seen.add(key);
-            candidates.push({ bucket, path });
+            candidates.push({ bucket: actualBucket, path });
           }
         }
       }
