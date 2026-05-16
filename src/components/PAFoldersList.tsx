@@ -495,7 +495,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
 
   return (
-    <li className="rounded-md border bg-card">
+    <li data-nest className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
         <button
           type="button"
