@@ -38,6 +38,7 @@ function ProjectsPage() {
                 components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
                 component_types(
                   id, deleted_at,
+                  checklist_items(id, done, deleted_at, parent_item_id),
                   components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
                 )
               )
