@@ -370,11 +370,13 @@ function ResultsView({
   const downloadXLSX = async () => {
     setExporting("xlsx");
     try {
-      const XLSX = await import("xlsx");
-      const ws = XLSX.utils.json_to_sheet(rowsForExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Results");
-      const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const { default: ExcelJS } = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Results");
+      const headers = Object.keys(rowsForExport[0] ?? { Source: "" });
+      ws.columns = headers.map((h) => ({ header: h, key: h }));
+      rowsForExport.forEach((r) => ws.addRow(r));
+      const out = await wb.xlsx.writeBuffer();
       triggerDownload(new Blob([out], { type: "application/octet-stream" }), `${fileName}.xlsx`);
     } finally { setExporting(null); }
   };

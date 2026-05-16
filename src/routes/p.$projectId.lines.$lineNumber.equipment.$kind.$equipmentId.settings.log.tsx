@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export const Route = createFileRoute(
   "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings/log",
@@ -57,7 +57,7 @@ function SettingsLogPage() {
   if (!session) return null;
   const plantLabel = kind === "kiln" ? "Kiln" : "SHS";
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
     if (!data?.logs?.length) return;
     const rows = data.logs.map((l: any) => ({
       "When": new Date(l.created_at).toLocaleString(),
@@ -67,12 +67,26 @@ function SettingsLogPage() {
       "Old value": l.old_value ?? "",
       "New value": l.new_value ?? "",
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 20 }, { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 40 }, { wch: 40 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Settings log");
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Settings log");
+    const headers = Object.keys(rows[0]);
+    ws.columns = headers.map((h, i) => ({
+      header: h,
+      key: h,
+      width: [20, 18, 24, 16, 40, 40][i] ?? 20,
+    }));
+    rows.forEach((r) => ws.addRow(r));
+    const buf = await wb.xlsx.writeBuffer();
     const eqName = (data.pe?.name ?? "equipment").replace(/[^\w-]+/g, "_");
-    XLSX.writeFile(wb, `settings-log_${eqName}_line${lineNumber}.xlsx`);
+    const blob = new Blob([buf], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `settings-log_${eqName}_line${lineNumber}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
