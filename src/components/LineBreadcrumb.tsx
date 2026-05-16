@@ -26,7 +26,7 @@ type Props = {
  * all lines in the project. Selecting a different line keeps the rest of the
  * URL path identical. Middle segments collapse to "…" on mobile.
  */
-export function LineBreadcrumb({ projectId, lineNumber, segments = [], className }: Props) {
+export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTitle, className }: Props) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentN = Number(lineNumber);
