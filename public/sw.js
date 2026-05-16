@@ -71,12 +71,27 @@ async function outboxDelete(id) {
   });
 }
 async function outboxCount() {
+  const items = await outboxAll();
+  return items.filter((it) => !it?.failed).length;
+}
+async function outboxStats() {
+  const items = await outboxAll();
+  let pending = 0, failed = 0;
+  for (const it of items) { if (it?.failed) failed++; else pending++; }
+  return { pending, failed };
+}
+async function outboxUpdate(id, patch) {
   const db = await openOutbox();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(OUTBOX_STORE, "readonly");
-    const r = tx.objectStore(OUTBOX_STORE).count();
-    r.onsuccess = () => res(r.result || 0);
-    r.onerror = () => rej(r.error);
+  await new Promise((res, rej) => {
+    const tx = db.transaction(OUTBOX_STORE, "readwrite");
+    const store = tx.objectStore(OUTBOX_STORE);
+    const g = store.get(id);
+    g.onsuccess = () => {
+      const cur = g.result;
+      if (cur) { Object.assign(cur, patch); store.put(cur); }
+    };
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
   });
 }
 
