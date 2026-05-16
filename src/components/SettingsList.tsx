@@ -244,22 +244,30 @@ function SettingsListInner({
     setGroups(newGroupOrder.map((g, i) => ({ ...g, sort_order: i })));
 
     // Persist setting changes (sort_order or group_template_id changes)
-    const settingUpdates = newSettings
-      .map((n) => {
-        const prev = rows.find((r) => r.id === n.id);
-        if (!prev) return null;
-        if (prev.sort_order === n.sort_order && prev.group_template_id === n.group_template_id) return null;
-        return supabase.from("equipment_settings")
-          .update({ sort_order: n.sort_order, group_template_id: n.group_template_id })
-          .eq("id", n.id);
-      })
-      .filter(Boolean) as Promise<unknown>[];
-    const groupUpdates = newGroupOrder.map((g, i) => {
-      if (g.sort_order === i) return null;
-      return supabase.from("equipment_setting_groups")
-        .update({ sort_order: i })
-        .eq("id", g.id);
-    }).filter(Boolean) as Promise<unknown>[];
+    const settingUpdates: Array<Promise<unknown>> = [];
+    for (const n of newSettings) {
+      const prev = rows.find((r) => r.id === n.id);
+      if (!prev) continue;
+      if (prev.sort_order === n.sort_order && prev.group_template_id === n.group_template_id) continue;
+      settingUpdates.push(
+        Promise.resolve(
+          supabase.from("equipment_settings")
+            .update({ sort_order: n.sort_order, group_template_id: n.group_template_id })
+            .eq("id", n.id),
+        ),
+      );
+    }
+    const groupUpdates: Array<Promise<unknown>> = [];
+    newGroupOrder.forEach((g, i) => {
+      if (g.sort_order === i) return;
+      groupUpdates.push(
+        Promise.resolve(
+          supabase.from("equipment_setting_groups")
+            .update({ sort_order: i })
+            .eq("id", g.id),
+        ),
+      );
+    });
     await Promise.all([...settingUpdates, ...groupUpdates]);
   };
 
