@@ -156,7 +156,7 @@ function SettingsListInner({
     if (clip?.kind !== "setting") return;
     try {
       await pasteSetting(clip, { plant_equipment_id: equipmentId, sort_order: rows.length, created_by: userId });
-      clearClip();
+      lockTo(settingPasteLocationKey);
       toast.success("Pasted"); load();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
