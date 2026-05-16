@@ -105,35 +105,42 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        sideOffset={8}
+        sideOffset={6}
+        style={{
+          background: "var(--popover)",
+          color: "var(--popover-foreground)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
+          boxShadow: "0 4px 12px oklch(0.18 0.03 250 / 0.1)",
+          minWidth: "160px",
+          fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        }}
         className={cn(
-          "min-w-[11rem] overflow-hidden rounded-xl border border-border/60",
-          "bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur",
+          "overflow-hidden p-1",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "data-[state=open]:slide-in-from-top-1 data-[state=closed]:slide-out-to-top-1",
+          "duration-150",
         )}
       >
-        <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-          Switch line
-        </div>
         {(lines ?? []).map((l) => {
           const active = l.number === currentN;
           return (
             <DropdownMenuItem
               key={l.id}
               onSelect={() => goToLine(l.number, l.id)}
+              style={{ padding: "10px 14px", fontSize: "0.875rem" }}
               className={cn(
-                "group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2",
-                "font-sans text-sm normal-case tracking-normal",
-                "transition-colors focus:bg-primary focus:text-primary-foreground",
-                "data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
-                active && "bg-primary/10 font-medium text-primary",
+                "flex cursor-pointer items-center justify-between gap-3 rounded-[calc(var(--radius-md)-4px)]",
+                "normal-case tracking-normal outline-none transition-colors",
+                "focus:bg-[var(--accent)] focus:text-[var(--accent-foreground)]",
+                "data-[highlighted]:bg-[var(--accent)] data-[highlighted]:text-[var(--accent-foreground)]",
+                active && "font-medium text-[var(--primary)]",
               )}
             >
               <span>Line {l.number}</span>
               {active ? (
-                <Check className="h-4 w-4 shrink-0" aria-hidden />
+                <Check className="h-4 w-4 shrink-0" style={{ color: "var(--primary)" }} aria-hidden />
               ) : (
                 <span className="h-4 w-4 shrink-0" aria-hidden />
               )}
