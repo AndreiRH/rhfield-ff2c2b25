@@ -129,7 +129,7 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
             return (
               <DropdownMenuItem
                 key={l.id}
-                onSelect={() => goToLine(l.number)}
+                onSelect={() => goToLine(l.number, l.id)}
                 className={cn(
                   "group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2",
                   "font-sans text-sm normal-case tracking-normal",
