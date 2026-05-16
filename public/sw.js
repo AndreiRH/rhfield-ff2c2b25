@@ -653,6 +653,9 @@ function uuid() {
 function withLocalDefaults(table, row) {
   const r = { ...row };
   if (r.id == null) r.id = uuid();
+  if (["plant_equipment", "equipment_groups", "component_types", "components", "checklist_items", "equipment_settings", "pa_folders"].includes(table) && r.template_id == null) {
+    r.template_id = uuid();
+  }
   const now = new Date().toISOString();
   if (!("created_at" in r)) r.created_at = now;
   if (!("updated_at" in r)) r.updated_at = now;
@@ -674,6 +677,7 @@ function withLocalDefaults(table, row) {
 function serverBody(originalRow, localRow) {
   const out = { ...originalRow };
   if (out.id == null && localRow?.id != null) out.id = localRow.id;
+  if (out.template_id == null && localRow?.template_id != null) out.template_id = localRow.template_id;
   return out;
 }
 async function applyInsert(table, body) {
