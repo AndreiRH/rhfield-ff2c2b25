@@ -494,6 +494,8 @@ function SettingsListInner({
                       onRename={(name) => updateGroupName(g, name)}
                       onAddSetting={() => addRow(g.template_id)}
                       itemCount={items.length}
+                      pasteCount={clip?.kind === "setting" && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) ? clip.nodes.length : 0}
+                      onPaste={() => pasteHere(g.template_id)}
                       collapsed={collapsedGroups.has(g.template_id)}
                       onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
