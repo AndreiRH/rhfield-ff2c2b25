@@ -43,14 +43,15 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip, clear } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const compPasteLocationKey = `extra:${group?.id ?? ""}`;
 
   const pasteComponentHere = async () => {
     if (clip?.kind !== "component") return;
     try {
       const parent = parentKind === "component_type" ? { component_type_id: group.id } : { equipment_id: group.id };
       await pasteComponent(clip, parent, components.length);
-      clear();
+      lockTo(compPasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -111,7 +112,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
           <h2 className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Components</h2>
         ) : <span />}
         <div className="flex items-center gap-2">
-          {canEdit && !inMode && clip?.kind === "component" && (
+          {canEdit && !inMode && clip?.kind === "component" && (!clip.lockedAt || clip.lockedAt === compPasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteComponentHere}
               title={`Paste ${clip.nodes.length} component${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">

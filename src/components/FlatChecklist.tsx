@@ -43,7 +43,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
   const [newItemText, setNewItemText] = useState("");
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
-  const { clip, set: setClip, clear: clearClip } = useClipboard();
+  const { clip, set: setClip, clear: clearClip, lockTo } = useClipboard();
 
   const toggleExpandAll = () => {
     setExpandAll((v) => !v);
@@ -145,11 +145,12 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     });
   };
 
+  const pasteLocationKey = bucket ? `flat:${bucket.id}` : "";
   const pasteHere = async () => {
     if (!bucket || clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { component_id: bucket.id, parent_item_id: null, sort_order: allItems.filter((i: any) => !i.parent_item_id).length });
-      clearClip();
+      lockTo(pasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -206,7 +207,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
                 <Trash2 className="h-4 w-4" />
                 {action.mode === "delete" && action.count ? <span className="ml-1">{action.count}</span> : null}
               </Button>
-              {clip?.kind === "item" && !inMode && (
+              {clip?.kind === "item" && !inMode && (!clip.lockedAt || clip.lockedAt === pasteLocationKey) && (
                 <Button size="sm" variant="outline" onClick={pasteHere}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
                   aria-label="Paste">

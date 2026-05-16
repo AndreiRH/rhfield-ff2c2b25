@@ -50,7 +50,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip, set: setClipTop, clear: clearClip } = useClipboard();
+  const { clip, set: setClipTop, clear: clearClip, lockTo } = useClipboard();
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
 
@@ -59,11 +59,12 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   // available so users can change it themselves if needed.
   const inSelectMode = action.mode === "delete" || action.mode === "copy";
 
+  const typePasteLocationKey = `type:${group?.id ?? ""}`;
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
     try {
       await pasteType(clip, group.id, types.length);
-      clearClip();
+      lockTo(typePasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -249,7 +250,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
               <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add type</span>
             </Button>
           )}
-          {clip && !inMode && canEdit && clip.kind === "componentType" && (
+          {clip && !inMode && canEdit && clip.kind === "componentType" && (!clip.lockedAt || clip.lockedAt === typePasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteTypeHere}
               title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">

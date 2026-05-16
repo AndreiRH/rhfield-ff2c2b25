@@ -57,7 +57,8 @@ function SettingsListInner({
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const { clip, set: setClip, clear: clearClip } = useClipboard();
+  const { clip, set: setClip, clear: clearClip, lockTo } = useClipboard();
+  const settingPasteLocationKey = `setting:${equipmentId}`;
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -155,7 +156,7 @@ function SettingsListInner({
     if (clip?.kind !== "setting") return;
     try {
       await pasteSetting(clip, { plant_equipment_id: equipmentId, sort_order: rows.length, created_by: userId });
-      clearClip();
+      lockTo(settingPasteLocationKey);
       toast.success("Pasted"); load();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -186,7 +187,7 @@ function SettingsListInner({
         <div className="flex flex-wrap items-center justify-end gap-2">
           {canEdit && (
           <>
-            {clip?.kind === "setting" && !inMode && (
+            {clip?.kind === "setting" && !inMode && (!clip.lockedAt || clip.lockedAt === settingPasteLocationKey) && (
               <Button size="sm" variant="outline" onClick={pasteHere}
                 title={`Paste ${clip.nodes.length} setting${clip.nodes.length > 1 ? "s" : ""}`}
                 aria-label="Paste">

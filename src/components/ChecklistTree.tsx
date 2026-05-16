@@ -47,7 +47,8 @@ export function ChecklistTree({
   const visibleItems = liveChecklistItems(items);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
-  const { clip, clear } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const rootPasteLocationKey = `tree-root:${(parentCols as any).component_id ?? (parentCols as any).component_type_id ?? ""}`;
   const action = useTreeAction();
   const inMode = action?.mode !== "none" && !!action;
 
@@ -68,7 +69,7 @@ export function ChecklistTree({
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { ...parentCols, parent_item_id: null, sort_order: rootItems.length });
-      clear();
+      lockTo(rootPasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
@@ -103,7 +104,7 @@ export function ChecklistTree({
     <div className="space-y-2">
       {canEdit && !hideRootAdd && (
         <div className="flex flex-wrap justify-end gap-1">
-          {clip?.kind === "item" && !inMode && (
+          {clip?.kind === "item" && !inMode && (!clip.lockedAt || clip.lockedAt === rootPasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteHere}
               title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">
@@ -157,7 +158,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const style = sortable
     ? { transform: CSS.Transform.toString(sortableArgs.transform), transition: sortableArgs.transition, opacity: sortableArgs.isDragging ? 0.6 : 1 }
     : undefined;
-  const { clip, clear: clearClip } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const subPasteLocationKey = `tree-item:${item.id}`;
   const selected = !!action?.isSelected(item.id);
 
   const subs = allItems
@@ -256,7 +258,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { ...itemParentCols, parent_item_id: item.id, sort_order: subs.length });
-      clearClip();
+      lockTo(subPasteLocationKey);
       setOpen(true);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
@@ -475,7 +477,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                   <Paperclip className="h-3.5 w-3.5" />{showLabels ? <span>Files {files.length}</span> : <span className="ml-0.5 text-[10px]">{files.length}</span>}
                 </button>
               )}
-              {clip?.kind === "item" && depth < 2 && (
+              {clip?.kind === "item" && depth < 2 && (!clip.lockedAt || clip.lockedAt === subPasteLocationKey) && (
                 <button onClick={pasteAsSub}
                   className={`inline-flex shrink-0 items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded text-muted-foreground hover:bg-accent hover:text-foreground`}
                   title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}>
