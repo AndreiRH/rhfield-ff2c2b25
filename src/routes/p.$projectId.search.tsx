@@ -33,10 +33,16 @@ import {
   Loader2,
   CheckCircle2,
   Circle,
+  RefreshCw,
+  WifiOff,
+  Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
-import { runAiSearch, type SearchResult } from "@/lib/aiSearch.functions";
+import { runAiSearch, type SearchResult, type SearchResponse } from "@/lib/aiSearch.functions";
+import { runOfflineSearch } from "@/lib/offlineSearch";
+import { syncProject, scheduleBackgroundSync } from "@/lib/offlineSync";
+import { offlineDB, getCacheSize, clearProjectCache } from "@/lib/offlineCache";
 
 export const Route = createFileRoute("/p/$projectId/search")({
   component: AiSearchPage,
