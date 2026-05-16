@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
+import { Route as PProjectIdSearchRouteImport } from './routes/p.$projectId.search'
 import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
 import { Route as PProjectIdLinesLineNumberIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.index'
@@ -41,6 +42,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
 const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
   id: '/p/$projectId/',
   path: '/p/$projectId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PProjectIdSearchRoute = PProjectIdSearchRouteImport.update({
+  id: '/p/$projectId/search',
+  path: '/p/$projectId/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PProjectIdCommonRoute = PProjectIdCommonRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
+  '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/users'
     | '/p/$projectId/common'
+    | '/p/$projectId/search'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/users'
     | '/p/$projectId/common'
+    | '/p/$projectId/search'
     | '/p/$projectId'
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/users'
     | '/p/$projectId/common'
+    | '/p/$projectId/search'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/'
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   AdminUsersRoute: typeof AdminUsersRoute
   PProjectIdCommonRoute: typeof PProjectIdCommonRoute
+  PProjectIdSearchRoute: typeof PProjectIdSearchRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
   PProjectIdLinesLineNumberRoute: typeof PProjectIdLinesLineNumberRouteWithChildren
 }
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$projectId'
       fullPath: '/p/$projectId/'
       preLoaderRoute: typeof PProjectIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$projectId/search': {
+      id: '/p/$projectId/search'
+      path: '/p/$projectId/search'
+      fullPath: '/p/$projectId/search'
+      preLoaderRoute: typeof PProjectIdSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$projectId/common': {
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   AdminUsersRoute: AdminUsersRoute,
   PProjectIdCommonRoute: PProjectIdCommonRoute,
+  PProjectIdSearchRoute: PProjectIdSearchRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,
   PProjectIdLinesLineNumberRoute: PProjectIdLinesLineNumberRouteWithChildren,
 }

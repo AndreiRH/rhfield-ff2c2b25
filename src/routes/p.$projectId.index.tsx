@@ -84,6 +84,13 @@ function ProjectDashboard() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <ProjectHotCalendarButton projectId={projectId} />
+                <Link
+                  to="/p/$projectId/search"
+                  params={{ projectId }}
+                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+                >
+                  ✨ AI Search
+                </Link>
               </div>
             </CardContent>
           </Card>
