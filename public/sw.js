@@ -1008,6 +1008,8 @@ self.addEventListener("message", (e) => {
   if (d.type === "rhfield-queue?")    e.waitUntil(broadcastQueueCount());
   if (d.type === "rhfield-cache-routes") e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
+  if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
+  if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
 });
 
 // ============================================================
