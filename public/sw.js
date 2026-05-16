@@ -766,11 +766,20 @@ async function propagateUpdateLocally(table, matched, patch) {
   const templates = new Set(matched.map((r) => r.template_id).filter(Boolean));
   if (!templates.size) return;
   const sourceIds = new Set(matched.map((r) => r.id));
-  const sharePatch = { ...patch };
+  const allowedByTable = {
+    plant_equipment: ["name", "sort_order", "deleted_at", "mech_mode"],
+    equipment_groups: ["name", "sort_order", "deleted_at"],
+    component_types: ["name", "sort_order", "deleted_at"],
+    components: ["name", "sort_order", "deleted_at", "note", "note_shared"],
+    checklist_items: ["label", "sort_order", "deleted_at", "note", "note_shared"],
+    pa_folders: ["name", "sort_order"],
+  };
+  const sharePatch = Object.fromEntries(Object.entries(patch).filter(([key]) => allowedByTable[table]?.includes(key)));
   if ((table === "components" || table === "checklist_items") && !(patch.note_shared || matched.some((r) => r.note_shared))) {
     delete sharePatch.note;
     delete sharePatch.note_shared;
   }
+  if (Object.keys(sharePatch).length === 0) return;
   await writeTable(table, current.map((r) => templates.has(r.template_id) && !sourceIds.has(r.id) ? { ...r, ...sharePatch, updated_at: new Date().toISOString() } : r));
 }
 async function applyInsert(table, body) {
