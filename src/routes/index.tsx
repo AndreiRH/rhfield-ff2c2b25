@@ -74,12 +74,10 @@ function ProjectsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(projects ?? []).map((p) => {
-              const items = (p.lines ?? []).flatMap((l: any) =>
-                (l.equipment_groups ?? []).flatMap((eg: any) =>
-                  (eg.components ?? []).flatMap((c: any) => liveChecklistItems(c.checklist_items ?? []))
-                )
-              );
-              const prog = calcProgress(items);
+              const lineParts = (p.lines ?? []).map((l: any) => lineOverallPct(l));
+              const pct = lineParts.length === 0
+                ? 0
+                : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
@@ -87,11 +85,11 @@ function ProjectsPage() {
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{prog.done}/{prog.total}</span>
+                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{p.lines?.length ?? 0} lines</span>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
-                        <ProgressBar value={prog.pct} size="md" />
-                        <div className="mt-2 text-sm tabular-nums">{prog.pct}% complete</div>
+                        <ProgressBar value={pct} size="md" />
+                        <div className="mt-2 text-sm tabular-nums">{pct}% complete</div>
                       </CardContent>
                     </Card>
                   </Link>
