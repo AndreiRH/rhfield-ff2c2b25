@@ -283,8 +283,39 @@ function SettingsListInner({
     await Promise.all([...settingUpdates, ...groupUpdates]);
   };
 
-  const allOpen = openIds.size === rows.length && rows.length > 0;
-  const toggleAll = () => setOpenIds(allOpen ? new Set() : new Set(rows.map((r) => r.id)));
+  const allSettingsOpen = rows.length === 0 || openIds.size === rows.length;
+  const allGroupsOpen = groups.length === 0 || collapsedGroups.size === 0;
+  const allOpen = allSettingsOpen && allGroupsOpen && (rows.length > 0 || groups.length > 0);
+  const toggleAll = () => {
+    if (allOpen) {
+      setOpenIds(new Set());
+      const next = new Set(groups.map((g) => g.template_id));
+      setCollapsedGroups(next);
+      if (typeof window !== "undefined") {
+        for (const g of groups) {
+          try { window.localStorage.setItem(`settings_group_collapsed_${g.template_id}`, "1"); } catch {}
+        }
+      }
+    } else {
+      setOpenIds(new Set(rows.map((r) => r.id)));
+      setCollapsedGroups(new Set());
+      if (typeof window !== "undefined") {
+        for (const g of groups) {
+          try { window.localStorage.setItem(`settings_group_collapsed_${g.template_id}`, "0"); } catch {}
+        }
+      }
+    }
+  };
+  const setGroupCollapsed = (templateId: string, collapsed: boolean) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (collapsed) next.add(templateId); else next.delete(templateId);
+      return next;
+    });
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem(`settings_group_collapsed_${templateId}`, collapsed ? "1" : "0"); } catch {}
+    }
+  };
   const toggleOpen = (id: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
