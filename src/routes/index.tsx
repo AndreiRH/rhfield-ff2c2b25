@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcProgress, liveChecklistItems } from "@/lib/progress";
+import { lineOverallPct } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
