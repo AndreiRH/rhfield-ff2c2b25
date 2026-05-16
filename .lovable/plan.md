@@ -1,53 +1,88 @@
-# Fix: PWA Sync badge counts stale failed outbox items as pending
+## Goal
 
-## Root cause
+Add a project-wide **AI Search** page where you type a question in plain language ("all flow settings from kilns on line 3", "status of temperature sensors across all components in line 2"), and the app finds matching records from across the project, shows them in a results table, then lets you export to **CSV, XLSX, or PDF**.
 
-`outboxCount()` in `public/sw.js` counts every row in the outbox, including rows already marked `failed: true` from a prior 4xx (likely a one-time 401 JWT-expired on the installed PWA where the token didn't refresh before the SW replayed the queue). The UI receives that single number and shows "5 pending edits" forever, even though no real edit is waiting. On the browser the same queue is empty, so it shows 0.
+## How it will work for you
 
-## Changes (smallest possible)
+1. Open the project → click **AI Search** in the project header.
+2. Pick a scope: whole project / a line / a specific equipment (defaults to whole project).
+3. Type a question. Examples:
+   - "All settings with 'flow' in the title from every kiln on line 3"
+   - "Every checklist item labelled 'temperature sensor' across all components, show which are done"
+   - "All photos and files from any equipment item named like 'burner control'"
+   - "Equipment notes mentioning 'vibration' on SHS units"
+4. Results appear in an on-screen sortable table with one row per match (with line, equipment, location columns so you can see where each result came from). Photos/files show as thumbnails with a link.
+5. Click **Export** → choose **CSV / XLSX / PDF**. File downloads from `/mnt/documents`-style flow (browser download).
 
-### 1. `public/sw.js`
+## Searchable data
 
-- Split outbox stats into `{ pending, failed }`:
-  - New helper `outboxStats()` iterates `outboxAll()` once and counts `failed === true` vs not.
-  - `broadcastQueueCount()` now posts `{ type: "rhfield-queue", count: pending, failed }` (keep `count` = pending only so existing UI keeps working; add new `failed` field).
-- 401 JWT refresh-and-retry-once:
-  - In `flushQueue()`, when a response is 401 (or body contains `JWT expired` / `PGRST301`), do **not** mark failed. Instead:
-    - Broadcast `{ type: "rhfield-auth-expired" }` and `break` out of the loop (stalled).
-    - The client (see step 2) refreshes the Supabase session, which causes any next request to flow through `rememberAuth`, updating `latestAuthHeader`. The client then calls `triggerFlush()` again.
-  - On retry, before `fetch(item.url, ...)`, if `latestAuthHeader` exists and differs from `item.headers.authorization`, overwrite `item.headers.authorization` with `latestAuthHeader`. Track `item.authRetries` (default 0); only allow this swap once per item. If a second 401 occurs, fall through to the existing failed-marking path.
-- New message handlers:
-  - `rhfield-outbox-retry-failed`: clear `failed`/`lastStatus`/`lastError` on all failed rows, then `flushQueue()`.
-  - `rhfield-outbox-discard-failed`: delete every row where `failed === true`, then `broadcastQueueCount()` + `broadcastDataChanged()`.
-- `rhfield-flush-complete` payload: include `failedCount` alongside `remaining` so the UI updates immediately after a flush.
+Confirmed sources:
+- Equipment settings (title + body + photos + files)
+- Checklist items (label, done status, notes, photos, files) — including items under component types
+- Equipment notes (title + body + attachments)
+- PA notes & folders (title, body, attachments)
+- Component photos & component files
+- Common project notes/folders (whole-project level)
 
-### 2. `src/lib/offline.ts`
+Each result row includes location breadcrumbs: `Project → Line N → Plant (Kiln/SHS) → Equipment → (Component type → Component) → Item`.
 
-- `useOfflineStatus()` adds `failed: number` to its return value.
-- Update `onMsg` handler:
-  - On `rhfield-queue`: `setPending(d.count); setFailed(d.failed ?? 0)`.
-  - On `rhfield-flush-complete`: also `setFailed(d.failedCount ?? 0)`.
-  - On `rhfield-auth-expired`: call `supabase.auth.refreshSession()` (dynamic import to avoid SSR), then `triggerFlush()` once.
-- Export two helpers used by the UI:
-  - `retryFailedOutbox()` → `send("rhfield-outbox-retry-failed")`
-  - `discardFailedOutbox()` → `send("rhfield-outbox-discard-failed")`
+## Technical design
 
-### 3. `src/components/SyncCloud.tsx`
+### New route
+`src/routes/p.$projectId.search.tsx` — project-scoped AI search page, linked from `AppHeader` when inside a project.
 
-- Read `failed` from `useOfflineStatus()`.
-- In the popover, when `failed > 0`, render one extra row below "Pending edits":
-  - Label: `Failed (N)` in destructive color.
-  - Two tiny text buttons: `Retry` → `retryFailedOutbox()`, `Discard` → `discardFailedOutbox()` (with a `confirm()` since the project memory requires a deletion warning).
-- The header cloud icon dot badge stays driven by `pending` only (not failed), so a real "up to date" state shows no dot even when failed items linger.
+### Server function: NL → structured query
+`src/lib/aiSearch.functions.ts` with `createServerFn` + `requireSupabaseAuth`:
 
-## Files touched
+1. Takes `{ projectId, scope, question }`.
+2. Calls Lovable AI Gateway (`google/gemini-3-flash-preview`) using AI SDK **structured output** (`Output.object` with Zod) to translate the question into a typed query plan:
+   ```ts
+   {
+     sources: ("settings"|"checklist_items"|"equipment_notes"|"pa_notes"|"common_notes"|"photos"|"files")[],
+     keywords: string[],              // e.g. ["flow", "débit"]
+     equipmentKinds?: ("kiln"|"shs")[],
+     lineNumbers?: number[],
+     equipmentNameLike?: string,
+     componentTypeLike?: string,
+     doneFilter?: "any"|"done"|"not_done",
+     includeAttachments: boolean
+   }
+   ```
+3. Runs the plan as a small set of `supabase` queries scoped to the project (RLS still applies — read-only).
+4. Returns a flat list of normalized result rows:
+   ```ts
+   {
+     id, source, title, body, done?,
+     line_number, plant_kind, equipment_name,
+     component_type?, component_name?,
+     attachments: [{ kind: "photo"|"file", storage_path, file_name? }],
+     updated_at
+   }
+   ```
 
-- `public/sw.js` — outbox stats split, 401 refresh hook, retry/discard message handlers.
-- `src/lib/offline.ts` — surface `failed`, handle `auth-expired`, expose retry/discard.
-- `src/components/SyncCloud.tsx` — show Failed row with Retry/Discard.
+### UI
+- Search bar + scope selector + example chips.
+- Results table (TanStack Query, `useSuspenseQuery`) with column toggles.
+- Thumbnails via existing `StoragePhoto` component; file links open via Supabase storage signed URLs (same pattern as elsewhere).
+- **Export** dropdown:
+  - **CSV** — built client-side from the current result rows.
+  - **XLSX** — built client-side using `xlsx` (SheetJS) — small dep, no native modules.
+  - **PDF** — built client-side with `jspdf` + `jspdf-autotable` (table-style report with project name, question, timestamp, rows).
+- Attachments in CSV/XLSX become a comma-separated list of file names + signed URLs; PDF lists them as text under each row.
 
-No other files change. No refactor. No schema or route changes. Existing pending/sync behavior is preserved; only the counting and the new Failed control are added.
+### Secrets
+Needs `LOVABLE_API_KEY` for the AI Gateway. Lovable Cloud auto-provisions it — no action from you. If missing, I'll trigger the enable flow.
 
-## Activation note
+### What I won't change
+- No DB schema changes.
+- No edits to existing checklist/settings pages, RLS, or auth.
+- Desktop layout of other pages stays as-is.
 
-The SW version bumps from `v8` → `v9` so installed PWAs pick up the new logic on next load. The user will need to open the app once with connectivity for the new SW to activate; the stale 5 failed rows will then appear under "Failed" with a Discard button.
+## Out of scope (can add later if you want)
+
+- Saving named searches.
+- Scheduling exports.
+- AI-generated summaries on top of results (easy add — one extra AI call producing a short narrative paragraph above the table).
+- Editing data from the results table.
+
+If you approve, I'll implement: header link, route, server function, UI, and the 3 export formats.
