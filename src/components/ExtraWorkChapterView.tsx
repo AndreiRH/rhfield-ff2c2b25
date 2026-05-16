@@ -305,6 +305,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
 
   return (
     <div ref={sortableArgs.setNodeRef} style={style}
+      data-nest
       className={`ml-2 overflow-hidden rounded-lg border-l-4 border-y border-r bg-card shadow-sm ${
         mode === "delete" ? (selected ? "border-destructive border-l-destructive" : "border-destructive/40 border-l-destructive/60")
         : mode === "copy" ? (selected ? "border-primary border-l-primary" : "border-primary/40 border-l-primary/60")
