@@ -43,14 +43,15 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
   const usingExternal = typeof externalSearch === "string";
   const search = usingExternal ? externalSearch : internalSearch;
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip, clear } = useClipboard();
+  const { clip, lockTo } = useClipboard();
+  const compPasteLocationKey = `extra:${group?.id ?? ""}`;
 
   const pasteComponentHere = async () => {
     if (clip?.kind !== "component") return;
     try {
       const parent = parentKind === "component_type" ? { component_type_id: group.id } : { equipment_id: group.id };
       await pasteComponent(clip, parent, components.length);
-      clear();
+      lockTo(compPasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
