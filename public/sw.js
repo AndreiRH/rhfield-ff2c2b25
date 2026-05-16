@@ -806,6 +806,7 @@ async function applyUpdate(table, url, patch) {
     return merged;
   });
   await writeTable(table, next);
+  await propagateUpdateLocally(table, matched, patch);
   return matched;
 }
 async function applyDelete(table, url) {
