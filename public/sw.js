@@ -716,11 +716,18 @@ function storagePathFromUrl(url) {
 // ============================================================
 async function flushQueue() {
   const items = await outboxAll();
+  // Process in insertion order (parents first → children second) so FK refs to
+  // local UUIDs resolve once the parent has been created server-side.
+  items.sort((a, b) => (a.id || 0) - (b.id || 0));
   let progressed = false;
   let failures = 0;
   let stalled = false;
   const failureSamples = [];
   for (const item of items) {
+    // Skip items previously marked as failed — we keep them in the queue so the
+    // user knows something needs attention and so a follow-up `warmUp` doesn't
+    // overwrite their local snapshot with server data missing these rows.
+    if (item.failed) { failures++; continue; }
     try {
       const res = await fetch(item.url, {
         method: item.method,
@@ -728,15 +735,38 @@ async function flushQueue() {
         body: item.body || undefined,
       });
       if (res.ok) { await outboxDelete(item.id); progressed = true; continue; }
-      // Unrecoverable client error: drop, but record so the client can surface it.
+      // 4xx → server rejected. Do NOT delete — mark as failed so the row stays
+      // in the local snapshot and the user/dev can investigate. Previously we
+      // dropped these silently, which is what caused offline child rows
+      // (components, items, photos, files…) to vanish on reconnect.
       if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
         failures++;
+        let snippet = "";
+        try { snippet = (await res.clone().text()).slice(0, 500); } catch {}
         if (failureSamples.length < 5) {
-          let snippet = "";
-          try { snippet = (await res.clone().text()).slice(0, 300); } catch {}
           failureSamples.push({ url: item.url, method: item.method, status: res.status, body: snippet });
         }
-        await outboxDelete(item.id); progressed = true; continue;
+        try {
+          const db = await openOutbox();
+          await new Promise((res2, rej) => {
+            const tx = db.transaction(OUTBOX_STORE, "readwrite");
+            const store = tx.objectStore(OUTBOX_STORE);
+            const getReq = store.get(item.id);
+            getReq.onsuccess = () => {
+              const cur = getReq.result;
+              if (cur) {
+                cur.failed = true;
+                cur.lastStatus = res.status;
+                cur.lastError = snippet;
+                cur.failedAt = Date.now();
+                store.put(cur);
+              }
+            };
+            tx.oncomplete = () => res2();
+            tx.onerror = () => rej(tx.error);
+          });
+        } catch {}
+        continue;
       }
       stalled = true;
       break;
