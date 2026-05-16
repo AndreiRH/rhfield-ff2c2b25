@@ -204,7 +204,7 @@ function SettingsListInner({
               </Button>
             )}
             {rows.length > 0 && !inMode && (
-              <Button size="sm" variant="outline" onClick={toggleAll}
+              <Button size="sm" variant="outline" className="mr-auto" onClick={toggleAll}
                 title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
                 {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
               </Button>
