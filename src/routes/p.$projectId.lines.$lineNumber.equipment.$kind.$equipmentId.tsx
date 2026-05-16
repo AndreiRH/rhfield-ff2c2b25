@@ -135,7 +135,10 @@ function EquipmentDetail() {
         .from("lines").select("id", { count: "exact", head: true })
         .eq("project_id", projectId);
 
-      const byChapter = (ch: string) => (groups ?? []).find((g: any) => g.chapter === ch) ?? null;
+      const byChapter = (ch: string) => {
+        const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
+        return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
+      };
       return {
         line, pe, photos: photos ?? [],
         lineCount: lineCount ?? 1,
