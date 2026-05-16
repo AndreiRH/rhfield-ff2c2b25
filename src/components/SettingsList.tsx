@@ -490,6 +490,22 @@ function SettingRow({
       </div>
       {open && !inMode && (
         <div className="space-y-2 p-3">
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Group</span>
+              <Input
+                value={groupDraft}
+                onChange={(e) => setGroupDraft(e.target.value)}
+                onBlur={() => {
+                  const next = groupDraft.trim();
+                  const cur = setting.group_name ?? "";
+                  if (next !== cur) onGroup(next);
+                }}
+                placeholder="(none)"
+                className="h-6 flex-1 max-w-[200px] border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+              />
+            </div>
+          )}
           <Textarea
             value={body}
             disabled={!canEdit}
