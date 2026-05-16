@@ -175,6 +175,17 @@ export function warmUp(force = false): Promise<void> {
       emit({ phase: "routes", done: 0, total: routes.length });
       await cacheOfflineRoutes(routes);
 
+      // Eagerly fetch every route JS chunk so the SW asset cache has them
+      // before the user navigates offline. Without this, only the chunks of
+      // previously-visited routes get cached; opening a new route offline
+      // throws "Failed to fetch dynamically imported module".
+      try {
+        const routeModules = import.meta.glob("/src/routes/**/*.{tsx,ts}");
+        await Promise.all(
+          Object.values(routeModules).map((load) => load().catch(() => {})),
+        );
+      } catch {}
+
       // 2) Collect every storage path, skipping anything already cached locally.
       type Job = { bucket: "photos" | "files"; path: string };
       const seen = new Set<string>();
