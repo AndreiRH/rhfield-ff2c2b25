@@ -906,9 +906,10 @@ self.addEventListener("fetch", (event) => {
                     }
                   }
                 } catch {}
+                const originalRows = Array.isArray(bodyJson) ? bodyJson : [bodyJson];
                 const inserted = serverRows && serverRows.length
-                  ? serverRows
-                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withLocalDefaults(table, r));
+                  ? serverRows.map((row, i) => withLocalDefaults(table, { ...(originalRows[i] || {}), ...row }))
+                  : originalRows.map((r) => withLocalDefaults(table, r));
                 await mergeRows(table, inserted);
               } else if (req.method === "PATCH" && bodyJson) {
                 await applyUpdate(table, url, bodyJson);
