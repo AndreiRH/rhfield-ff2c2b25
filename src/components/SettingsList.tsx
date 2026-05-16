@@ -66,6 +66,7 @@ function SettingsListInner({
   const [rows, setRows] = useState<Setting[]>([]);
   const [groups, setGroups] = useState<SettingGroup[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { clip, set: setClip, clear: clearClip, lockTo } = useClipboard();
   const settingPasteLocationKey = `setting:${equipmentId}`;
   const action = useTreeAction()!;
@@ -88,8 +89,19 @@ function SettingsListInner({
         .is("deleted_at", null)
         .order("sort_order").order("created_at"),
     ]);
+    const groupsList = ((g ?? []) as unknown) as SettingGroup[];
     setRows(((s ?? []) as unknown) as Setting[]);
-    setGroups(((g ?? []) as unknown) as SettingGroup[]);
+    setGroups(groupsList);
+    // Hydrate collapsed state from localStorage for current groups
+    if (typeof window !== "undefined") {
+      const next = new Set<string>();
+      for (const gr of groupsList) {
+        if (window.localStorage.getItem(`settings_group_collapsed_${gr.template_id}`) === "1") {
+          next.add(gr.template_id);
+        }
+      }
+      setCollapsedGroups(next);
+    }
   };
   useEffect(() => { load(); }, [equipmentId]);
 
@@ -271,8 +283,39 @@ function SettingsListInner({
     await Promise.all([...settingUpdates, ...groupUpdates]);
   };
 
-  const allOpen = openIds.size === rows.length && rows.length > 0;
-  const toggleAll = () => setOpenIds(allOpen ? new Set() : new Set(rows.map((r) => r.id)));
+  const allSettingsOpen = rows.length === 0 || openIds.size === rows.length;
+  const allGroupsOpen = groups.length === 0 || collapsedGroups.size === 0;
+  const allOpen = allSettingsOpen && allGroupsOpen && (rows.length > 0 || groups.length > 0);
+  const toggleAll = () => {
+    if (allOpen) {
+      setOpenIds(new Set());
+      const next = new Set(groups.map((g) => g.template_id));
+      setCollapsedGroups(next);
+      if (typeof window !== "undefined") {
+        for (const g of groups) {
+          try { window.localStorage.setItem(`settings_group_collapsed_${g.template_id}`, "1"); } catch {}
+        }
+      }
+    } else {
+      setOpenIds(new Set(rows.map((r) => r.id)));
+      setCollapsedGroups(new Set());
+      if (typeof window !== "undefined") {
+        for (const g of groups) {
+          try { window.localStorage.setItem(`settings_group_collapsed_${g.template_id}`, "0"); } catch {}
+        }
+      }
+    }
+  };
+  const setGroupCollapsed = (templateId: string, collapsed: boolean) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (collapsed) next.add(templateId); else next.delete(templateId);
+      return next;
+    });
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem(`settings_group_collapsed_${templateId}`, collapsed ? "1" : "0"); } catch {}
+    }
+  };
   const toggleOpen = (id: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -441,6 +484,8 @@ function SettingsListInner({
                         else deleteGroup(g, false);
                       }}
                       lineCount={lineCount}
+                      collapsed={collapsedGroups.has(g.template_id)}
+                      onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
                       <ul className="space-y-2">
                         {items.map((s) => (
@@ -505,7 +550,7 @@ function SettingsListInner({
 }
 
 function SettingsGroupSection({
-  group, canEdit, onRename, onAddSetting, onRequestDelete, children,
+  group, canEdit, onRename, onAddSetting, onRequestDelete, collapsed, onToggleCollapsed, children,
 }: {
   group: SettingGroup;
   canEdit: boolean;
@@ -513,6 +558,8 @@ function SettingsGroupSection({
   onAddSetting: () => void;
   onRequestDelete: () => void;
   lineCount?: number;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   children: ReactNode;
 }) {
   const action = useTreeAction()!;
@@ -523,18 +570,7 @@ function SettingsGroupSection({
     useSortable({ id: sortableId, disabled: !inReorder });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
-  const storageKey = `settings_group_collapsed_${group.template_id}`;
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(storageKey) === "1";
-  });
-  const toggle = () => {
-    setCollapsed((c) => {
-      const next = !c;
-      try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
-      return next;
-    });
-  };
+  const toggle = onToggleCollapsed;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(group.name);
