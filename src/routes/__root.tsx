@@ -4,15 +4,18 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LightboxRoot } from "@/components/StoragePhoto";
+import { useClipboard } from "@/lib/clipboard";
 
 function NotFoundComponent() {
   return (
@@ -161,6 +164,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <ClipboardRouteCleanup />
           <Outlet />
           <LightboxRoot />
           <Toaster richColors position="bottom-center" />
@@ -168,4 +172,17 @@ function RootComponent() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function ClipboardRouteCleanup() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { clear } = useClipboard();
+  const prev = useRef<string | null>(null);
+  useEffect(() => {
+    if (prev.current !== null && prev.current !== pathname) {
+      clear();
+    }
+    prev.current = pathname;
+  }, [pathname, clear]);
+  return null;
 }
