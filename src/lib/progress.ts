@@ -83,7 +83,7 @@ export function itemsFromGroup(group: any): any[] {
 // 'assembly' | 'wiring' | 'cold_comm' (per the trigger that auto-creates them).
 export function equipmentProgress(pe: any): { mech: number; wiring: number; cold: number; overall: number } {
   const groups = (pe.equipment_groups ?? []).filter((g: any) => !g.deleted_at);
-  const groupWeight = (g: any) => (g?.components?.length ?? 0) + (g?.component_types?.length ?? 0);
+  const groupWeight = (g: any) => (g?.components?.length ?? 0) + (g?.component_types?.length ?? 0) + itemsFromGroup(g).length;
   const byCh = (ch: string) => groups.filter((g: any) => g.chapter === ch).sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0];
 
   const wiringGroup = byCh("wiring");
