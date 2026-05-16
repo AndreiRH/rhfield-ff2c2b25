@@ -57,7 +57,8 @@ function SettingsListInner({
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<Setting[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const { clip, set: setClip, clear: clearClip } = useClipboard();
+  const { clip, set: setClip, clear: clearClip, lockTo } = useClipboard();
+  const settingPasteLocationKey = `setting:${equipmentId}`;
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
