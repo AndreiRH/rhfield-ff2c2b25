@@ -211,7 +211,7 @@ function FolderItem({
   const rowClick = deleteMode ? onSelectToggle : onToggle;
 
   return (
-    <li className={`overflow-hidden rounded-md border bg-card ${
+    <li data-nest className={`overflow-hidden rounded-md border bg-card ${
       deleteMode ? (selected ? "border-destructive" : "border-destructive/40") : ""
     }`}>
       <div
