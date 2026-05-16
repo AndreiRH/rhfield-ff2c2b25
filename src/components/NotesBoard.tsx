@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Camera, Paperclip, X, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { rememberLocalFile } from "@/lib/local-blobs";
 
 interface Note {
   id: string;
