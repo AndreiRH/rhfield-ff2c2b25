@@ -319,12 +319,13 @@ function SettingsListInner({
 }
 
 function SettingRow({
-  setting, canEdit, open, onToggleOpen, onTitle, onBody, onReload, plantEquipmentId, userId,
+  setting, canEdit, open, onToggleOpen, onTitle, onBody, onGroup, onReload, plantEquipmentId, userId,
 }: {
   setting: Setting; canEdit: boolean; open: boolean;
   onToggleOpen: () => void;
   onTitle: (t: string) => void;
   onBody: (b: string) => void;
+  onGroup: (g: string) => void;
   onReload: () => void;
   plantEquipmentId: string;
   userId?: string;
@@ -340,7 +341,8 @@ function SettingRow({
 
   const [title, setTitle] = useState(setting.title);
   const [body, setBody] = useState(setting.body);
-  useEffect(() => { setTitle(setting.title); setBody(setting.body); }, [setting.title, setting.body]);
+  const [groupDraft, setGroupDraft] = useState(setting.group_name ?? "");
+  useEffect(() => { setTitle(setting.title); setBody(setting.body); setGroupDraft(setting.group_name ?? ""); }, [setting.title, setting.body, setting.group_name]);
   const [editingTitle, setEditingTitle] = useState(false);
 
   const photos = setting.setting_photos ?? [];
