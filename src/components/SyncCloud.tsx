@@ -51,6 +51,31 @@ export function SyncCloud() {
           </div>
 
           <Row label="Pending edits" value={pending} />
+          {failed > 0 && (
+            <div className="mt-1 flex items-center justify-between py-0.5 text-destructive">
+              <span>Failed ({failed})</span>
+              <span className="flex gap-2">
+                <button
+                  type="button"
+                  className="underline hover:no-underline"
+                  onClick={() => retryFailedOutbox()}
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  className="underline hover:no-underline"
+                  onClick={() => {
+                    if (window.confirm(`Discard ${failed} failed change(s)? This cannot be undone.`)) {
+                      discardFailedOutbox();
+                    }
+                  }}
+                >
+                  Discard
+                </button>
+              </span>
+            </div>
+          )}
           {warm.total > 0 ? (
             <Row
               label={phaseLabel(warm.phase)}
