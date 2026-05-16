@@ -249,10 +249,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     }
     onChange();
   };
+  const itemParentCols = item.component_type_id
+    ? { component_type_id: item.component_type_id as string }
+    : { component_id: item.component_id as string };
   const pasteAsSub = async () => {
     if (clip?.kind !== "item") return;
     try {
-      await pasteItem(clip, { component_id: item.component_id, parent_item_id: item.id, sort_order: subs.length });
+      await pasteItem(clip, { ...itemParentCols, parent_item_id: item.id, sort_order: subs.length });
       clearClip();
       setOpen(true);
       toast.success("Pasted"); onChange();
@@ -266,7 +269,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const addSub = async () => {
     if (!subText.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
-      id: localUuid(), component_id: item.component_id, label: subText.trim(),
+      id: localUuid(), ...itemParentCols, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
     });
     if (error) toast.error(error.message);
