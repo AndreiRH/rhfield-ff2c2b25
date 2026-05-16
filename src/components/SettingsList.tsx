@@ -583,3 +583,86 @@ function SettingRow({
     </li>
   );
 }
+
+function SettingsGroupedList({
+  rows, renderRow,
+}: {
+  rows: Setting[];
+  renderRow: (s: Setting) => React.ReactNode;
+}) {
+  // Preserve global sort_order; bucket by group_name; ungrouped first.
+  const groups: { key: string; name: string | null; items: Setting[] }[] = [];
+  const seen = new Map<string, number>();
+  for (const r of rows) {
+    const name = r.group_name && r.group_name.trim() !== "" ? r.group_name : null;
+    const key = name ?? "__ungrouped__";
+    let idx = seen.get(key);
+    if (idx === undefined) {
+      idx = groups.length;
+      seen.set(key, idx);
+      groups.push({ key, name, items: [] });
+    }
+    groups[idx].items.push(r);
+  }
+  // Render ungrouped first (if present), then named groups in first-seen order.
+  groups.sort((a, b) => {
+    if (a.name === null && b.name !== null) return -1;
+    if (b.name === null && a.name !== null) return 1;
+    return 0;
+  });
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g) =>
+        g.name === null ? (
+          <SortableContext key={g.key} items={g.items.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+            <ul className="space-y-2">{g.items.map((s) => renderRow(s))}</ul>
+          </SortableContext>
+        ) : (
+          <SettingsGroupSection key={g.key} name={g.name} items={g.items} renderRow={renderRow} />
+        ),
+      )}
+    </div>
+  );
+}
+
+function SettingsGroupSection({
+  name, items, renderRow,
+}: {
+  name: string;
+  items: Setting[];
+  renderRow: (s: Setting) => React.ReactNode;
+}) {
+  const storageKey = `settings_group_collapsed_${name}`;
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(storageKey) === "1";
+  });
+  const toggle = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center justify-between rounded-md px-1 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        aria-expanded={!collapsed}
+      >
+        <span>{name}</span>
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {!collapsed && (
+        <SortableContext items={items.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-2 animate-accordion-down overflow-hidden">
+            {items.map((s) => renderRow(s))}
+          </ul>
+        </SortableContext>
+      )}
+    </div>
+  );
+}
