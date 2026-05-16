@@ -410,6 +410,7 @@ function SettingRow({
 
   return (
     <li ref={setNodeRef} style={style}
+      data-nest
       className={`rounded-md border bg-card ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") : ""
