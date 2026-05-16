@@ -169,6 +169,13 @@ async function broadcastQueueCount() {
 async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
 }
+let latestAuthHeader = null;
+function rememberAuth(req) {
+  try {
+    const auth = req.headers.get("authorization");
+    if (auth) latestAuthHeader = auth;
+  } catch {}
+}
 
 function sameOriginAssetUrls(html, baseUrl) {
   const out = new Set();
@@ -856,6 +863,7 @@ self.addEventListener("message", (e) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  rememberAuth(req);
 
   // Pass-through auth/realtime — must hit network always.
   if (isSupabaseAuth(url) || isSupabaseRealtime(url)) return;
