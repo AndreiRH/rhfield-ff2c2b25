@@ -317,6 +317,30 @@ self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n)));
+
+    // v11: sweep corrupted blobs persisted by earlier SW versions
+    // (multipart/form-data, application/octet-stream, zero-byte, etc.).
+    try {
+      const db = await openSnap();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(SNAP_BLOBS, "readwrite");
+        const store = tx.objectStore(SNAP_BLOBS);
+        const req = store.openCursor();
+        req.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (!cursor) return;
+          if (!isValidStoredBlob(cursor.value)) cursor.delete();
+          cursor.continue();
+        };
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    } catch {}
+
+    // Also purge the blob HTTP cache — it may hold corrupted responses
+    // keyed by signed URLs that would never be re-matched/evicted.
+    try { await caches.delete(CACHE_BLOBS); } catch {}
+
     await self.clients.claim();
     broadcastQueueCount();
   })());
