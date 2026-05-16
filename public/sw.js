@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v8";
+const VER = "v9";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
