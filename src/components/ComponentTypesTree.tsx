@@ -50,7 +50,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
-  const { clip, set: setClipTop, clear: clearClip } = useClipboard();
+  const { clip, set: setClipTop, clear: clearClip, lockTo } = useClipboard();
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
 
@@ -59,11 +59,12 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   // available so users can change it themselves if needed.
   const inSelectMode = action.mode === "delete" || action.mode === "copy";
 
+  const typePasteLocationKey = `type:${group?.id ?? ""}`;
   const pasteTypeHere = async () => {
     if (clip?.kind !== "componentType" || !group) return;
     try {
       await pasteType(clip, group.id, types.length);
-      clearClip();
+      lockTo(typePasteLocationKey);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
