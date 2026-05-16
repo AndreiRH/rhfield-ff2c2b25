@@ -400,6 +400,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     <div
       ref={sortableArgs.setNodeRef}
       style={style}
+      data-nest
       className={`overflow-hidden rounded-lg border-l-4 border-y border-r bg-card shadow-md transition ${
         mode === "delete"
           ? `cursor-pointer ${selected ? "border-destructive border-l-destructive bg-destructive/15" : "border-destructive/40 border-l-destructive/60 bg-destructive/5 hover:bg-destructive/10"}`

@@ -211,7 +211,7 @@ function FolderItem({
   const rowClick = deleteMode ? onSelectToggle : onToggle;
 
   return (
-    <li className={`overflow-hidden rounded-md border bg-card ${
+    <li data-nest className={`overflow-hidden rounded-md border bg-card ${
       deleteMode ? (selected ? "border-destructive" : "border-destructive/40") : ""
     }`}>
       <div
@@ -444,7 +444,7 @@ function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolea
 
 function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
   return (
-    <li className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
+    <li data-nest className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
       <button onClick={() => openStorageFile("files", att.storage_path, att.file_name ?? "file")} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
         <Paperclip className="h-3 w-3 shrink-0" /> <span className="min-w-0 flex-1 truncate">{att.file_name ?? "file"}</span>
       </button>
@@ -495,7 +495,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
 
   return (
-    <li className="rounded-md border bg-card">
+    <li data-nest className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
         <button
           type="button"

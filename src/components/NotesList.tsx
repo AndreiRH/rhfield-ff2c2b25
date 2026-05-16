@@ -187,7 +187,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
 
   return (
-    <li ref={setNodeRef} style={style} className="rounded-md border bg-card">
+    <li ref={setNodeRef} style={style} data-nest className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
         {canEdit && (
           <button {...attributes} {...listeners} className="cursor-grab touch-none p-1 active:cursor-grabbing">
