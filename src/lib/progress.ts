@@ -67,11 +67,14 @@ export function itemsFromGroup(group: any): any[] {
     .flatMap((c: any) => c.checklist_items ?? []);
   const fromTypes = (group.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
-    .flatMap((t: any) =>
-      (t.components ?? [])
+    .flatMap((t: any) => [
+      // new shape: items directly under the type
+      ...(t.checklist_items ?? []),
+      // legacy shape: items under components under the type
+      ...(t.components ?? [])
         .filter((c: any) => !c.deleted_at)
         .flatMap((c: any) => c.checklist_items ?? []),
-    );
+    ]);
   return [...direct, ...fromTypes];
 }
 
