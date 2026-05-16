@@ -53,6 +53,10 @@ import { FlatChecklist } from "@/components/FlatChecklist";
 import { NotesList } from "@/components/NotesList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId")({
+  validateSearch: (s: Record<string, unknown>): { tab?: "assembly" | "wiring" | "cold_comm" } => {
+    const t = s.tab;
+    return t === "wiring" || t === "cold_comm" || t === "assembly" ? { tab: t } : {};
+  },
   component: EquipmentDetail,
 });
 
