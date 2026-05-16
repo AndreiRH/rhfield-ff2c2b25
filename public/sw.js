@@ -717,6 +717,9 @@ function storagePathFromUrl(url) {
 async function flushQueue() {
   const items = await outboxAll();
   let progressed = false;
+  let failures = 0;
+  let stalled = false;
+  const failureSamples = [];
   for (const item of items) {
     try {
       const res = await fetch(item.url, {
@@ -725,15 +728,32 @@ async function flushQueue() {
         body: item.body || undefined,
       });
       if (res.ok) { await outboxDelete(item.id); progressed = true; continue; }
-      // Drop unrecoverable client errors (e.g. row already gone), keep server errors for retry.
+      // Unrecoverable client error: drop, but record so the client can surface it.
       if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+        failures++;
+        if (failureSamples.length < 5) {
+          let snippet = "";
+          try { snippet = (await res.clone().text()).slice(0, 300); } catch {}
+          failureSamples.push({ url: item.url, method: item.method, status: res.status, body: snippet });
+        }
         await outboxDelete(item.id); progressed = true; continue;
       }
+      stalled = true;
       break;
-    } catch { break; } // still offline
+    } catch { stalled = true; break; } // still offline
   }
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
+  try {
+    await broadcast({
+      type: "rhfield-flush-complete",
+      remaining: await outboxCount(),
+      failures,
+      failureSamples,
+      stalled,
+    });
+  } catch {}
+  return { failures, stalled };
 }
 async function queueRequest(req, bodyOverride = null) {
   const headers = {};
