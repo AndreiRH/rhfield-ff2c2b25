@@ -92,81 +92,88 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
     currentTitle && segments.length > 0 && segments[segments.length - 1] === currentTitle
       ? segments.slice(0, -1)
       : segments;
-  const middle = visible.slice(0, -1);
-  const last = visible[visible.length - 1];
+  const first = visible[0];
+  const rest = visible.slice(1);
+
+  const linePill = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="inline-flex items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 leading-none transition hover:bg-current/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
+      >
+        <span>Line {currentN}</span>
+        <ChevronDown className="h-3 w-3" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={8}
+        className={cn(
+          "min-w-[11rem] overflow-hidden rounded-xl border border-border/60",
+          "bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        )}
+      >
+        <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+          Switch line
+        </div>
+        {(lines ?? []).map((l) => {
+          const active = l.number === currentN;
+          return (
+            <DropdownMenuItem
+              key={l.id}
+              onSelect={() => goToLine(l.number, l.id)}
+              className={cn(
+                "group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2",
+                "font-sans text-sm normal-case tracking-normal",
+                "transition-colors focus:bg-primary focus:text-primary-foreground",
+                "data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
+                active && "bg-primary/10 font-medium text-primary",
+              )}
+            >
+              <span>Line {l.number}</span>
+              {active ? (
+                <Check className="h-4 w-4 shrink-0" aria-hidden />
+              ) : (
+                <span className="h-4 w-4 shrink-0" aria-hidden />
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <nav
       aria-label="breadcrumb"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 font-mono text-xs uppercase tracking-widest",
+        "flex flex-col gap-1 font-mono text-xs uppercase tracking-widest",
+        "sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5",
         className ?? "text-muted-foreground",
       )}
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          className="inline-flex items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 leading-none transition hover:bg-current/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
-        >
-          <span>Line {currentN}</span>
-          <ChevronDown className="h-3 w-3" aria-hidden />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          sideOffset={8}
-          className={cn(
-            "min-w-[11rem] overflow-hidden rounded-xl border border-border/60",
-            "bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          )}
-        >
-          <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-            Switch line
-          </div>
-          {(lines ?? []).map((l) => {
-            const active = l.number === currentN;
-            return (
-              <DropdownMenuItem
-                key={l.id}
-                onSelect={() => goToLine(l.number, l.id)}
-                className={cn(
-                  "group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2",
-                  "font-sans text-sm normal-case tracking-normal",
-                  "transition-colors focus:bg-primary focus:text-primary-foreground",
-                  "data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
-                  active && "bg-primary/10 font-medium text-primary",
-                )}
-              >
-                <span>Line {l.number}</span>
-                {active ? (
-                  <Check className="h-4 w-4 shrink-0" aria-hidden />
-                ) : (
-                  <span className="h-4 w-4 shrink-0" aria-hidden />
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* Line 1: line pill + first context segment */}
+      <div className="flex items-center gap-1.5">
+        {linePill}
+        {first != null && (
+          <>
+            <span aria-hidden>·</span>
+            <span>{first}</span>
+          </>
+        )}
+      </div>
 
-      {middle.length > 0 && (
-        <span className="inline-flex items-center gap-1.5 sm:hidden" aria-hidden>
-          <span>·</span>
-          <span>…</span>
-        </span>
-      )}
-      {middle.map((s, i) => (
-        <span key={i} className="hidden items-center gap-1.5 sm:inline-flex">
-          <span aria-hidden>·</span>
-          <span>{s}</span>
-        </span>
-      ))}
-      {last != null && (
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden>·</span>
-          <span>{last}</span>
-        </span>
+      {/* Line 2 on mobile, inline on desktop: remaining segments (excluding page title). */}
+      {rest.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {rest.map((s, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5">
+              <span aria-hidden className={i === 0 ? "hidden sm:inline" : ""}>·</span>
+              <span>{s}</span>
+            </span>
+          ))}
+        </div>
       )}
     </nav>
   );
