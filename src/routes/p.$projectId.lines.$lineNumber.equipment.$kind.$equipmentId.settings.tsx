@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ScrollText } from "lucide-react";
 import { SettingsList } from "@/components/SettingsList";
 import { Button } from "@/components/ui/button";
+import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 
 export const Route = createFileRoute(
   "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings",
@@ -61,9 +62,11 @@ function EquipmentSettingsPage() {
           <>
             <div className="mb-6 flex items-start justify-between gap-3 border-b pb-4">
               <div>
-                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  Production line {lineNumber} · {plantLabel} · {data.pe.name}
-                </span>
+                <LineBreadcrumb
+                  projectId={projectId}
+                  lineNumber={lineNumber}
+                  segments={[plantLabel, data.pe.name, "Settings"]}
+                />
                 <h1 className="text-3xl font-semibold">Settings</h1>
               </div>
               <Button asChild size="sm" variant="outline" className="shrink-0 self-start" title="View log" aria-label="View log">

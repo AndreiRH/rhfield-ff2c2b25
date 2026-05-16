@@ -383,7 +383,12 @@ function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, we
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-white/80">Production line {data.line.number} · {plantLabel}</span>
+          <LineBreadcrumb
+            projectId={data.line.project_id}
+            lineNumber={data.line.number}
+            segments={[plantLabel, data.pe.name]}
+            className="text-white/80"
+          />
           <h1 className="text-3xl font-semibold">
             {data.pe.name}
             <span className={`ml-3 text-base font-normal ${accent}`}>{overall}%</span>

@@ -170,7 +170,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
       <div className="mb-6 border-b pb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line {lineNumber} · Plant</span>
+            <LineBreadcrumb projectId={projectId} lineNumber={lineNumber} segments={[title]} />
             <h1 className="flex items-center gap-3 text-3xl font-semibold">
               <span>{title}</span>
               <span className="text-base font-normal text-muted-foreground">{overall}%</span>

@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
 import { PAFoldersList } from "@/components/PAFoldersList";
+import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/pa")({
   component: PAPage,
@@ -53,9 +54,11 @@ function PAPage() {
         ) : (
           <>
             <div className="mb-6 border-b pb-4">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Production line {lineNumber} · {title}
-              </span>
+              <LineBreadcrumb
+                projectId={projectId}
+                lineNumber={lineNumber}
+                segments={[title, "Provisional Acceptance"]}
+              />
               <h1 className="text-3xl font-semibold">Provisional Acceptance</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Photos, files and notes from PA measurements.
