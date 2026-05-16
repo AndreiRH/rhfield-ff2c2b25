@@ -1,39 +1,53 @@
-I found the likely real causes and will fix them in the offline layer rather than asking you to reinstall.
+# Fix: PWA Sync badge counts stale failed outbox items as pending
 
-## Plan
+## Root cause
 
-1. **Make every existing photo/file download to the phone reliably**
-   - Change warm-up so it fetches all storage objects directly by stable bucket/path, not only through temporary signed URLs.
-   - Add retry/concurrency handling and progress counts for photos/files.
-   - Make the service worker also recognize `/storage/v1/render/image/...` and synthetic signed URLs, so offline images resolve from local IndexedDB instead of showing broken tiles.
-   - Store downloaded media permanently in the local blob store as `photos/path` or `files/path`.
+`outboxCount()` in `public/sw.js` counts every row in the outbox, including rows already marked `failed: true` from a prior 4xx (likely a one-time 401 JWT-expired on the installed PWA where the token didn't refresh before the SW replayed the queue). The UI receives that single number and shows "5 pending edits" forever, even though no real edit is waiting. On the browser the same queue is empty, so it shows 0.
 
-2. **Make newly added offline photos/files immediately available offline**
-   - Keep uploaded blobs in IndexedDB before/while the upload is queued.
-   - Ensure offline-created attachment rows stay in the snapshot and are not overwritten by a later server pull until the queue is fully clean.
+## Changes (smallest possible)
 
-3. **Fix nested offline edits for equipment pages**
-   - Stop relying on server-generated IDs during offline nested creation.
-   - Generate client-side UUIDs before inserts for equipment, equipment groups, component types, components, checklist items, and media rows so child records point to stable parent IDs.
-   - Fix offline POST responses for `.select("id").single()` so copied/pasted or multi-step nested inserts get the generated local ID back immediately.
-   - Keep replay order parent-first and do not warm-up/overwrite local data while queued or failed child writes remain.
+### 1. `public/sw.js`
 
-4. **Fix local snapshot embedding for equipment details**
-   - Ensure Assembly/Wiring/Cold groups, component types, components, checklist items, photos, and files are reconstructed correctly from IndexedDB while offline.
-   - Correct component nesting rules so components under a component type and components under an equipment group both survive offline and reconnect.
+- Split outbox stats into `{ pending, failed }`:
+  - New helper `outboxStats()` iterates `outboxAll()` once and counts `failed === true` vs not.
+  - `broadcastQueueCount()` now posts `{ type: "rhfield-queue", count: pending, failed }` (keep `count` = pending only so existing UI keeps working; add new `failed` field).
+- 401 JWT refresh-and-retry-once:
+  - In `flushQueue()`, when a response is 401 (or body contains `JWT expired` / `PGRST301`), do **not** mark failed. Instead:
+    - Broadcast `{ type: "rhfield-auth-expired" }` and `break` out of the loop (stalled).
+    - The client (see step 2) refreshes the Supabase session, which causes any next request to flow through `rememberAuth`, updating `latestAuthHeader`. The client then calls `triggerFlush()` again.
+  - On retry, before `fetch(item.url, ...)`, if `latestAuthHeader` exists and differs from `item.headers.authorization`, overwrite `item.headers.authorization` with `latestAuthHeader`. Track `item.authRetries` (default 0); only allow this swap once per item. If a second 401 occurs, fall through to the existing failed-marking path.
+- New message handlers:
+  - `rhfield-outbox-retry-failed`: clear `failed`/`lastStatus`/`lastError` on all failed rows, then `flushQueue()`.
+  - `rhfield-outbox-discard-failed`: delete every row where `failed === true`, then `broadcastQueueCount()` + `broadcastDataChanged()`.
+- `rhfield-flush-complete` payload: include `failedCount` alongside `remaining` so the UI updates immediately after a flush.
 
-5. **Clean up the sync cloud UI**
-   - Remove any remaining rotating arrows/spinner indicators.
-   - Online: show only a full cloud icon.
-   - Offline: show only the cut cloud icon, no “Offline” word.
-   - Resize and center the sync popover on mobile so it fits the screen; keep it compact on desktop.
+### 2. `src/lib/offline.ts`
 
-6. **Validation**
-   - Verify storage URL parsing covers signed, authenticated/public, render/image, and local synthetic URLs.
-   - Verify an offline flow: create equipment → open it → add component type → component → checklist item → photo/file → reconnect, and confirm nested rows remain visible instead of disappearing.
-   - Verify the cloud icon and popover behavior on mobile width.
+- `useOfflineStatus()` adds `failed: number` to its return value.
+- Update `onMsg` handler:
+  - On `rhfield-queue`: `setPending(d.count); setFailed(d.failed ?? 0)`.
+  - On `rhfield-flush-complete`: also `setFailed(d.failedCount ?? 0)`.
+  - On `rhfield-auth-expired`: call `supabase.auth.refreshSession()` (dynamic import to avoid SSR), then `triggerFlush()` once.
+- Export two helpers used by the UI:
+  - `retryFailedOutbox()` → `send("rhfield-outbox-retry-failed")`
+  - `discardFailedOutbox()` → `send("rhfield-outbox-discard-failed")`
 
-## Technical details
+### 3. `src/components/SyncCloud.tsx`
 
-- Main files to update: `public/sw.js`, `src/lib/warm-up.ts`, `src/components/SyncCloud.tsx`, and the nested insert call sites in equipment/component/checklist UI.
-- No reinstall should be required after the fix; you should only need to reload once online so the updated offline worker activates and downloads media.
+- Read `failed` from `useOfflineStatus()`.
+- In the popover, when `failed > 0`, render one extra row below "Pending edits":
+  - Label: `Failed (N)` in destructive color.
+  - Two tiny text buttons: `Retry` → `retryFailedOutbox()`, `Discard` → `discardFailedOutbox()` (with a `confirm()` since the project memory requires a deletion warning).
+- The header cloud icon dot badge stays driven by `pending` only (not failed), so a real "up to date" state shows no dot even when failed items linger.
+
+## Files touched
+
+- `public/sw.js` — outbox stats split, 401 refresh hook, retry/discard message handlers.
+- `src/lib/offline.ts` — surface `failed`, handle `auth-expired`, expose retry/discard.
+- `src/components/SyncCloud.tsx` — show Failed row with Retry/Discard.
+
+No other files change. No refactor. No schema or route changes. Existing pending/sync behavior is preserved; only the counting and the new Failed control are added.
+
+## Activation note
+
+The SW version bumps from `v8` → `v9` so installed PWAs pick up the new logic on next load. The user will need to open the app once with connectivity for the new SW to activate; the stale 5 failed rows will then appear under "Failed" with a Discard button.
