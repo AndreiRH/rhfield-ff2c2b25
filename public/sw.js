@@ -19,7 +19,18 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v9";
+const VER = "v10";
+
+// A stored blob is only servable as media if it has a real media MIME.
+// Anything else (multipart/form-data, application/octet-stream, empty) is
+// treated as corruption and ignored — the SW will fall through to network.
+function isServableMediaType(t) {
+  if (!t || typeof t !== "string") return false;
+  return /^(image|video|audio)\//i.test(t) || t === "application/pdf";
+}
+function isValidStoredBlob(stored) {
+  return !!(stored && stored.blob && stored.blob.size > 0 && isServableMediaType(stored.type || stored.blob.type));
+}
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -1206,7 +1217,10 @@ self.addEventListener("fetch", (event) => {
         let netRes = null;
         try { netRes = await fetch(req); } catch {}
 
-        if (info && blob) {
+        // Only persist locally when the network upload succeeded AND the body
+        // is a real media blob. Avoids storing multipart/form-data or
+        // application/octet-stream bytes as if they were the image itself.
+        if (info && blob && netRes && netRes.ok && isServableMediaType(blob.type)) {
           try { await putBlob(`${info.bucket}/${info.path}`, blob); } catch {}
         }
 
@@ -1247,54 +1261,77 @@ self.addEventListener("fetch", (event) => {
       return;
     }
 
-    // Storage GET (signed URL or otherwise): blob-store first, then cache, then network.
+    // Storage GET (signed URL or otherwise): network-first when online,
+    // fall back to local blob/cache when offline or network fails.
     if (req.method === "GET") {
       event.respondWith((async () => {
         const info = storagePathFromUrl(url);
-        if (info) {
+
+        const serveStored = async () => {
+          if (!info) return null;
           const stored = await getBlob(`${info.bucket}/${info.path}`);
-          if (stored?.blob) {
-            return new Response(stored.blob, {
-              status: 200,
-              headers: {
-                "Content-Type": stored.type || "application/octet-stream",
-                "X-RHfield-LocalBlob": "1",
-                "Cache-Control": "no-cache",
-              },
-            });
+          if (!isValidStoredBlob(stored)) return null;
+          return new Response(stored.blob, {
+            status: 200,
+            headers: {
+              "Content-Type": stored.type || stored.blob.type || "application/octet-stream",
+              "X-RHfield-LocalBlob": "1",
+              "Cache-Control": "no-cache",
+            },
+          });
+        };
+
+        // When online, try the network first so a fresh/correct image
+        // replaces any stale or corrupted local copy.
+        if (self.navigator && self.navigator.onLine !== false) {
+          try {
+            const res = await fetch(req);
+            if (res && res.ok) {
+              const cache = await caches.open(CACHE_BLOBS);
+              cache.put(req, res.clone()).catch(() => {});
+              if (info) {
+                try {
+                  const b = await res.clone().blob();
+                  if (isServableMediaType(b.type) && b.size > 0) {
+                    await putBlob(`${info.bucket}/${info.path}`, b);
+                  }
+                } catch {}
+              }
+              return res;
+            }
+            // Non-OK network response: try local fallbacks before returning it.
+            const local = await serveStored();
+            if (local) return local;
+            const cache = await caches.open(CACHE_BLOBS);
+            const cached = await cache.match(req);
+            if (cached) return cached;
+            return res;
+          } catch {
+            // fall through to offline path
           }
         }
+
+        // Offline (or network threw): prefer local blob, then HTTP cache,
+        // then a last-ditch authenticated direct fetch.
+        const local = await serveStored();
+        if (local) return local;
         const cache = await caches.open(CACHE_BLOBS);
         const cached = await cache.match(req);
         if (cached) return cached;
-        try {
-          const res = await fetch(req);
-          if (res && res.ok) {
-            cache.put(req, res.clone()).catch(() => {});
-            // Also persist the bytes into the local blob store so they
-            // survive HTTP cache eviction.
-            if (info) {
-              try {
-                const b = await res.clone().blob();
+        if (info && latestAuthHeader && isSupabaseStorage(url)) {
+          try {
+            const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
+            const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
+            if (res && res.ok) {
+              const b = await res.clone().blob();
+              if (isServableMediaType(b.type) && b.size > 0) {
                 await putBlob(`${info.bucket}/${info.path}`, b);
-              } catch {}
-            }
-          }
-          return res;
-        } catch {
-          if (info && latestAuthHeader && isSupabaseStorage(url)) {
-            try {
-              const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
-              const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
-              if (res && res.ok) {
-                const b = await res.clone().blob();
-                await putBlob(`${info.bucket}/${info.path}`, b);
-                return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
               }
-            } catch {}
-          }
-          return new Response("", { status: 504 });
+              return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
+            }
+          } catch {}
         }
+        return new Response("", { status: 504 });
       })());
       return;
     }
