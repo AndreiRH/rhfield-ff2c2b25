@@ -6,7 +6,9 @@ import { localUuid } from "@/lib/local-id";
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type ItemNode = { label: string; subs: ItemNode[] };
 export type ComponentClipNode = { name: string; items: ItemNode[] };
-export type TypeClipNode = { name: string; components: ComponentClipNode[] };
+// Types can carry either nested components (legacy) or items directly
+// (new flat hierarchy). Both shapes survive a roundtrip through localStorage.
+export type TypeClipNode = { name: string; components: ComponentClipNode[]; items?: ItemNode[] };
 
 export type SettingPhotoNode = { storage_path: string };
 export type SettingFileNode = { storage_path: string; file_name: string };
