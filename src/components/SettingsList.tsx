@@ -89,8 +89,19 @@ function SettingsListInner({
         .is("deleted_at", null)
         .order("sort_order").order("created_at"),
     ]);
+    const groupsList = ((g ?? []) as unknown) as SettingGroup[];
     setRows(((s ?? []) as unknown) as Setting[]);
-    setGroups(((g ?? []) as unknown) as SettingGroup[]);
+    setGroups(groupsList);
+    // Hydrate collapsed state from localStorage for current groups
+    if (typeof window !== "undefined") {
+      const next = new Set<string>();
+      for (const gr of groupsList) {
+        if (window.localStorage.getItem(`settings_group_collapsed_${gr.template_id}`) === "1") {
+          next.add(gr.template_id);
+        }
+      }
+      setCollapsedGroups(next);
+    }
   };
   useEffect(() => { load(); }, [equipmentId]);
 
