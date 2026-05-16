@@ -138,18 +138,7 @@ function SettingsListInner({
     });
   };
 
-  const deleteGroup = async (g: SettingGroup, moveSettingsToUngrouped: boolean) => {
-    if (moveSettingsToUngrouped) {
-      await supabase.from("equipment_settings")
-        .update({ group_template_id: null })
-        .eq("group_template_id", g.template_id);
-    }
-    await supabase.from("equipment_setting_groups")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", g.id);
-    setConfirmGroupDelete(null);
-    load();
-  };
+  // Group deletion happens via the action button's delete mode (see performDelete).
 
   const updateTitle = (id: string, title: string) => {
     const prev = rows.find((x) => x.id === id);
