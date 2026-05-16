@@ -65,6 +65,23 @@ function EquipmentDetail() {
   const isChildRoute = pathname.includes(`/${equipmentId}/settings`);
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
 
+  // When the user leaves this equipment page, clear any "locked" clipboard
+  // so the lingering single-location paste button doesn't follow them.
+  useEffect(() => {
+    return () => {
+      try {
+        const raw = localStorage.getItem("lov.clipboard.v1");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.lockedAt) {
+            localStorage.removeItem("lov.clipboard.v1");
+            window.dispatchEvent(new Event("lov-clipboard-change"));
+          }
+        }
+      } catch {}
+    };
+  }, []);
+
   const { data, isLoading } = useQuery({
     enabled: !!session && !isChildRoute,
     queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
