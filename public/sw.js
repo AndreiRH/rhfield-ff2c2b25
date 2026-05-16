@@ -496,6 +496,19 @@ async function expandEmbeds(table, rows, embeds) {
       parent[emb.name] = projected;
     }
   }
+  if (table === "equipment_groups" && embeds.some((e) => e.name === "component_types")) {
+    const componentEmbeds = embeds.find((e) => e.name === "component_types")?.select ?? "id";
+    const typeInner = parseSelect(componentEmbeds);
+    const componentSelect = typeInner.embeds.find((e) => e.name === "components")?.select;
+    if (componentSelect) {
+      const compInner = parseSelect(componentSelect);
+      const components = childCache.components || (childCache.components = await readTable("components"));
+      for (const parent of rows) {
+        const direct = components.filter((c) => c?.equipment_id === parent.id && !c?.component_type_id);
+        parent.components = await expandEmbeds("components", direct.map((m) => projectRow(m, compInner.columns)), compInner.embeds);
+      }
+    }
+  }
   return rows;
 }
 function projectRow(row, columns) {
