@@ -281,7 +281,6 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
             canEdit={canEdit}
             onChange={onChange}
             canDeleteRoot={isAdmin}
-            showLabels
             defaultOpen={expandAll || !!q}
             emptyHint={q ? "No matching items." : "No items yet."}
             hideRootAdd
