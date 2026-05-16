@@ -210,13 +210,14 @@ export function CommonFoldersList({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Folders</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center gap-2 justify-end">
           {folders.length > 0 && !deleteMode && (() => {
             const allOpen = openIds.size === folders.length;
             return (
               <Button
                 size="sm"
                 variant="outline"
+                className="mr-auto"
                 onClick={() => setOpenIds(allOpen ? new Set() : new Set(folders.map((f) => f.id)))}
                 title={allOpen ? "Collapse all" : "Expand all"}
                 aria-label={allOpen ? "Collapse all" : "Expand all"}
