@@ -648,10 +648,22 @@ function SettingsGroupSection({
             )}
           </button>
         )}
+        {canEdit && !inMode && pasteCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onPaste(); }}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={`Paste ${pasteCount} setting${pasteCount > 1 ? "s" : ""} into this group`}
+            aria-label="Paste into group"
+          >
+            <ClipboardPaste className="h-3 w-3" />
+            {pasteCount > 1 ? <span>{pasteCount}</span> : null}
+          </button>
+        )}
         {canEdit && !inMode && (
           <button
             type="button"
-            onClick={onAddSetting}
+            onClick={(e) => { e.stopPropagation(); onAddSetting(); }}
             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Add setting to this group"
             aria-label="Add setting to this group"
