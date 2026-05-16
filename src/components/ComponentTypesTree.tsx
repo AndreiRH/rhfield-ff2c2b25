@@ -468,13 +468,12 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
 
       {open && (
         <div className="bg-muted/20 p-3">
-          <ComponentsList
-            group={type}
-            parentKind="component_type"
+          <ChecklistTree
+            componentTypeId={type.id}
+            items={type.checklist_items ?? []}
             canEdit={canEdit}
             onChange={onChange}
-            externalSearch={externalSearch}
-            hideTitle
+            emptyHint="No items yet. Add the first one to start tracking checks."
             defaultOpen={defaultOpen}
           />
         </div>
