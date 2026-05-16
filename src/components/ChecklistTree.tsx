@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { rememberLocalFile } from "@/lib/local-blobs";
 import { useClipboard, pasteItem } from "@/lib/clipboard";
 import { useTreeAction } from "@/components/TreeAction";
 import { liveChecklistItems } from "@/lib/progress";
@@ -268,6 +270,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   };
   const uploadPhoto = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_photos").insert({ id: localUuid(), item_id: item.id, storage_path: path });
@@ -275,6 +278,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   };
   const uploadFile = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("item_files").insert({ id: localUuid(), item_id: item.id, storage_path: path, file_name: file.name });
@@ -589,38 +593,24 @@ function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
 }
 
 export function PhotoTile({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
   return (
-    <div className="relative">
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" className="h-16 w-full rounded border object-cover" />
-        </a>
-      ) : (
-        <div className="h-16 animate-pulse rounded bg-muted" />
-      )}
-      {canEdit && (
-        <button onClick={onRemove} className="absolute right-0 top-0 rounded-bl bg-black/60 p-0.5 text-white">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="h-16 w-full rounded border object-cover"
+      canEdit={canEdit}
+      onRemove={onRemove}
+    />
   );
 }
 
 export function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; onRemove: () => void }) {
-  const open = async () => {
-    const { data } = await supabase.storage.from("files").createSignedUrl(f.storage_path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
     <div className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={open} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
+      <button
+        onClick={() => openStorageFile("files", f.storage_path, f.file_name)}
+        className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline"
+      >
         <Paperclip className="h-3 w-3 shrink-0" /> <span className="truncate">{f.file_name}</span>
       </button>
       {canEdit && (

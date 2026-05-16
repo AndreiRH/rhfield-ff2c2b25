@@ -14,6 +14,8 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PhotoPicker } from "@/components/PhotoPicker";
+import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { rememberLocalFile } from "@/lib/local-blobs";
 
 interface FolderRow {
   id: string;
@@ -294,6 +296,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const uploadAttachment = async (file: File, kind: "photo" | "file") => {
     const path = `${basePath}/${kind}/${Date.now()}-${file.name}`;
     const bucket = kind === "photo" ? "photos" : "files";
+    rememberLocalFile(bucket, path, file);
     const { error } = await supabase.storage.from(bucket).upload(path, file);
     if (error) { toast.error(error.message); return; }
     const { error: dbErr } = await supabase.from("pa_attachments").insert({
@@ -427,39 +430,22 @@ function FolderContents({ folder, canEdit, userId }: any) {
 }
 
 function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(att.storage_path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [att.storage_path]);
   return (
-    <div className="relative">
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" className="h-28 w-full rounded border object-cover" />
-        </a>
-      ) : (
-        <div className="h-28 animate-pulse rounded bg-muted" />
-      )}
-      {canEdit && (
-        <button onClick={onRemove}
-          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <StoragePhoto
+      bucket="photos"
+      path={att.storage_path}
+      imgClassName="h-28 w-full rounded border object-cover"
+      containerClassName="h-28"
+      canEdit={canEdit}
+      onRemove={onRemove}
+    />
   );
 }
 
 function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
-  const open = async () => {
-    const { data } = await supabase.storage.from("files").createSignedUrl(att.storage_path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
     <li className="flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs">
-      <button onClick={open} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
+      <button onClick={() => openStorageFile("files", att.storage_path, att.file_name ?? "file")} className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline">
         <Paperclip className="h-3 w-3 shrink-0" /> <span className="min-w-0 flex-1 truncate">{att.file_name ?? "file"}</span>
       </button>
       {canEdit && (
@@ -481,6 +467,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
 
   const uploadPhoto = async (file: File) => {
     const path = `${basePath}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
@@ -489,6 +476,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
   const uploadFile = async (file: File) => {
     const path = `${basePath}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
@@ -573,40 +561,21 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
 }
 
 function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
   return (
-    <div className="relative">
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" className="max-h-40 w-full rounded border object-cover" />
-        </a>
-      ) : (
-        <div className="h-24 animate-pulse rounded bg-muted" />
-      )}
-      {canEdit && (
-        <button onClick={onRemove}
-          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="max-h-40 w-full rounded border object-cover"
+      canEdit={canEdit}
+      onRemove={onRemove}
+    />
   );
 }
 
 function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
-  const open = async () => {
-    if (!path) return;
-    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
     <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={open} className="flex flex-1 items-center gap-1 text-left hover:underline">
+      <button onClick={() => openStorageFile("files", path, name)} className="flex flex-1 items-center gap-1 text-left hover:underline">
         <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
       </button>
       {canEdit && (

@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Camera, Paperclip, X, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { rememberLocalFile } from "@/lib/local-blobs";
 
 interface Note {
   id: string;
@@ -145,6 +147,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
@@ -154,6 +157,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 
   const uploadFile = async (file: File) => {
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
@@ -218,24 +222,18 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
 }
 
 function NotePhoto({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.storage.from("photos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
-  }, [path]);
-  if (!url) return <div className="h-20 animate-pulse rounded bg-muted" />;
-  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="max-h-32 w-full rounded border object-cover" /></a>;
+  return (
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="max-h-32 w-full rounded border object-cover"
+    />
+  );
 }
 
 function NoteFile({ path, name }: { path: string | null; name: string }) {
-  const open = async () => {
-    if (!path) return;
-    const { data } = await supabase.storage.from("files").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  };
   return (
-    <button onClick={open} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-[11px] hover:bg-accent">
+    <button onClick={() => openStorageFile("files", path, name)} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-[11px] hover:bg-accent">
       <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
     </button>
   );
