@@ -79,7 +79,7 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
               onSelect={() => goToLine(l.number)}
               className="flex items-center justify-between gap-3"
             >
-              <span>Production line {String(l.number).padStart(2, "0")}</span>
+              <span>Line {l.number}</span>
               {l.number === currentN && <Check className="h-3.5 w-3.5" aria-hidden />}
             </DropdownMenuItem>
           ))}
