@@ -825,7 +825,7 @@ self.addEventListener("fetch", (event) => {
                 } catch {}
                 const inserted = serverRows && serverRows.length
                   ? serverRows
-                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withDefaults(table, r));
+                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withLocalDefaults(table, r));
                 const cur = await readTable(table);
                 await writeTable(table, cur.concat(inserted));
               } else if (req.method === "PATCH" && bodyJson) {
