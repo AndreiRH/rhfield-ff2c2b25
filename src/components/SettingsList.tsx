@@ -341,6 +341,7 @@ function SettingRow({
 
   const uploadPhoto = async (file: File) => {
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_photos").insert({ equipment_setting_id: setting.id, storage_path: path });
@@ -349,6 +350,7 @@ function SettingRow({
   };
   const uploadFile = async (file: File) => {
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
     await supabase.from("setting_files").insert({ equipment_setting_id: setting.id, storage_path: path, file_name: file.name });
