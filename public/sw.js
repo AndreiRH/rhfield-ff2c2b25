@@ -1328,7 +1328,14 @@ self.addEventListener("fetch", (event) => {
             if (local) return local;
             const cache = await caches.open(CACHE_BLOBS);
             const cached = await cache.match(req);
-            if (cached) return cached;
+            if (cached) {
+              const ct = cached.headers.get("Content-Type") || "";
+              if (!isServableMediaType(ct)) {
+                cache.delete(req).catch(() => {});
+              } else {
+                return cached;
+              }
+            }
             return res;
           } catch {
             // fall through to offline path
