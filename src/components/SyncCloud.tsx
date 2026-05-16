@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Cloud, CloudOff } from "lucide-react";
-import { useOfflineStatus } from "@/lib/offline";
+import { useOfflineStatus, retryFailedOutbox, discardFailedOutbox } from "@/lib/offline";
 
 // Single cloud icon in the header that doubles as a sync-status control.
 //   online + idle         → plain cloud, muted
