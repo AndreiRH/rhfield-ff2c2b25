@@ -33,10 +33,16 @@ import {
   Loader2,
   CheckCircle2,
   Circle,
+  RefreshCw,
+  WifiOff,
+  Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
-import { runAiSearch, type SearchResult } from "@/lib/aiSearch.functions";
+import { runAiSearch, type SearchResult, type SearchResponse } from "@/lib/aiSearch.functions";
+import { runOfflineSearch } from "@/lib/offlineSearch";
+import { syncProject, scheduleBackgroundSync } from "@/lib/offlineSync";
+import { offlineDB, getCacheSize, clearProjectCache } from "@/lib/offlineCache";
 
 export const Route = createFileRoute("/p/$projectId/search")({
   component: AiSearchPage,
@@ -83,17 +89,82 @@ function AiSearchPage() {
 
   const [question, setQuestion] = useState("");
   const [scopeLineId, setScopeLineId] = useState<string>("all");
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [usedOffline, setUsedOffline] = useState(false);
+  const [syncing, setSyncing] = useState<null | { phase: string; done: number; total: number }>(null);
+  const [lastSync, setLastSync] = useState<number | null>(null);
+  const [cacheInfo, setCacheInfo] = useState<{ rows: number; bytes: number } | null>(null);
+
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  const refreshCacheInfo = async () => {
+    setCacheInfo(await getCacheSize(projectId));
+    const s = await offlineDB.sync_state.get(projectId);
+    setLastSync(s?.last_full_sync_at ?? null);
+  };
+
+  useEffect(() => { refreshCacheInfo(); }, [projectId]);
+
+  // Auto-sync on mount + when coming online
+  useEffect(() => {
+    if (!session) return;
+    if (navigator.onLine) scheduleBackgroundSync(projectId);
+    const onOnline = () => scheduleBackgroundSync(projectId);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [session, projectId]);
+
+  const doSync = async () => {
+    if (!navigator.onLine) {
+      toast.error("You're offline. Connect to sync.");
+      return;
+    }
+    setSyncing({ phase: "starting", done: 0, total: 0 });
+    try {
+      await syncProject(projectId, (info) => setSyncing(info));
+      toast.success("Cache up to date.");
+      await refreshCacheInfo();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Sync failed");
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const search = useServerFn(runAiSearch);
-  const mutation = useMutation({
-    mutationFn: () =>
-      search({
-        data: {
-          projectId,
-          question: question.trim(),
-          scope: scopeLineId === "all" ? {} : { lineId: scopeLineId },
-        },
-      }),
+  const mutation = useMutation<SearchResponse>({
+    mutationFn: async () => {
+      const params = {
+        projectId,
+        question: question.trim(),
+        scope: scopeLineId === "all" ? {} : { lineId: scopeLineId },
+      };
+      if (!navigator.onLine) {
+        setUsedOffline(true);
+        return await runOfflineSearch(projectId, params.question, params.scope);
+      }
+      try {
+        const r = await search({ data: params });
+        setUsedOffline(false);
+        return r;
+      } catch (err) {
+        // Online RPC failed — fall back to local cache.
+        setUsedOffline(true);
+        toast.message("Online search failed — using offline cache.");
+        return await runOfflineSearch(projectId, params.question, params.scope);
+      }
+    },
     onError: (e: any) => toast.error(e?.message ?? "Search failed"),
   });
 
@@ -122,7 +193,7 @@ function AiSearchPage() {
           <ChevronLeft className="h-4 w-4" /> {projectQ.data?.project?.name ?? "Project"}
         </Link>
 
-        <div className="mb-6 flex items-start justify-between gap-3 border-b pb-4">
+        <div className="mb-4 flex items-start justify-between gap-3 border-b pb-4">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               {projectQ.data?.project?.name ?? ""}
@@ -131,10 +202,60 @@ function AiSearchPage() {
               <Sparkles className="h-7 w-7 text-primary" /> AI Search
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ask in plain language. Find and export settings, checklists, notes and attachments across the project.
+              Ask in plain language. Works offline using a local cache of this project.
             </p>
           </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <div className="inline-flex items-center gap-1">
+              {isOnline ? (
+                <><Wifi className="h-3.5 w-3.5 text-success" /> Online</>
+              ) : (
+                <><WifiOff className="h-3.5 w-3.5 text-warning-foreground" /> Offline</>
+              )}
+            </div>
+            <div className="mt-1">
+              Cache: {cacheInfo ? `${cacheInfo.rows} rows · ${formatBytes(cacheInfo.bytes)}` : "—"}
+            </div>
+            <div>
+              Synced: {lastSync ? new Date(lastSync).toLocaleString() : "never"}
+            </div>
+            <div className="mt-1 flex justify-end gap-1">
+              <Button size="sm" variant="outline" onClick={doSync} disabled={!!syncing || !isOnline} className="h-7 gap-1 px-2 text-xs">
+                {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Sync now
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  if (!confirm("Clear all locally cached data and files for this project?")) return;
+                  await clearProjectCache(projectId);
+                  await refreshCacheInfo();
+                  toast.success("Local cache cleared.");
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                Clear
+              </Button>
+            </div>
+            {syncing && (
+              <div className="mt-1 text-[10px]">
+                {syncing.phase}{syncing.total ? ` ${syncing.done}/${syncing.total}` : "…"}
+              </div>
+            )}
+          </div>
         </div>
+
+        {!isOnline && (
+          <div className="mb-3 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+            Offline mode — searching the locally cached copy of this project. Natural-language understanding is simplified; use keywords and the line filter for best results.
+          </div>
+        )}
+        {usedOffline && isOnline && (
+          <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Showing offline-cached results (online search was unavailable).
+          </div>
+        )}
 
         <Card className="mb-4">
           <CardContent className="space-y-3 p-4">
@@ -401,4 +522,13 @@ function triggerDownload(blob: Blob, name: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function formatBytes(b: number) {
+  if (!b) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let v = b;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
 }

@@ -1,88 +1,70 @@
 ## Goal
 
-Add a project-wide **AI Search** page where you type a question in plain language ("all flow settings from kilns on line 3", "status of temperature sensors across all components in line 2"), and the app finds matching records from across the project, shows them in a results table, then lets you export to **CSV, XLSX, or PDF**.
+Make the project-wide AI Search page work offline (search, collect, export) by maintaining a local cache of all project data and replacing the LLM step with a rule-based query parser when offline (or always, with online LLM as an optional enhancer).
 
-## How it will work for you
+## Approach
 
-1. Open the project → click **AI Search** in the project header.
-2. Pick a scope: whole project / a line / a specific equipment (defaults to whole project).
-3. Type a question. Examples:
-   - "All settings with 'flow' in the title from every kiln on line 3"
-   - "Every checklist item labelled 'temperature sensor' across all components, show which are done"
-   - "All photos and files from any equipment item named like 'burner control'"
-   - "Equipment notes mentioning 'vibration' on SHS units"
-4. Results appear in an on-screen sortable table with one row per match (with line, equipment, location columns so you can see where each result came from). Photos/files show as thumbnails with a link.
-5. Click **Export** → choose **CSV / XLSX / PDF**. File downloads from `/mnt/documents`-style flow (browser download).
+- **Local cache (IndexedDB via Dexie)**: mirror searchable rows + every photo/file as a Blob, scoped per project.
+- **Offline query parser**: deterministic keyword + filter logic, no network. Same result shape as the existing online server function so the UI is unchanged.
+- **Sync strategy**: auto-sync on app open and after every successful write while online; manual "Sync now" button on the AI Search page with progress + last-sync timestamp.
+- **Online behavior**: prefer the existing LLM server function for natural-language parsing; fall back to the offline parser if the call fails or `navigator.onLine === false`.
+- **Exports**: already client-side (CSV/XLSX/PDF) → already work offline once data is cached. Attachments embed from local Blobs when present (e.g., images inline in PDF), otherwise show file names.
 
-## Searchable data
+## Technical Plan
 
-Confirmed sources:
-- Equipment settings (title + body + photos + files)
-- Checklist items (label, done status, notes, photos, files) — including items under component types
-- Equipment notes (title + body + attachments)
-- PA notes & folders (title, body, attachments)
-- Component photos & component files
-- Common project notes/folders (whole-project level)
+### 1. Dependencies
+- Add `dexie` (IndexedDB wrapper, ~25KB).
 
-Each result row includes location breadcrumbs: `Project → Line N → Plant (Kiln/SHS) → Equipment → (Component type → Component) → Item`.
+### 2. Local DB layer — `src/lib/offlineCache.ts`
+Dexie schema, one DB instance shared across projects, tables keyed by `[projectId+id]`:
+- `equipment_settings`, `checklist_items`, `equipment_notes`, `pa_notes`, `common_folder_notes`
+- `plant_equipment`, `equipment_groups`, `component_types`, `components`, `lines` (lookup tables for joining names/locations offline)
+- `attachments` — `{ projectId, bucket, storage_path, blob, mime, size, cached_at }`
+- `sync_state` — `{ projectId, last_full_sync_at, in_progress }`
 
-## Technical design
+Helpers: `cacheProject(projectId)`, `cacheAttachment(bucket, path)`, `getCached(projectId)`, `clearProject(projectId)`.
 
-### New route
-`src/routes/p.$projectId.search.tsx` — project-scoped AI search page, linked from `AppHeader` when inside a project.
+### 3. Sync service — `src/lib/offlineSync.ts`
+- `syncProject(projectId, { onProgress })`: fetch all rows for the project's lines/equipment via existing Supabase client, upsert into Dexie. Then for every referenced photo/file (`photo_path`, `file_path`, `storage_path` across the cached tables, plus `item_photos`/`item_files`/`setting_photos`/`setting_files`/`equipment_photos`/`pa_attachments`/`common_files`/`common_folder_attachments`), download via `supabase.storage.from(bucket).download(path)` and store the Blob. Skip already-cached paths (idempotent).
+- Hook `useAutoSync(projectId)`: triggers on mount and on `online` event; throttled so back-to-back writes coalesce (5s debounce).
+- Wire a lightweight post-write hook: after the app's existing mutations succeed and `navigator.onLine`, kick `syncProject` in background (no await). Implement once at the React Query mutation layer (global `onSuccess` on `QueryClient`'s mutation cache).
 
-### Server function: NL → structured query
-`src/lib/aiSearch.functions.ts` with `createServerFn` + `requireSupabaseAuth`:
+### 4. Offline query engine — `src/lib/offlineSearch.ts`
+- Input: same shape the existing `runAiSearch` server fn accepts (sources, keywords, equipmentKinds, lineNumbers, equipmentNameLike, componentTypeLike, doneFilter, includeAttachments).
+- Parser `parseQueryOffline(question, scope)`: extracts keywords (split, lowercase, strip stopwords), recognizes simple patterns ("flow", "temperature", "done", "not done", "line 3", "kiln", etc.) into the same plan structure.
+- Executor: runs filters over Dexie tables and joins to lookup tables for `line_number`, `equipment_name`, `component_type`, `component_name`. Returns the same normalized row shape the page already renders.
+- Attachments: resolves Blob from cache; produces an `objectUrl` for the table thumbnails and a `localBlob` for export embedding.
 
-1. Takes `{ projectId, scope, question }`.
-2. Calls Lovable AI Gateway (`google/gemini-3-flash-preview`) using AI SDK **structured output** (`Output.object` with Zod) to translate the question into a typed query plan:
-   ```ts
-   {
-     sources: ("settings"|"checklist_items"|"equipment_notes"|"pa_notes"|"common_notes"|"photos"|"files")[],
-     keywords: string[],              // e.g. ["flow", "débit"]
-     equipmentKinds?: ("kiln"|"shs")[],
-     lineNumbers?: number[],
-     equipmentNameLike?: string,
-     componentTypeLike?: string,
-     doneFilter?: "any"|"done"|"not_done",
-     includeAttachments: boolean
-   }
-   ```
-3. Runs the plan as a small set of `supabase` queries scoped to the project (RLS still applies — read-only).
-4. Returns a flat list of normalized result rows:
-   ```ts
-   {
-     id, source, title, body, done?,
-     line_number, plant_kind, equipment_name,
-     component_type?, component_name?,
-     attachments: [{ kind: "photo"|"file", storage_path, file_name? }],
-     updated_at
-   }
-   ```
+### 5. Server fn fallback — `src/lib/aiSearch.functions.ts`
+- No schema change. Keep using `runAiSearch` online for NL parsing.
+- On the client, wrap the call with `safeRunSearch(...)`: if `!navigator.onLine` or the RPC throws, run `offlineSearch` instead. Show a small "Offline mode — showing cached results" banner.
 
-### UI
-- Search bar + scope selector + example chips.
-- Results table (TanStack Query, `useSuspenseQuery`) with column toggles.
-- Thumbnails via existing `StoragePhoto` component; file links open via Supabase storage signed URLs (same pattern as elsewhere).
-- **Export** dropdown:
-  - **CSV** — built client-side from the current result rows.
-  - **XLSX** — built client-side using `xlsx` (SheetJS) — small dep, no native modules.
-  - **PDF** — built client-side with `jspdf` + `jspdf-autotable` (table-style report with project name, question, timestamp, rows).
-- Attachments in CSV/XLSX become a comma-separated list of file names + signed URLs; PDF lists them as text under each row.
+### 6. UI — `src/routes/p.$projectId.search.tsx`
+- Add: connection status indicator (Online / Offline), last-sync timestamp, "Sync now" button with progress bar, cache size estimate (via `navigator.storage.estimate()`).
+- Add filter controls (source, line, kind, done) so offline users can refine without relying on NL.
+- Result table: use cached object URLs for `StoragePhoto` when offline; otherwise existing signed URLs.
+- Exports: when offline, embed images from cached Blobs in PDF; CSV/XLSX include cached attachment file names + relative paths (no signed URLs).
 
-### Secrets
-Needs `LOVABLE_API_KEY` for the AI Gateway. Lovable Cloud auto-provisions it — no action from you. If missing, I'll trigger the enable flow.
+### 7. Settings affordance
+- New "Offline data" section on the search page: cache size, last sync, "Refresh cache", "Clear cached files".
 
-### What I won't change
-- No DB schema changes.
-- No edits to existing checklist/settings pages, RLS, or auth.
-- Desktop layout of other pages stays as-is.
+## Out of scope
+- No offline LLM (Approach B was not selected).
+- No service worker / PWA install (only data + attachment caching).
+- No offline writes/sync conflict resolution — the app is read-only when offline for search purposes. Existing mutation pages remain online-only.
+- No changes to RLS, DB schema, or auth.
 
-## Out of scope (can add later if you want)
+## Files
 
-- Saving named searches.
-- Scheduling exports.
-- AI-generated summaries on top of results (easy add — one extra AI call producing a short narrative paragraph above the table).
-- Editing data from the results table.
+Created:
+- `src/lib/offlineCache.ts`
+- `src/lib/offlineSync.ts`
+- `src/lib/offlineSearch.ts`
+- `src/components/search/OfflineStatus.tsx`
 
-If you approve, I'll implement: header link, route, server function, UI, and the 3 export formats.
+Edited:
+- `src/routes/p.$projectId.search.tsx` — wire offline fallback, status UI, filter controls, cached-attachment rendering, export paths.
+- `package.json` / `bun.lock` — add `dexie`.
+- `src/router.tsx` or root route — register global mutation cache `onSuccess` hook that triggers background sync of the active project.
+
+No DB migrations. No new secrets. No edge functions.

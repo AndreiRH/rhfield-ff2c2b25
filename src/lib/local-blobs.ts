@@ -32,6 +32,14 @@ export function subscribeLocalBlobs(cb: () => void): () => void {
 export async function getLocalBlob(bucket: string, path: string): Promise<Blob | null> {
   const local = getCachedLocalBlob(bucket, path);
   if (local) return local;
+  // Try AI Search offline cache (Dexie).
+  try {
+    const { getAttachmentBlob } = await import("./offlineCache");
+    if (bucket === "photos" || bucket === "files") {
+      const b = await getAttachmentBlob(bucket as "photos" | "files", path);
+      if (b) return b;
+    }
+  } catch {}
   if (typeof navigator === "undefined") return null;
   const sw = navigator.serviceWorker?.controller;
   if (!sw) return null;
