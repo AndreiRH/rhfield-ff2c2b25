@@ -72,7 +72,6 @@ function SettingsListInner({
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [confirmGroupDelete, setConfirmGroupDelete] = useState<SettingGroup | null>(null);
 
   const load = async () => {
     const [{ data: s }, { data: g }] = await Promise.all([
@@ -139,18 +138,7 @@ function SettingsListInner({
     });
   };
 
-  const deleteGroup = async (g: SettingGroup, moveSettingsToUngrouped: boolean) => {
-    if (moveSettingsToUngrouped) {
-      await supabase.from("equipment_settings")
-        .update({ group_template_id: null })
-        .eq("group_template_id", g.template_id);
-    }
-    await supabase.from("equipment_setting_groups")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", g.id);
-    setConfirmGroupDelete(null);
-    load();
-  };
+  // Group deletion happens via the action button's delete mode (see performDelete).
 
   const updateTitle = (id: string, title: string) => {
     const prev = rows.find((x) => x.id === id);
@@ -338,15 +326,31 @@ function SettingsListInner({
     setClip(buildSettingClipMany(selected));
     action.setMode("none");
   };
+  const selectionKind: "setting" | "group" | null =
+    action.selection.size > 0
+      ? ((action.selection.values().next().value!.kind as unknown) as "setting" | "group")
+      : null;
+
   const confirmDelete = async () => {
-    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
-    if (selected.length === 0) { action.setMode("none"); return; }
+    if (action.selection.size === 0) { action.setMode("none"); return; }
     setConfirmDeleteOpen(true);
   };
 
   const performDelete = async () => {
-    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
-    for (const s of selected) await removeOne(s);
+    if (selectionKind === "group") {
+      const selectedGroups = Array.from(action.selection.values()).map((s) => s.payload as SettingGroup);
+      for (const g of selectedGroups) {
+        await supabase.from("equipment_settings")
+          .update({ group_template_id: null })
+          .eq("group_template_id", g.template_id);
+        await supabase.from("equipment_setting_groups")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", g.id);
+      }
+    } else {
+      const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+      for (const s of selected) await removeOne(s);
+    }
     setConfirmDeleteOpen(false);
     action.setMode("none");
     load();
@@ -398,7 +402,7 @@ function SettingsListInner({
                 {action.mode === "copy" && <span className="ml-1 text-xs">Done{action.count > 0 ? ` ${action.count}` : ""}</span>}
               </Button>
             )}
-            {rows.length > 0 && isAdmin && (
+            {(rows.length > 0 || groups.length > 0) && isAdmin && (
               <Button size="sm"
                 variant={action.mode === "delete" ? "destructive" : "outline"}
                 onClick={() => {
@@ -433,7 +437,9 @@ function SettingsListInner({
 
         {(action.mode === "delete" || action.mode === "copy") && (
           <p className={`rounded-md border px-3 py-2 text-xs ${action.mode === "delete" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/30 bg-primary/5 text-primary"}`}>
-            Tap settings to {action.mode === "delete" ? "delete" : "copy"}, then tap the {action.mode === "delete" ? "trash" : "copy"} icon again.
+            {action.mode === "delete"
+              ? "Tap settings or group headers to delete, then tap the trash icon again."
+              : "Tap settings to copy, then tap the copy icon again."}
           </p>
         )}
         {action.mode === "reorder" && (
@@ -479,11 +485,7 @@ function SettingsListInner({
                       canEdit={canEdit}
                       onRename={(name) => updateGroupName(g, name)}
                       onAddSetting={() => addRow(g.template_id)}
-                      onRequestDelete={() => {
-                        if (items.length > 0) setConfirmGroupDelete(g);
-                        else deleteGroup(g, false);
-                      }}
-                      lineCount={lineCount}
+                      itemCount={items.length}
                       collapsed={collapsedGroups.has(g.template_id)}
                       onToggleCollapsed={() => setGroupCollapsed(g.template_id, !collapsedGroups.has(g.template_id))}
                     >
@@ -512,10 +514,23 @@ function SettingsListInner({
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {action.count} setting{action.count > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectionKind === "group"
+                ? `Delete ${action.count} group${action.count > 1 ? "s" : ""}?`
+                : `Delete ${action.count} setting${action.count > 1 ? "s" : ""}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
-              Values, photos, and files attached to the selected settings on this line will also be removed.
+              {selectionKind === "group" ? (
+                <>
+                  The selected group{action.count > 1 ? "s" : ""} will be removed from <strong>all {lineCount ?? 10} production lines</strong>.
+                  Settings currently inside will be moved to ungrouped.
+                </>
+              ) : (
+                <>
+                  This will delete the selected setting names from <strong>all {lineCount ?? 10} production lines</strong>.
+                  Values, photos, and files attached to the selected settings on this line will also be removed.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -526,49 +541,35 @@ function SettingsListInner({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={!!confirmGroupDelete} onOpenChange={(o) => !o && setConfirmGroupDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete group "{confirmGroupDelete?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This group will be removed from <strong>all {lineCount ?? 10} production lines</strong>.
-              Settings currently inside this group will be moved to ungrouped.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmGroupDelete && deleteGroup(confirmGroupDelete, true)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete group
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }
 
 function SettingsGroupSection({
-  group, canEdit, onRename, onAddSetting, onRequestDelete, collapsed, onToggleCollapsed, children,
+  group, canEdit, onRename, onAddSetting, itemCount, collapsed, onToggleCollapsed, children,
 }: {
   group: SettingGroup;
   canEdit: boolean;
   onRename: (name: string) => void;
   onAddSetting: () => void;
-  onRequestDelete: () => void;
-  lineCount?: number;
+  itemCount: number;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   children: ReactNode;
 }) {
   const action = useTreeAction()!;
   const inReorder = action.mode === "reorder";
+  const inDelete = action.mode === "delete";
   const inMode = action.mode !== "none";
   const sortableId = `g:${group.id}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: sortableId, disabled: !inReorder });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+
+  const selected = action.isSelected(`group:${group.id}`);
+  const toggleSelect = () => {
+    action.toggle(`group:${group.id}`, { kind: "group" as unknown as "setting", payload: group });
+  };
 
   const toggle = onToggleCollapsed;
 
@@ -578,7 +579,14 @@ function SettingsGroupSection({
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-2">
-      <div className="flex items-center gap-1 px-1">
+      <div
+        className={`flex items-center gap-1 rounded px-1 ${
+          inDelete
+            ? `cursor-pointer border ${selected ? "border-destructive bg-destructive/15" : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"}`
+            : ""
+        }`}
+        onClick={inDelete ? toggleSelect : undefined}
+      >
         {canEdit && inReorder && (
           <button {...attributes} {...listeners}
             onClick={(e) => e.stopPropagation()}
@@ -586,9 +594,14 @@ function SettingsGroupSection({
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
+        {inDelete && (
+          <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${selected ? "border-destructive bg-destructive text-destructive-foreground" : "border-muted-foreground/30"}`}>
+            {selected ? <Check className="h-2.5 w-2.5" /> : null}
+          </span>
+        )}
         <button
           type="button"
-          onClick={toggle}
+          onClick={(e) => { e.stopPropagation(); toggle(); }}
           className="text-muted-foreground hover:text-foreground p-1"
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand group" : "Collapse group"}
@@ -605,39 +618,34 @@ function SettingsGroupSection({
               if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
               else if (e.key === "Escape") { setDraft(group.name); setEditing(false); }
             }}
+            onClick={(e) => e.stopPropagation()}
             className="h-6 flex-1 max-w-[260px] border-0 bg-transparent px-1 text-[10px] font-semibold uppercase tracking-wider shadow-none focus-visible:ring-0"
           />
         ) : (
           <button
             type="button"
             disabled={!canEdit || inMode}
-            onClick={() => { if (canEdit && !inMode) setEditing(true); }}
+            onClick={(e) => { if (canEdit && !inMode) { e.stopPropagation(); setEditing(true); } }}
             className="flex-1 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
           >
             {group.name}
+            {inDelete && itemCount > 0 && (
+              <span className="ml-2 normal-case tracking-normal text-muted-foreground/70">
+                ({itemCount} setting{itemCount > 1 ? "s" : ""} will be ungrouped)
+              </span>
+            )}
           </button>
         )}
         {canEdit && !inMode && (
-          <>
-            <button
-              type="button"
-              onClick={onAddSetting}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Add setting to this group"
-              aria-label="Add setting to this group"
-            >
-              <Plus className="h-3 w-3" /> Add
-            </button>
-            <button
-              type="button"
-              onClick={onRequestDelete}
-              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              title="Delete group"
-              aria-label="Delete group"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onAddSetting}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Add setting to this group"
+            aria-label="Add setting to this group"
+          >
+            <Plus className="h-3 w-3" /> Add
+          </button>
         )}
       </div>
       {!collapsed && (
