@@ -217,6 +217,7 @@ export function CommonFoldersList({
               <Button
                 size="sm"
                 variant="outline"
+                className="mr-auto"
                 onClick={() => setOpenIds(allOpen ? new Set() : new Set(folders.map((f) => f.id)))}
                 title={allOpen ? "Collapse all" : "Expand all"}
                 aria-label={allOpen ? "Collapse all" : "Expand all"}
