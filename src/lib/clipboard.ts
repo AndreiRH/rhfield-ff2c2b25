@@ -19,11 +19,19 @@ export type SettingNode = {
   files: SettingFileNode[];
 };
 
-export type Clip =
+export type Clip = (
   | { kind: "item"; nodes: ItemNode[]; sourceLabel?: string }
   | { kind: "component"; nodes: ComponentClipNode[]; sourceLabel?: string }
   | { kind: "componentType"; nodes: TypeClipNode[]; sourceLabel?: string }
-  | { kind: "setting"; nodes: SettingNode[]; sourceLabel?: string };
+  | { kind: "setting"; nodes: SettingNode[]; sourceLabel?: string }
+) & {
+  /**
+   * When set, the paste action has already happened once and the paste UI
+   * should only stay visible at this location key. A new copy (via `set`)
+   * clears this; `clear()` removes the clip entirely.
+   */
+  lockedAt?: string;
+};
 
 const KEY = "lov.clipboard.v1";
 const EVT = "lov-clipboard-change";
@@ -39,8 +47,14 @@ export function useClipboard() {
   }, []);
   return {
     clip,
-    set: (c: Clip) => { write(c); toast.success(`Copied ${labelOf(c)}`); },
-    setSilent: (c: Clip) => { write(c); },
+    set: (c: Clip) => { write({ ...c, lockedAt: undefined }); toast.success(`Copied ${labelOf(c)}`); },
+    setSilent: (c: Clip) => { write({ ...c, lockedAt: undefined }); },
+    /** Lock the existing clip to a single location (after the first paste). */
+    lockTo: (locationKey: string) => {
+      const current = read();
+      if (!current) return;
+      write({ ...current, lockedAt: locationKey });
+    },
     clear: () => { write(null); },
   };
 }
