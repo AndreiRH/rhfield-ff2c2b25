@@ -258,7 +258,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { ...itemParentCols, parent_item_id: item.id, sort_order: subs.length });
-      clearClip();
+      lockTo(subPasteLocationKey);
       setOpen(true);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
