@@ -72,7 +72,6 @@ function SettingsListInner({
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [confirmGroupDelete, setConfirmGroupDelete] = useState<SettingGroup | null>(null);
 
   const load = async () => {
     const [{ data: s }, { data: g }] = await Promise.all([
