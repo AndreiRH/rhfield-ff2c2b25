@@ -250,7 +250,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
               <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add type</span>
             </Button>
           )}
-          {clip && !inMode && canEdit && clip.kind === "componentType" && (
+          {clip && !inMode && canEdit && clip.kind === "componentType" && (!clip.lockedAt || clip.lockedAt === typePasteLocationKey) && (
             <Button size="sm" variant="outline" onClick={pasteTypeHere}
               title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}
               aria-label="Paste">
