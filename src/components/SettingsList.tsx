@@ -556,13 +556,15 @@ function SettingsListInner({
 }
 
 function SettingsGroupSection({
-  group, canEdit, onRename, onAddSetting, itemCount, collapsed, onToggleCollapsed, children,
+  group, canEdit, onRename, onAddSetting, itemCount, pasteCount, onPaste, collapsed, onToggleCollapsed, children,
 }: {
   group: SettingGroup;
   canEdit: boolean;
   onRename: (name: string) => void;
   onAddSetting: () => void;
   itemCount: number;
+  pasteCount: number;
+  onPaste: () => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   children: ReactNode;
