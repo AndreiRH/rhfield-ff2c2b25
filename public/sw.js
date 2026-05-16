@@ -605,25 +605,25 @@ async function snapshotResponse(url, req) {
 // ============================================================
 // Apply mutation to local snapshot
 // ============================================================
-const SCHEMA_DEFAULTS = {
-  // tables that auto-set timestamp/uuid columns server-side; we mirror locally.
-  // All tables share id (uuid). Many share created_at/updated_at.
-};
+// Locally-augmented defaults. These are written into the IndexedDB snapshot
+// so offline queries look complete (timestamps, sort_order, bool defaults),
+// but most of them must NOT be sent back to PostgREST — the columns may not
+// exist (e.g. `updated_at` is absent on `components`, `equipment_groups`,
+// `*_photos`, `*_files`, `milestones`, ...) and the server would reject the
+// whole row with a 400, silently losing the queued write.
 function uuid() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
-  // RFC4122-ish fallback
   const b = self.crypto.getRandomValues(new Uint8Array(16));
   b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
   const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
 }
-function withDefaults(table, row) {
+function withLocalDefaults(table, row) {
   const r = { ...row };
   if (r.id == null) r.id = uuid();
   const now = new Date().toISOString();
-  if ("created_at" in r === false) r.created_at = now;
-  if ("updated_at" in r === false) r.updated_at = now;
-  // sensible bools
+  if (!("created_at" in r)) r.created_at = now;
+  if (!("updated_at" in r)) r.updated_at = now;
   if (table === "checklist_items") {
     if (r.done == null) r.done = false;
     if (r.note_shared == null) r.note_shared = false;
@@ -637,9 +637,16 @@ function withDefaults(table, row) {
   }
   return r;
 }
+// Build what we actually send to the server: original payload plus an `id`
+// (so children can FK to the parent before flush). Server fills the rest.
+function serverBody(originalRow, localRow) {
+  const out = { ...originalRow };
+  if (out.id == null && localRow?.id != null) out.id = localRow.id;
+  return out;
+}
 async function applyInsert(table, body) {
   const rows = Array.isArray(body) ? body : [body];
-  const filled = rows.map((r) => withDefaults(table, r));
+  const filled = rows.map((r) => withLocalDefaults(table, r));
   const current = await readTable(table);
   await writeTable(table, current.concat(filled));
   return filled;
