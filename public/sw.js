@@ -129,6 +129,17 @@ async function readTable(name) {
 async function writeTable(name, rows) {
   await snapPut(SNAP_TABLES, name, rows);
 }
+async function mergeRows(table, incoming) {
+  const rows = Array.isArray(incoming) ? incoming : [incoming];
+  const current = await readTable(table);
+  const byId = new Map(current.map((r) => [r?.id, r]));
+  for (const row of rows) {
+    if (row?.id == null) current.push(row);
+    else if (byId.has(row.id)) Object.assign(byId.get(row.id), row);
+    else { current.push(row); byId.set(row.id, row); }
+  }
+  await writeTable(table, current);
+}
 async function getBlob(key) {
   return await snapGet(SNAP_BLOBS, key);
 }
