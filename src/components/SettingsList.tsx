@@ -39,6 +39,7 @@ interface Setting {
   title: string;
   body: string;
   sort_order: number;
+  group_name: string | null;
   setting_photos: SettingPhoto[];
   setting_files: SettingFile[];
 }
