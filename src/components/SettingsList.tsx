@@ -338,15 +338,31 @@ function SettingsListInner({
     setClip(buildSettingClipMany(selected));
     action.setMode("none");
   };
+  const selectionKind: "setting" | "group" | null =
+    action.selection.size > 0
+      ? ((action.selection.values().next().value!.kind as unknown) as "setting" | "group")
+      : null;
+
   const confirmDelete = async () => {
-    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
-    if (selected.length === 0) { action.setMode("none"); return; }
+    if (action.selection.size === 0) { action.setMode("none"); return; }
     setConfirmDeleteOpen(true);
   };
 
   const performDelete = async () => {
-    const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
-    for (const s of selected) await removeOne(s);
+    if (selectionKind === "group") {
+      const selectedGroups = Array.from(action.selection.values()).map((s) => s.payload as SettingGroup);
+      for (const g of selectedGroups) {
+        await supabase.from("equipment_settings")
+          .update({ group_template_id: null })
+          .eq("group_template_id", g.template_id);
+        await supabase.from("equipment_setting_groups")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", g.id);
+      }
+    } else {
+      const selected = Array.from(action.selection.values()).map((s) => s.payload as Setting);
+      for (const s of selected) await removeOne(s);
+    }
     setConfirmDeleteOpen(false);
     action.setMode("none");
     load();
