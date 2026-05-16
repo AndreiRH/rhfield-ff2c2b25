@@ -175,30 +175,69 @@ function sameOriginAssetUrls(html, baseUrl) {
 async function cacheRoutesForOffline(routes, port) {
   const shell = await caches.open(CACHE_SHELL);
   const assets = await caches.open(CACHE_ASSETS);
-  let done = 0;
-  for (const route of routes || []) {
+  const list = routes || [];
+  // Figure out which routes still need warming.
+  const todo = [];
+  for (const route of list) {
     try {
       const u = new URL(route, self.location.origin);
-      const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
-      if (res && res.ok) {
-        await shell.put(u.href, res.clone());
-        const text = await res.clone().text().catch(() => "");
-        const urls = sameOriginAssetUrls(text, u.href);
-        await Promise.all(urls.map(async (assetUrl) => {
-          try {
-            const cached = await assets.match(assetUrl);
-            if (!cached) {
-              const ar = await fetch(assetUrl, { credentials: "include" });
-              if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
-            }
-          } catch {}
-        }));
+      const hit = await shell.match(u.href);
+      if (!hit) todo.push(u.href);
+    } catch {}
+  }
+
+  // For a SPA, every route returns the same index.html shell, so fetch the
+  // root once and reuse its bytes for each missing route. Falls back to a
+  // per-route fetch only if the root fetch fails.
+  let rootShellBytes = null;
+  let rootShellHeaders = null;
+  if (todo.length) {
+    try {
+      const rootRes = await fetch(new URL("/", self.location.origin).href, {
+        credentials: "include", cache: "no-store",
+      });
+      if (rootRes && rootRes.ok) {
+        rootShellBytes = await rootRes.clone().arrayBuffer();
+        rootShellHeaders = {};
+        rootRes.headers.forEach((v, k) => { rootShellHeaders[k] = v; });
+        // Refresh asset chunks referenced by the shell.
+        try {
+          const html = new TextDecoder().decode(rootShellBytes);
+          const urls = sameOriginAssetUrls(html, new URL("/", self.location.origin).href);
+          await Promise.all(urls.map(async (assetUrl) => {
+            try {
+              const cached = await assets.match(assetUrl);
+              if (!cached) {
+                const ar = await fetch(assetUrl, { credentials: "include" });
+                if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
+              }
+            } catch {}
+          }));
+        } catch {}
+      }
+    } catch {}
+  }
+
+  let done = 0;
+  // Already-cached routes count as done immediately.
+  const skipped = list.length - todo.length;
+  done = skipped;
+  try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
+
+  for (const href of todo) {
+    try {
+      if (rootShellBytes) {
+        const res = new Response(rootShellBytes.slice(0), { status: 200, headers: rootShellHeaders });
+        await shell.put(href, res);
+      } else {
+        const res = await fetch(href, { credentials: "include", cache: "no-store" });
+        if (res && res.ok) await shell.put(href, res.clone());
       }
     } catch {}
     done++;
-    try { port?.postMessage({ type: "progress", done, total: routes.length }); } catch {}
+    try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
   }
-  try { port?.postMessage({ type: "done", done, total: routes?.length ?? 0 }); } catch {}
+  try { port?.postMessage({ type: "done", done, total: list.length }); } catch {}
 }
 
 // ============================================================
