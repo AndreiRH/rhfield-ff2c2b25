@@ -487,14 +487,20 @@ function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section;
   );
 }
 
-function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount }: any) {
-  const [mode, setMode] = useState<string>(pe.mech_mode ?? "manual");
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount, lineNumber, equipmentId }: any) {
+  const modeKey = `assembly_mode_${lineNumber}_${equipmentId}`;
+  const [mode, setMode] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const v = window.localStorage.getItem(modeKey);
+      if (v === "manual" || v === "checklist") return v;
+    }
+    return pe.mech_mode ?? "manual";
+  });
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
-  const switchMode = async (m: string) => {
+  const switchMode = (m: string) => {
     setMode(m);
-    const { error } = await supabase.from("plant_equipment").update({ mech_mode: m }).eq("id", pe.id);
-    if (error) toast.error(error.message); else onChange();
+    if (typeof window !== "undefined") window.localStorage.setItem(modeKey, m);
   };
 
   const savePct = async () => {
