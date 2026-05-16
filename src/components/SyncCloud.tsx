@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Cloud, CloudOff } from "lucide-react";
-import { useOfflineStatus } from "@/lib/offline";
+import { useOfflineStatus, retryFailedOutbox, discardFailedOutbox } from "@/lib/offline";
 
 // Single cloud icon in the header that doubles as a sync-status control.
 //   online + idle         → plain cloud, muted
@@ -10,7 +10,7 @@ import { useOfflineStatus } from "@/lib/offline";
 // Click (when online) toggles a small, semi-transparent popover with phase
 // counts. Click outside closes it.
 export function SyncCloud() {
-  const { online, pending, warm } = useOfflineStatus();
+  const { online, pending, failed, warm } = useOfflineStatus();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +51,31 @@ export function SyncCloud() {
           </div>
 
           <Row label="Pending edits" value={pending} />
+          {failed > 0 && (
+            <div className="mt-1 flex items-center justify-between py-0.5 text-destructive">
+              <span>Failed ({failed})</span>
+              <span className="flex gap-2">
+                <button
+                  type="button"
+                  className="underline hover:no-underline"
+                  onClick={() => retryFailedOutbox()}
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  className="underline hover:no-underline"
+                  onClick={() => {
+                    if (window.confirm(`Discard ${failed} failed change(s)? This cannot be undone.`)) {
+                      discardFailedOutbox();
+                    }
+                  }}
+                >
+                  Discard
+                </button>
+              </span>
+            </div>
+          )}
           {warm.total > 0 ? (
             <Row
               label={phaseLabel(warm.phase)}

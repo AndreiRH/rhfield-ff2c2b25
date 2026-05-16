@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v8";
+const VER = "v9";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -71,12 +71,27 @@ async function outboxDelete(id) {
   });
 }
 async function outboxCount() {
+  const items = await outboxAll();
+  return items.filter((it) => !it?.failed).length;
+}
+async function outboxStats() {
+  const items = await outboxAll();
+  let pending = 0, failed = 0;
+  for (const it of items) { if (it?.failed) failed++; else pending++; }
+  return { pending, failed };
+}
+async function outboxUpdate(id, patch) {
   const db = await openOutbox();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(OUTBOX_STORE, "readonly");
-    const r = tx.objectStore(OUTBOX_STORE).count();
-    r.onsuccess = () => res(r.result || 0);
-    r.onerror = () => rej(r.error);
+  await new Promise((res, rej) => {
+    const tx = db.transaction(OUTBOX_STORE, "readwrite");
+    const store = tx.objectStore(OUTBOX_STORE);
+    const g = store.get(id);
+    g.onsuccess = () => {
+      const cur = g.result;
+      if (cur) { Object.assign(cur, patch); store.put(cur); }
+    };
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
   });
 }
 
@@ -164,7 +179,10 @@ async function broadcast(msg) {
   cs.forEach((c) => c.postMessage(msg));
 }
 async function broadcastQueueCount() {
-  try { await broadcast({ type: "rhfield-queue", count: await outboxCount() }); } catch {}
+  try {
+    const s = await outboxStats();
+    await broadcast({ type: "rhfield-queue", count: s.pending, failed: s.failed });
+  } catch {}
 }
 async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
@@ -868,15 +886,36 @@ async function flushQueue() {
   let progressed = false;
   let failures = 0;
   let stalled = false;
+  let authExpired = false;
   const failureSamples = [];
   for (const item of items) {
+    if (item.failed) continue; // skip already-failed; user must Retry/Discard
     try {
+      // If we've seen a fresher auth header since this item was queued, use it.
+      const headers = { ...(item.headers || {}) };
+      if (latestAuthHeader && headers.authorization && headers.authorization !== latestAuthHeader) {
+        headers.authorization = latestAuthHeader;
+      }
       const res = await fetch(item.url, {
         method: item.method,
-        headers: item.headers,
+        headers,
         body: item.body || undefined,
       });
       if (res.ok) { await outboxDelete(item.id); progressed = true; continue; }
+
+      // 401 → likely JWT expired. Ask the client to refresh the session and
+      // bail out of this flush; the client will re-trigger flush once it has
+      // a fresh token. Only do this once per item — second 401 falls through
+      // to the failed path so we don't loop forever.
+      if (res.status === 401 && !item.authRetried) {
+        let body401 = "";
+        try { body401 = (await res.clone().text()).slice(0, 300); } catch {}
+        await outboxUpdate(item.id, { authRetried: true, lastStatus: 401, lastError: body401 });
+        authExpired = true;
+        stalled = true;
+        break;
+      }
+
       // 4xx → server rejected. Do NOT delete — mark as failed so the row stays
       // in the local snapshot and the user/dev can investigate. Previously we
       // dropped these silently, which is what caused offline child rows
@@ -888,26 +927,12 @@ async function flushQueue() {
         if (failureSamples.length < 5) {
           failureSamples.push({ url: item.url, method: item.method, status: res.status, body: snippet });
         }
-        try {
-          const db = await openOutbox();
-          await new Promise((res2, rej) => {
-            const tx = db.transaction(OUTBOX_STORE, "readwrite");
-            const store = tx.objectStore(OUTBOX_STORE);
-            const getReq = store.get(item.id);
-            getReq.onsuccess = () => {
-              const cur = getReq.result;
-              if (cur) {
-                cur.failed = true;
-                cur.lastStatus = res.status;
-                cur.lastError = snippet;
-                cur.failedAt = Date.now();
-                store.put(cur);
-              }
-            };
-            tx.oncomplete = () => res2();
-            tx.onerror = () => rej(tx.error);
-          });
-        } catch {}
+        await outboxUpdate(item.id, {
+          failed: true,
+          lastStatus: res.status,
+          lastError: snippet,
+          failedAt: Date.now(),
+        });
         continue;
       }
       stalled = true;
@@ -916,16 +941,38 @@ async function flushQueue() {
   }
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
+  if (authExpired) {
+    try { await broadcast({ type: "rhfield-auth-expired" }); } catch {}
+  }
   try {
+    const s = await outboxStats();
     await broadcast({
       type: "rhfield-flush-complete",
-      remaining: await outboxCount(),
+      remaining: s.pending,
+      failedCount: s.failed,
       failures,
       failureSamples,
       stalled,
     });
   } catch {}
   return { failures, stalled };
+}
+async function retryFailedOutbox() {
+  const items = await outboxAll();
+  for (const it of items) {
+    if (it?.failed) {
+      await outboxUpdate(it.id, { failed: false, authRetried: false, lastStatus: null, lastError: null, failedAt: null });
+    }
+  }
+  await flushQueue();
+}
+async function discardFailedOutbox() {
+  const items = await outboxAll();
+  for (const it of items) {
+    if (it?.failed) await outboxDelete(it.id);
+  }
+  broadcastQueueCount();
+  broadcastDataChanged();
 }
 async function queueRequest(req, bodyOverride = null) {
   const headers = {};
@@ -961,6 +1008,8 @@ self.addEventListener("message", (e) => {
   if (d.type === "rhfield-queue?")    e.waitUntil(broadcastQueueCount());
   if (d.type === "rhfield-cache-routes") e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
+  if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
+  if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
 });
 
 // ============================================================
