@@ -588,7 +588,7 @@ function SettingsGroupedList({
   rows, renderRow,
 }: {
   rows: Setting[];
-  renderRow: (s: Setting) => React.ReactNode;
+  renderRow: (s: Setting) => ReactNode;
 }) {
   // Preserve global sort_order; bucket by group_name; ungrouped first.
   const groups: { key: string; name: string | null; items: Setting[] }[] = [];
@@ -631,7 +631,7 @@ function SettingsGroupSection({
 }: {
   name: string;
   items: Setting[];
-  renderRow: (s: Setting) => React.ReactNode;
+  renderRow: (s: Setting) => ReactNode;
 }) {
   const storageKey = `settings_group_collapsed_${name}`;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
