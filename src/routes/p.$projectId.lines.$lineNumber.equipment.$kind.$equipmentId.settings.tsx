@@ -59,14 +59,14 @@ function EquipmentSettingsPage() {
           <Skeleton className="h-40" />
         ) : (
           <>
-            <div className="mb-4 flex items-end justify-between gap-2 border-b pb-4">
+            <div className="mb-6 flex items-start justify-between gap-3 border-b pb-4">
               <div>
                 <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                   Production line {lineNumber} · {plantLabel} · {data.pe.name}
                 </span>
                 <h1 className="text-3xl font-semibold">Settings</h1>
               </div>
-              <Button asChild size="sm" variant="outline" title="View log" aria-label="View log">
+              <Button asChild size="sm" variant="outline" className="shrink-0 self-start" title="View log" aria-label="View log">
                 <Link
                   to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings/log"
                   params={{ projectId, lineNumber, kind, equipmentId }}
