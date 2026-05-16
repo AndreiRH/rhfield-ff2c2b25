@@ -66,6 +66,7 @@ function SettingsListInner({
   const [rows, setRows] = useState<Setting[]>([]);
   const [groups, setGroups] = useState<SettingGroup[]>([]);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { clip, set: setClip, clear: clearClip, lockTo } = useClipboard();
   const settingPasteLocationKey = `setting:${equipmentId}`;
   const action = useTreeAction()!;
