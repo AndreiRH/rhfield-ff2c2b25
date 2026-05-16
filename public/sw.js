@@ -1045,6 +1045,17 @@ self.addEventListener("message", (e) => {
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
   if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
   if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
+  if (d.type === "rhfield-get-blob") {
+    const port = e.ports?.[0];
+    e.waitUntil((async () => {
+      let blob = null;
+      try {
+        const stored = await getBlob(`${d.bucket}/${d.path}`);
+        if (isValidStoredBlob(stored)) blob = stored.blob;
+      } catch {}
+      try { port?.postMessage({ blob }); } catch {}
+    })());
+  }
 });
 
 // ============================================================
