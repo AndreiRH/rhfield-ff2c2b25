@@ -278,22 +278,22 @@ function SettingsListInner({
           <p className="text-sm text-muted-foreground">No settings yet.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={rows.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-2">
-                {rows.map((s) => (
-                  <SettingRow
-                    key={s.id} setting={s} canEdit={canEdit}
-                    open={openIds.has(s.id)}
-                    onToggleOpen={() => toggleOpen(s.id)}
-                    onTitle={(t: string) => updateTitle(s.id, t)}
-                    onBody={(b: string) => updateBody(s.id, b)}
-                    onReload={load}
-                    plantEquipmentId={equipmentId}
-                    userId={userId}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
+            <SettingsGroupedList
+              rows={rows}
+              renderRow={(s) => (
+                <SettingRow
+                  key={s.id} setting={s} canEdit={canEdit}
+                  open={openIds.has(s.id)}
+                  onToggleOpen={() => toggleOpen(s.id)}
+                  onTitle={(t: string) => updateTitle(s.id, t)}
+                  onBody={(b: string) => updateBody(s.id, b)}
+                  onGroup={(g: string) => updateGroup(s.id, g)}
+                  onReload={load}
+                  plantEquipmentId={equipmentId}
+                  userId={userId}
+                />
+              )}
+            />
           </DndContext>
         )}
       </CardContent>
