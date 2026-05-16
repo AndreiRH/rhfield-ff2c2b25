@@ -89,17 +89,82 @@ function AiSearchPage() {
 
   const [question, setQuestion] = useState("");
   const [scopeLineId, setScopeLineId] = useState<string>("all");
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [usedOffline, setUsedOffline] = useState(false);
+  const [syncing, setSyncing] = useState<null | { phase: string; done: number; total: number }>(null);
+  const [lastSync, setLastSync] = useState<number | null>(null);
+  const [cacheInfo, setCacheInfo] = useState<{ rows: number; bytes: number } | null>(null);
+
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  const refreshCacheInfo = async () => {
+    setCacheInfo(await getCacheSize(projectId));
+    const s = await offlineDB.sync_state.get(projectId);
+    setLastSync(s?.last_full_sync_at ?? null);
+  };
+
+  useEffect(() => { refreshCacheInfo(); }, [projectId]);
+
+  // Auto-sync on mount + when coming online
+  useEffect(() => {
+    if (!session) return;
+    if (navigator.onLine) scheduleBackgroundSync(projectId);
+    const onOnline = () => scheduleBackgroundSync(projectId);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [session, projectId]);
+
+  const doSync = async () => {
+    if (!navigator.onLine) {
+      toast.error("You're offline. Connect to sync.");
+      return;
+    }
+    setSyncing({ phase: "starting", done: 0, total: 0 });
+    try {
+      await syncProject(projectId, (info) => setSyncing(info));
+      toast.success("Cache up to date.");
+      await refreshCacheInfo();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Sync failed");
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const search = useServerFn(runAiSearch);
-  const mutation = useMutation({
-    mutationFn: () =>
-      search({
-        data: {
-          projectId,
-          question: question.trim(),
-          scope: scopeLineId === "all" ? {} : { lineId: scopeLineId },
-        },
-      }),
+  const mutation = useMutation<SearchResponse>({
+    mutationFn: async () => {
+      const params = {
+        projectId,
+        question: question.trim(),
+        scope: scopeLineId === "all" ? {} : { lineId: scopeLineId },
+      };
+      if (!navigator.onLine) {
+        setUsedOffline(true);
+        return await runOfflineSearch(projectId, params.question, params.scope);
+      }
+      try {
+        const r = await search({ data: params });
+        setUsedOffline(false);
+        return r;
+      } catch (err) {
+        // Online RPC failed — fall back to local cache.
+        setUsedOffline(true);
+        toast.message("Online search failed — using offline cache.");
+        return await runOfflineSearch(projectId, params.question, params.scope);
+      }
+    },
     onError: (e: any) => toast.error(e?.message ?? "Search failed"),
   });
 
