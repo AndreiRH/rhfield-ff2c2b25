@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v5";
+const VER = "v6";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -175,30 +175,69 @@ function sameOriginAssetUrls(html, baseUrl) {
 async function cacheRoutesForOffline(routes, port) {
   const shell = await caches.open(CACHE_SHELL);
   const assets = await caches.open(CACHE_ASSETS);
-  let done = 0;
-  for (const route of routes || []) {
+  const list = routes || [];
+  // Figure out which routes still need warming.
+  const todo = [];
+  for (const route of list) {
     try {
       const u = new URL(route, self.location.origin);
-      const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
-      if (res && res.ok) {
-        await shell.put(u.href, res.clone());
-        const text = await res.clone().text().catch(() => "");
-        const urls = sameOriginAssetUrls(text, u.href);
-        await Promise.all(urls.map(async (assetUrl) => {
-          try {
-            const cached = await assets.match(assetUrl);
-            if (!cached) {
-              const ar = await fetch(assetUrl, { credentials: "include" });
-              if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
-            }
-          } catch {}
-        }));
+      const hit = await shell.match(u.href);
+      if (!hit) todo.push(u.href);
+    } catch {}
+  }
+
+  // For a SPA, every route returns the same index.html shell, so fetch the
+  // root once and reuse its bytes for each missing route. Falls back to a
+  // per-route fetch only if the root fetch fails.
+  let rootShellBytes = null;
+  let rootShellHeaders = null;
+  if (todo.length) {
+    try {
+      const rootRes = await fetch(new URL("/", self.location.origin).href, {
+        credentials: "include", cache: "no-store",
+      });
+      if (rootRes && rootRes.ok) {
+        rootShellBytes = await rootRes.clone().arrayBuffer();
+        rootShellHeaders = {};
+        rootRes.headers.forEach((v, k) => { rootShellHeaders[k] = v; });
+        // Refresh asset chunks referenced by the shell.
+        try {
+          const html = new TextDecoder().decode(rootShellBytes);
+          const urls = sameOriginAssetUrls(html, new URL("/", self.location.origin).href);
+          await Promise.all(urls.map(async (assetUrl) => {
+            try {
+              const cached = await assets.match(assetUrl);
+              if (!cached) {
+                const ar = await fetch(assetUrl, { credentials: "include" });
+                if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
+              }
+            } catch {}
+          }));
+        } catch {}
+      }
+    } catch {}
+  }
+
+  let done = 0;
+  // Already-cached routes count as done immediately.
+  const skipped = list.length - todo.length;
+  done = skipped;
+  try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
+
+  for (const href of todo) {
+    try {
+      if (rootShellBytes) {
+        const res = new Response(rootShellBytes.slice(0), { status: 200, headers: rootShellHeaders });
+        await shell.put(href, res);
+      } else {
+        const res = await fetch(href, { credentials: "include", cache: "no-store" });
+        if (res && res.ok) await shell.put(href, res.clone());
       }
     } catch {}
     done++;
-    try { port?.postMessage({ type: "progress", done, total: routes.length }); } catch {}
+    try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
   }
-  try { port?.postMessage({ type: "done", done, total: routes?.length ?? 0 }); } catch {}
+  try { port?.postMessage({ type: "done", done, total: list.length }); } catch {}
 }
 
 // ============================================================
@@ -566,25 +605,25 @@ async function snapshotResponse(url, req) {
 // ============================================================
 // Apply mutation to local snapshot
 // ============================================================
-const SCHEMA_DEFAULTS = {
-  // tables that auto-set timestamp/uuid columns server-side; we mirror locally.
-  // All tables share id (uuid). Many share created_at/updated_at.
-};
+// Locally-augmented defaults. These are written into the IndexedDB snapshot
+// so offline queries look complete (timestamps, sort_order, bool defaults),
+// but most of them must NOT be sent back to PostgREST — the columns may not
+// exist (e.g. `updated_at` is absent on `components`, `equipment_groups`,
+// `*_photos`, `*_files`, `milestones`, ...) and the server would reject the
+// whole row with a 400, silently losing the queued write.
 function uuid() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
-  // RFC4122-ish fallback
   const b = self.crypto.getRandomValues(new Uint8Array(16));
   b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
   const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
 }
-function withDefaults(table, row) {
+function withLocalDefaults(table, row) {
   const r = { ...row };
   if (r.id == null) r.id = uuid();
   const now = new Date().toISOString();
-  if ("created_at" in r === false) r.created_at = now;
-  if ("updated_at" in r === false) r.updated_at = now;
-  // sensible bools
+  if (!("created_at" in r)) r.created_at = now;
+  if (!("updated_at" in r)) r.updated_at = now;
   if (table === "checklist_items") {
     if (r.done == null) r.done = false;
     if (r.note_shared == null) r.note_shared = false;
@@ -598,9 +637,16 @@ function withDefaults(table, row) {
   }
   return r;
 }
+// Build what we actually send to the server: original payload plus an `id`
+// (so children can FK to the parent before flush). Server fills the rest.
+function serverBody(originalRow, localRow) {
+  const out = { ...originalRow };
+  if (out.id == null && localRow?.id != null) out.id = localRow.id;
+  return out;
+}
 async function applyInsert(table, body) {
   const rows = Array.isArray(body) ? body : [body];
-  const filled = rows.map((r) => withDefaults(table, r));
+  const filled = rows.map((r) => withLocalDefaults(table, r));
   const current = await readTable(table);
   await writeTable(table, current.concat(filled));
   return filled;
@@ -671,6 +717,9 @@ function storagePathFromUrl(url) {
 async function flushQueue() {
   const items = await outboxAll();
   let progressed = false;
+  let failures = 0;
+  let stalled = false;
+  const failureSamples = [];
   for (const item of items) {
     try {
       const res = await fetch(item.url, {
@@ -679,15 +728,32 @@ async function flushQueue() {
         body: item.body || undefined,
       });
       if (res.ok) { await outboxDelete(item.id); progressed = true; continue; }
-      // Drop unrecoverable client errors (e.g. row already gone), keep server errors for retry.
+      // Unrecoverable client error: drop, but record so the client can surface it.
       if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+        failures++;
+        if (failureSamples.length < 5) {
+          let snippet = "";
+          try { snippet = (await res.clone().text()).slice(0, 300); } catch {}
+          failureSamples.push({ url: item.url, method: item.method, status: res.status, body: snippet });
+        }
         await outboxDelete(item.id); progressed = true; continue;
       }
+      stalled = true;
       break;
-    } catch { break; } // still offline
+    } catch { stalled = true; break; } // still offline
   }
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
+  try {
+    await broadcast({
+      type: "rhfield-flush-complete",
+      remaining: await outboxCount(),
+      failures,
+      failureSamples,
+      stalled,
+    });
+  } catch {}
+  return { failures, stalled };
 }
 async function queueRequest(req, bodyOverride = null) {
   const headers = {};
@@ -779,7 +845,7 @@ self.addEventListener("fetch", (event) => {
                 } catch {}
                 const inserted = serverRows && serverRows.length
                   ? serverRows
-                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withDefaults(table, r));
+                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withLocalDefaults(table, r));
                 const cur = await readTable(table);
                 await writeTable(table, cur.concat(inserted));
               } else if (req.method === "PATCH" && bodyJson) {
@@ -803,9 +869,18 @@ self.addEventListener("fetch", (event) => {
             broadcastDataChanged();
           } catch {}
 
-          const queuedBody = req.method === "POST" && bodyJson
-            ? JSON.stringify(Array.isArray(bodyJson) ? resultRows : (resultRows[0] ?? bodyJson))
-            : null;
+          // For POST replay, send the ORIGINAL client payload + the locally-
+          // generated id (so children can FK to it). Do NOT send the synthetic
+          // created_at/updated_at/etc. from withLocalDefaults — many tables
+          // don't have those columns and PostgREST would 400 the whole row.
+          let queuedBody = null;
+          if (req.method === "POST" && bodyJson) {
+            if (Array.isArray(bodyJson)) {
+              queuedBody = JSON.stringify(bodyJson.map((orig, i) => serverBody(orig, resultRows[i])));
+            } else {
+              queuedBody = JSON.stringify(serverBody(bodyJson, resultRows[0]));
+            }
+          }
           await queueRequest(req, queuedBody);
 
           // Build a Supabase-compatible response.

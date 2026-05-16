@@ -19,25 +19,30 @@ export function AppHeader() {
           <img src={riedhammerLogo} alt="Riedhammer" className="h-6 w-auto" />
           Riedhammer Field
         </Link>
-        <div className="flex items-center gap-3">
-          {(!online || pending > 0 || syncing) && (
+        <div className="flex items-center gap-2">
+          {!online && (
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider ${
-                online ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"
-              }`}
-              title={
-                !online ? `Offline${pending ? ` — ${pending} change(s) waiting to sync` : " — all changes saved locally"}`
-                : syncing ? `Caching ${phaseLabel} for offline use: ${warm.done} / ${warm.total}`
-                : `${pending} change(s) waiting to sync`
-              }
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
+              title={pending > 0 ? `Offline — ${pending} change(s) waiting to sync` : "Offline — all changes saved locally"}
             >
-              {!online ? (
-                <><CloudOff className="h-3 w-3" /> Offline{pending > 0 ? ` · ${pending}` : ""}</>
-              ) : syncing ? (
-                <><RefreshCw className="h-3 w-3 animate-spin" /> Sync {phaseLabel} {warm.done}/{warm.total}</>
-              ) : (
-                <><RefreshCw className="h-3 w-3 animate-spin" /> Sync {pending}</>
-              )}
+              <CloudOff className="h-3 w-3" /> Offline{pending > 0 ? ` · ${pending}` : ""}
+            </span>
+          )}
+          {online && pending > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
+              title={`${pending} change(s) waiting to sync`}
+            >
+              <RefreshCw className="h-3 w-3 animate-spin" /> {pending}
+            </span>
+          )}
+          {online && pending === 0 && syncing && (
+            <span
+              className="inline-flex items-center text-muted-foreground/60"
+              title={`Syncing ${phaseLabel} ${warm.done}/${warm.total}`}
+              aria-label="Syncing"
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
             </span>
           )}
           {user && (
