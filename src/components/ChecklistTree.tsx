@@ -21,6 +21,7 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { localUuid } from "@/lib/local-id";
 
 export function ChecklistTree({
   componentId, items, canEdit, onChange,
@@ -51,7 +52,7 @@ export function ChecklistTree({
   const addItem = async () => {
     if (!text.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
-      component_id: componentId, label: text.trim(), sort_order: rootItems.length,
+      id: localUuid(), component_id: componentId, label: text.trim(), sort_order: rootItems.length,
     });
     if (error) toast.error(error.message);
     else { setText(""); setAdding(false); onChange(); }
@@ -259,7 +260,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const addSub = async () => {
     if (!subText.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
-      component_id: item.component_id, label: subText.trim(),
+      id: localUuid(), component_id: item.component_id, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
     });
     if (error) toast.error(error.message);
@@ -269,14 +270,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    await supabase.from("item_photos").insert({ item_id: item.id, storage_path: path });
+    await supabase.from("item_photos").insert({ id: localUuid(), item_id: item.id, storage_path: path });
     setOpen(true); setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    await supabase.from("item_files").insert({ item_id: item.id, storage_path: path, file_name: file.name });
+    await supabase.from("item_files").insert({ id: localUuid(), item_id: item.id, storage_path: path, file_name: file.name });
     setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
