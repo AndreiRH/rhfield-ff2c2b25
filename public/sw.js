@@ -680,11 +680,105 @@ function serverBody(originalRow, localRow) {
   if (out.template_id == null && localRow?.template_id != null) out.template_id = localRow.template_id;
   return out;
 }
+async function appendReplicas(table, rows) {
+  if (!rows.length) return;
+  const current = await readTable(table);
+  const byId = new Set(current.map((r) => r?.id));
+  await writeTable(table, current.concat(rows.filter((r) => !byId.has(r.id))));
+}
+function cloneForParent(row, parentPatch) {
+  const { id: _id, created_at: _created_at, updated_at: _updated_at, ...rest } = row;
+  return withLocalDefaults("", { ...rest, ...parentPatch, id: uuid(), created_at: new Date().toISOString() });
+}
+async function replicateInsertLocally(table, inserted) {
+  if (!inserted.length) return;
+  if (table === "plant_equipment") {
+    const lines = await readTable("lines");
+    for (const row of inserted) {
+      const sourceLine = lines.find((l) => l.id === row.line_id);
+      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
+      await appendReplicas("plant_equipment", siblings.map((l) => cloneForParent(row, { line_id: l.id })));
+    }
+  } else if (table === "equipment_groups") {
+    const lines = await readTable("lines");
+    const plant = await readTable("plant_equipment");
+    for (const row of inserted) {
+      const sourceLine = lines.find((l) => l.id === row.line_id);
+      const sourcePe = row.plant_equipment_id ? plant.find((p) => p.id === row.plant_equipment_id) : null;
+      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
+      const replicas = siblings.map((l) => {
+        const sibPe = sourcePe ? plant.find((p) => p.line_id === l.id && p.template_id === sourcePe.template_id) : null;
+        return cloneForParent(row, { line_id: l.id, plant_equipment_id: sibPe?.id ?? null });
+      }).filter((r) => !row.plant_equipment_id || r.plant_equipment_id);
+      await appendReplicas("equipment_groups", replicas);
+    }
+  } else if (table === "component_types") {
+    const groups = await readTable("equipment_groups");
+    for (const row of inserted) {
+      const sourceGroup = groups.find((g) => g.id === row.equipment_group_id);
+      const siblings = groups.filter((g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_group_id);
+      await appendReplicas("component_types", siblings.map((g) => cloneForParent(row, { equipment_group_id: g.id })));
+    }
+  } else if (table === "components") {
+    const groups = await readTable("equipment_groups");
+    const types = await readTable("component_types");
+    for (const row of inserted) {
+      if (row.component_type_id) {
+        const sourceType = types.find((t) => t.id === row.component_type_id);
+        const siblings = types.filter((t) => t.template_id === sourceType?.template_id && t.id !== row.component_type_id);
+        await appendReplicas("components", siblings.map((t) => cloneForParent(row, { component_type_id: t.id, equipment_id: null })));
+      } else if (row.equipment_id) {
+        const sourceGroup = groups.find((g) => g.id === row.equipment_id);
+        const siblings = groups.filter((g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_id);
+        await appendReplicas("components", siblings.map((g) => cloneForParent(row, { equipment_id: g.id, component_type_id: null })));
+      }
+    }
+  } else if (table === "checklist_items") {
+    const comps = await readTable("components");
+    const items = await readTable("checklist_items");
+    for (const row of inserted) {
+      const sourceComp = comps.find((c) => c.id === row.component_id);
+      const siblings = comps.filter((c) => c.template_id === sourceComp?.template_id && c.id !== row.component_id);
+      const replicas = siblings.map((c) => {
+        let parent_item_id = null;
+        if (row.parent_item_id) {
+          const sourceParent = items.find((i) => i.id === row.parent_item_id);
+          const siblingParent = items.find((i) => i.component_id === c.id && i.template_id === sourceParent?.template_id);
+          if (!siblingParent) return null;
+          parent_item_id = siblingParent.id;
+        }
+        return cloneForParent(row, { component_id: c.id, parent_item_id });
+      }).filter(Boolean);
+      await appendReplicas("checklist_items", replicas);
+    }
+  } else if (table === "pa_folders") {
+    const lines = await readTable("lines");
+    for (const row of inserted) {
+      const sourceLine = lines.find((l) => l.id === row.line_id);
+      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
+      await appendReplicas("pa_folders", siblings.map((l) => cloneForParent(row, { line_id: l.id })));
+    }
+  }
+}
+async function propagateUpdateLocally(table, matched, patch) {
+  if (!matched.length || !["plant_equipment", "equipment_groups", "component_types", "components", "checklist_items", "pa_folders"].includes(table)) return;
+  const current = await readTable(table);
+  const templates = new Set(matched.map((r) => r.template_id).filter(Boolean));
+  if (!templates.size) return;
+  const sourceIds = new Set(matched.map((r) => r.id));
+  const sharePatch = { ...patch };
+  if ((table === "components" || table === "checklist_items") && !(patch.note_shared || matched.some((r) => r.note_shared))) {
+    delete sharePatch.note;
+    delete sharePatch.note_shared;
+  }
+  await writeTable(table, current.map((r) => templates.has(r.template_id) && !sourceIds.has(r.id) ? { ...r, ...sharePatch, updated_at: new Date().toISOString() } : r));
+}
 async function applyInsert(table, body) {
   const rows = Array.isArray(body) ? body : [body];
   const filled = rows.map((r) => withLocalDefaults(table, r));
   const current = await readTable(table);
   await writeTable(table, current.concat(filled));
+  await replicateInsertLocally(table, filled);
   return filled;
 }
 function getFiltersFromUrl(url) {
