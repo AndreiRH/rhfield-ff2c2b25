@@ -1348,7 +1348,14 @@ self.addEventListener("fetch", (event) => {
         if (local) return local;
         const cache = await caches.open(CACHE_BLOBS);
         const cached = await cache.match(req);
-        if (cached) return cached;
+        if (cached) {
+          const ct = cached.headers.get("Content-Type") || "";
+          if (!isServableMediaType(ct)) {
+            cache.delete(req).catch(() => {});
+          } else {
+            return cached;
+          }
+        }
         if (info && latestAuthHeader && isSupabaseStorage(url)) {
           try {
             const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
