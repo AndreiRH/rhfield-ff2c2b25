@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v6";
+const VER = "v7";
 const CACHE_SHELL  = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
 const CACHE_DATA   = `rhfield-data-${VER}`;
@@ -129,6 +129,17 @@ async function readTable(name) {
 async function writeTable(name, rows) {
   await snapPut(SNAP_TABLES, name, rows);
 }
+async function mergeRows(table, incoming) {
+  const rows = Array.isArray(incoming) ? incoming : [incoming];
+  const current = await readTable(table);
+  const byId = new Map(current.map((r) => [r?.id, r]));
+  for (const row of rows) {
+    if (row?.id == null) current.push(row);
+    else if (byId.has(row.id)) Object.assign(byId.get(row.id), row);
+    else { current.push(row); byId.set(row.id, row); }
+  }
+  await writeTable(table, current);
+}
 async function getBlob(key) {
   return await snapGet(SNAP_BLOBS, key);
 }
@@ -157,6 +168,13 @@ async function broadcastQueueCount() {
 }
 async function broadcastDataChanged() {
   try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
+}
+let latestAuthHeader = null;
+function rememberAuth(req) {
+  try {
+    const auth = req.headers.get("authorization");
+    if (auth) latestAuthHeader = auth;
+  } catch {}
 }
 
 function sameOriginAssetUrls(html, baseUrl) {
@@ -280,6 +298,7 @@ self.addEventListener("activate", (e) => {
 // ============================================================
 function isSupabaseRest(url)    { return /\.supabase\.co\/rest\/v1\//.test(url.href); }
 function isSupabaseStorage(url) { return /\.supabase\.co\/storage\/v1\//.test(url.href); }
+function isLocalSyntheticStorage(url) { return url.origin === self.location.origin && /^\/object\/(?:sign|authenticated|public)\//.test(url.pathname); }
 function isSupabaseAuth(url)    { return /\.supabase\.co\/auth\/v1\//.test(url.href); }
 function isSupabaseRealtime(url){ return /\.supabase\.co\/realtime\/v1\//.test(url.href); }
 
@@ -482,6 +501,19 @@ async function expandEmbeds(table, rows, embeds) {
       const matches = childRows.filter((c) => c?.[rel.fk] === parent.id);
       const projected = await expandEmbeds(rel.table, matches.map((m) => projectRow(m, inner.columns)), inner.embeds);
       parent[emb.name] = projected;
+    }
+  }
+  if (table === "equipment_groups" && embeds.some((e) => e.name === "component_types")) {
+    const componentEmbeds = embeds.find((e) => e.name === "component_types")?.select ?? "id";
+    const typeInner = parseSelect(componentEmbeds);
+    const componentSelect = typeInner.embeds.find((e) => e.name === "components")?.select;
+    if (componentSelect) {
+      const compInner = parseSelect(componentSelect);
+      const components = childCache.components || (childCache.components = await readTable("components"));
+      for (const parent of rows) {
+        const direct = components.filter((c) => c?.equipment_id === parent.id && !c?.component_type_id);
+        parent.components = await expandEmbeds("components", direct.map((m) => projectRow(m, compInner.columns)), compInner.embeds);
+      }
     }
   }
   return rows;
@@ -706,9 +738,13 @@ function storagePathFromUrl(url) {
   //   /storage/v1/object/sign/<bucket>/<path>       (signed-URL GET)
   //   /storage/v1/object/authenticated/<bucket>/<path>
   //   /storage/v1/object/public/<bucket>/<path>
-  const m = url.pathname.match(/\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  //   /storage/v1/render/image/sign/<bucket>/<path> (image transform signed URL)
+  //   /object/sign/<bucket>/<path>                  (local synthetic signed URL)
+  let m = url.pathname.match(/\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  if (!m) m = url.pathname.match(/\/storage\/v1\/render\/image\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  if (!m) m = url.pathname.match(/\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
   if (!m) return null;
-  return { bucket: decodeURIComponent(m[1]), path: decodeURIComponent(m[2].split("?")[0]) };
+  return { bucket: decodeURIComponent(m[1]), path: decodeURIComponent(m[2]) };
 }
 
 // ============================================================
@@ -724,10 +760,6 @@ async function flushQueue() {
   let stalled = false;
   const failureSamples = [];
   for (const item of items) {
-    // Skip items previously marked as failed — we keep them in the queue so the
-    // user knows something needs attention and so a follow-up `warmUp` doesn't
-    // overwrite their local snapshot with server data missing these rows.
-    if (item.failed) { failures++; continue; }
     try {
       const res = await fetch(item.url, {
         method: item.method,
@@ -827,6 +859,7 @@ self.addEventListener("message", (e) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  rememberAuth(req);
 
   // Pass-through auth/realtime — must hit network always.
   if (isSupabaseAuth(url) || isSupabaseRealtime(url)) return;
@@ -873,11 +906,11 @@ self.addEventListener("fetch", (event) => {
                     }
                   }
                 } catch {}
+                const originalRows = Array.isArray(bodyJson) ? bodyJson : [bodyJson];
                 const inserted = serverRows && serverRows.length
-                  ? serverRows
-                  : (Array.isArray(bodyJson) ? bodyJson : [bodyJson]).map((r) => withLocalDefaults(table, r));
-                const cur = await readTable(table);
-                await writeTable(table, cur.concat(inserted));
+                  ? serverRows.map((row, i) => withLocalDefaults(table, { ...(originalRows[i] || {}), ...row }))
+                  : originalRows.map((r) => withLocalDefaults(table, r));
+                await mergeRows(table, inserted);
               } else if (req.method === "PATCH" && bodyJson) {
                 await applyUpdate(table, url, bodyJson);
               } else if (req.method === "DELETE") {
@@ -966,9 +999,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   // ---------------- Supabase Storage ----------------
-  if (isSupabaseStorage(url)) {
+  if (isSupabaseStorage(url) || isLocalSyntheticStorage(url)) {
     // createSignedUrl(s) — POST /storage/v1/object/sign/<bucket>[/<path>]
-    if (req.method === "POST" && /\/storage\/v1\/object\/sign\//.test(url.pathname)) {
+    if (isSupabaseStorage(url) && req.method === "POST" && /\/storage\/v1\/object\/sign\//.test(url.pathname)) {
       event.respondWith((async () => {
         let netRes = null;
         try { netRes = await fetch(req.clone()); } catch {}
@@ -999,7 +1032,7 @@ self.addEventListener("fetch", (event) => {
     }
 
     // Storage uploads: POST/PUT /storage/v1/object/<bucket>/<path>
-    if ((req.method === "POST" || req.method === "PUT") && /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname)
+    if (isSupabaseStorage(url) && (req.method === "POST" || req.method === "PUT") && /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname)
         && !/\/storage\/v1\/object\/sign\//.test(url.pathname)) {
       event.respondWith((async () => {
         const info = storagePathFromUrl(url);
@@ -1033,7 +1066,7 @@ self.addEventListener("fetch", (event) => {
     }
 
     // Storage REMOVE: DELETE /storage/v1/object/<bucket>  body={prefixes:[...]}
-    if (req.method === "DELETE") {
+    if (isSupabaseStorage(url) && req.method === "DELETE") {
       event.respondWith((async () => {
         let body = null;
         try { body = JSON.parse(await req.clone().text() || "null"); } catch {}
@@ -1090,6 +1123,17 @@ self.addEventListener("fetch", (event) => {
           }
           return res;
         } catch {
+          if (info && latestAuthHeader && isSupabaseStorage(url)) {
+            try {
+              const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
+              const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
+              if (res && res.ok) {
+                const b = await res.clone().blob();
+                await putBlob(`${info.bucket}/${info.path}`, b);
+                return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
+              }
+            } catch {}
+          }
           return new Response("", { status: 504 });
         }
       })());

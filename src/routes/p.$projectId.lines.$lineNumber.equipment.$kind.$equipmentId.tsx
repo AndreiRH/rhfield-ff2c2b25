@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { localUuid } from "@/lib/local-id";
 import { equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
@@ -41,6 +42,10 @@ const PHASE_META: Record<Section, { label: string; icon: typeof Wrench; tab: str
     tint: "bg-cyan-100/50",
   },
 };
+
+function groupWeight(group: any) {
+  return (group?.components?.length ?? 0) + (group?.component_types?.length ?? 0);
+}
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
@@ -107,6 +112,7 @@ function EquipmentDetail() {
       if (missing.length > 0) {
         const { error: insErr } = await supabase.from("equipment_groups").insert(
           missing.map((ch) => ({
+            id: localUuid(),
             line_id: line.id,
             chapter: ch,
             kind: pe.kind,
@@ -133,7 +139,10 @@ function EquipmentDetail() {
         .from("lines").select("id", { count: "exact", head: true })
         .eq("project_id", projectId);
 
-      const byChapter = (ch: string) => (groups ?? []).find((g: any) => g.chapter === ch) ?? null;
+      const byChapter = (ch: string) => {
+        const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
+        return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
+      };
       return {
         line, pe, photos: photos ?? [],
         lineCount: lineCount ?? 1,

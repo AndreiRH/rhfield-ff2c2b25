@@ -24,6 +24,7 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { localUuid } from "@/lib/local-id";
 
 export function ComponentsList({ group, canEdit, onChange, parentKind = "equipment_group", externalSearch, hideTitle, defaultOpen }: any) {
   const components = (group.components ?? [])
@@ -78,9 +79,10 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
 
   const addComponent = async () => {
     if (!newName.trim()) return;
+    const id = localUuid();
     const payload: any = parentKind === "component_type"
-      ? { component_type_id: group.id, name: newName.trim(), sort_order: components.length }
-      : { equipment_id: group.id, name: newName.trim(), sort_order: components.length };
+      ? { id, component_type_id: group.id, name: newName.trim(), sort_order: components.length }
+      : { id, equipment_id: group.id, name: newName.trim(), sort_order: components.length };
     const { error } = await supabase.from("components").insert(payload);
     if (error) toast.error(error.message);
     else { setNewName(""); setAdding(false); onChange(); }
@@ -240,14 +242,14 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("photos").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    await supabase.from("component_photos").insert({ component_id: component.id, storage_path: path });
+    await supabase.from("component_photos").insert({ id: localUuid(), component_id: component.id, storage_path: path });
     setShowPhotos(true); onChange();
   };
   const uploadFile = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast.error(error.message); return; }
-    await supabase.from("component_files").insert({ component_id: component.id, storage_path: path, file_name: file.name });
+    await supabase.from("component_files").insert({ id: localUuid(), component_id: component.id, storage_path: path, file_name: file.name });
     setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {

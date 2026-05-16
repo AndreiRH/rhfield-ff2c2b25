@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { localUuid } from "@/lib/local-id";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type ItemNode = { label: string; subs: ItemNode[] };
@@ -114,7 +115,9 @@ function typeToNode(type: any): TypeClipNode {
 
 // ─── Paste helpers ────────────────────────────────────────────────────────
 async function insertItemTree(node: ItemNode, ctx: { component_id: string; parent_item_id: string | null; sort_order: number }) {
+  const id = localUuid();
   const { data, error } = await supabase.from("checklist_items").insert({
+    id,
     component_id: ctx.component_id,
     parent_item_id: ctx.parent_item_id,
     label: node.label,
@@ -126,7 +129,9 @@ async function insertItemTree(node: ItemNode, ctx: { component_id: string; paren
   }
 }
 async function insertComponent(node: ComponentClipNode, parent: { equipment_id?: string; component_type_id?: string }, sort_order: number) {
+  const id = localUuid();
   const { data, error } = await supabase.from("components").insert({
+    id,
     ...parent,
     name: node.name,
     sort_order,
@@ -137,8 +142,9 @@ async function insertComponent(node: ComponentClipNode, parent: { equipment_id?:
   }
 }
 async function insertType(node: TypeClipNode, equipment_group_id: string, sort_order: number) {
+  const id = localUuid();
   const { data, error } = await supabase.from("component_types").insert({
-    equipment_group_id, name: node.name, sort_order,
+    id, equipment_group_id, name: node.name, sort_order,
   }).select("id").single();
   if (error || !data) throw error ?? new Error("insert failed");
   for (let i = 0; i < node.components.length; i++) {

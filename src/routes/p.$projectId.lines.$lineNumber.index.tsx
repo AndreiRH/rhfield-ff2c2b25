@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { localUuid } from "@/lib/local-id";
 import { calcProgress, equipmentProgress, liveChecklistItems } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
@@ -203,12 +204,13 @@ function ExtraWorksSection({ line, works, canEdit, isAdmin, onChange }: any) {
   const [newWork, setNewWork] = useState("");
   const addWork = async () => {
     if (!newWork.trim()) return;
+    const groupId = localUuid();
     const { data: eg, error } = await supabase.from("equipment_groups").insert({
-      line_id: line.id, chapter: "after_sales", kind: "extra_work",
+      id: groupId, line_id: line.id, chapter: "after_sales", kind: "extra_work",
       name: newWork.trim(), sort_order: works.length,
     }).select().single();
     if (error) { toast.error(error.message); return; }
-    await supabase.from("components").insert({ equipment_id: eg.id, name: "Tasks", sort_order: 0 });
+    await supabase.from("components").insert({ id: localUuid(), equipment_id: eg.id, name: "Tasks", sort_order: 0 });
     setNewWork("");
     onChange();
   };

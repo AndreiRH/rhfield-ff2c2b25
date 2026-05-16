@@ -27,6 +27,7 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { localUuid } from "@/lib/local-id";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -103,7 +104,9 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
 
   const addType = async () => {
     if (!newName.trim() || !group) return;
+    const id = localUuid();
     const { data, error } = await supabase.from("component_types").insert({
+      id,
       equipment_group_id: group.id,
       name: newName.trim(),
       sort_order: types.length,
