@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Globe, Lock, Check,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -271,20 +271,9 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const [notes, setNotes] = useState<Note[]>([]);
 
   const load = async () => {
-    // Find sibling folders (same template_id across all production lines of the project)
-    let siblingIds: string[] = [];
-    if (folder.template_id) {
-      const { data: sibs } = await supabase
-        .from("pa_folders").select("id")
-        .eq("template_id", folder.template_id).neq("id", folder.id);
-      siblingIds = (sibs ?? []).map((s: any) => s.id);
-    }
-    const noteOr = siblingIds.length > 0
-      ? `folder_id.eq.${folder.id},and(is_shared.eq.true,folder_id.in.(${siblingIds.join(",")}))`
-      : `folder_id.eq.${folder.id}`;
     const [a, n] = await Promise.all([
       supabase.from("pa_attachments").select("*").eq("folder_id", folder.id).order("sort_order").order("uploaded_at"),
-      supabase.from("pa_notes").select("*").or(noteOr).order("sort_order").order("created_at"),
+      supabase.from("pa_notes").select("*").eq("folder_id", folder.id).order("sort_order").order("created_at"),
     ]);
     setAtts((a.data ?? []) as Attachment[]);
     setNotes((n.data ?? []) as Note[]);
@@ -513,15 +502,6 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
           onBlur={() => title !== note.title && onUpdate({ title })}
           className="h-7 flex-1 min-w-0 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
         />
-        {canEdit && (
-          <button
-            onClick={() => onUpdate({ is_shared: !note.is_shared })}
-            title={note.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
-            className={`p-1 ${note.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            {note.is_shared ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-          </button>
-        )}
         {canEdit && (
           <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80">
             <Trash2 className="h-4 w-4" />
