@@ -1211,25 +1211,23 @@ self.addEventListener("fetch", (event) => {
       return;
     }
 
-    // GET/HEAD reads: stale-while-revalidate + snapshot fallback.
+    // GET/HEAD reads: local snapshot/cache first + fast background revalidate.
     if (req.method === "GET" || req.method === "HEAD") {
       event.respondWith((async () => {
         const cache = await caches.open(CACHE_DATA);
         const cached = req.method === "GET" ? await cache.match(req) : null;
-        const network = fetch(req).then(async (res) => {
+        const network = fetchWithTimeout(req, 2500).then(async (res) => {
           if (res && res.ok && req.method === "GET") {
             cache.put(req, res.clone()).catch(() => {});
           }
           return res;
         }).catch(() => null);
 
-        const fresh = await network;
-        if (fresh) return fresh;
-        // Offline → reconstruct from snapshot first so locally queued edits are visible,
-        // even when an older exact response is already in the HTTP cache.
         const snap = await snapshotResponse(url, req);
         if (snap) return snap;
         if (cached) return cached;
+        const fresh = await network;
+        if (fresh) return fresh;
         return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
       })());
       return;
