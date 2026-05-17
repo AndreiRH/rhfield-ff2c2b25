@@ -305,6 +305,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     setEqDx(val);
   };
   const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
+  const eqStateRef = useRef(eqState);
   const eqCommitRef = useRef<number | null>(null);
   const sectionWrapRef = useRef<HTMLDivElement>(null);
   const [tapSteps, setTapSteps] = useState(0);
@@ -342,6 +343,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { nextEqRef.current = nextEq; }, [nextEq]);
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
+  useEffect(() => { eqStateRef.current = eqState; }, [eqState]);
 
   // Prefetch nearby siblings (±2) so the swipe-in pane shows real data instantly.
   useEffect(() => {
@@ -412,10 +414,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       // NOTE: do NOT clear commitTimeoutRef here — we want pending section
       // animations to keep their accumulated target so a second fast swipe
       // stacks on top instead of resetting to the current intermediate.
-      if (eqCommitRef.current) {
-        window.clearTimeout(eqCommitRef.current);
-        eqCommitRef.current = null;
-      }
+      if (eqCommitRef.current || eqStateRef.current !== "idle") return;
       const t = e.touches[0];
       // Ignore touches starting within 20px of either screen edge —
       // reserved for the Android system back gesture.
