@@ -31,8 +31,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
 
-interface SettingPhoto { id: string; storage_path: string }
-interface SettingFile { id: string; storage_path: string; file_name: string }
+interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean }
+interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean }
 interface Setting {
   id: string;
   plant_equipment_id: string;
