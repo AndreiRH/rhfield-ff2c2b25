@@ -428,28 +428,26 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       )}
       {!editingLabel && <span className="flex-1 min-w-0 self-stretch" />}
       {/* Always-visible content indicators */}
-      {!inMode && (
-        <span className="flex items-center gap-2">
-          {subsTotal > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
-          )}
-          {notesCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
-              <StickyNote className="h-3 w-3" /> {notesCount}
-            </span>
-          )}
-          {photosCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
-              <Camera className="h-3 w-3" /> {photosCount}
-            </span>
-          )}
-          {filesCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
-              <Paperclip className="h-3 w-3" /> {filesCount}
-            </span>
-          )}
-        </span>
-      )}
+      <span className="flex items-center gap-2">
+        {subsTotal > 0 && (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
+        )}
+        {!inMode && notesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
+            <StickyNote className="h-3 w-3" /> {notesCount}
+          </span>
+        )}
+        {!inMode && photosCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
+            <Camera className="h-3 w-3" /> {photosCount}
+          </span>
+        )}
+        {!inMode && filesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
+            <Paperclip className="h-3 w-3" /> {filesCount}
+          </span>
+        )}
+      </span>
     </div>
   );
 
