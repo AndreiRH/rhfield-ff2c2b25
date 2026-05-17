@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
 import { rememberLocalFile } from "@/lib/local-blobs";
+import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 
 interface FolderRow {
   id: string;
@@ -397,6 +398,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   };
 
   const removeAttachment = async (a: Attachment) => {
+    if (!confirmSharedDelete(true)) return;
     const bucket = a.kind === "photo" ? "photos" : "files";
     await supabase.storage.from(bucket).remove([a.storage_path]);
     await supabase.from("common_folder_attachments").delete().eq("id", a.id);
@@ -417,6 +419,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   };
 
   const deleteNote = async (n: Note) => {
+    if (!confirmSharedDelete(true)) return;
     if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
     if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
     await supabase.from("common_folder_notes").delete().eq("id", n.id);
@@ -569,11 +572,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     onReload();
   };
   const removePhoto = async () => {
+    if (!confirmSharedDelete(true)) return;
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("common_folder_notes").update({ photo_path: null }).eq("id", note.id);
     onReload();
   };
   const removeFile = async () => {
+    if (!confirmSharedDelete(true)) return;
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
     await supabase.from("common_folder_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
     onReload();

@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
@@ -299,6 +300,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
+    if (!confirmSharedDelete(!!p.is_shared)) return;
     const { error } = await supabase.from("item_photos").delete().eq("id", p.id);
     if (error) { toast.error(error.message); return; }
     onChange();
@@ -320,6 +322,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     }, 3500);
   };
   const removeFile = async (f: any) => {
+    if (!confirmSharedDelete(!!f.is_shared)) return;
     const { error } = await supabase.from("item_files").delete().eq("id", f.id);
     if (error) { toast.error(error.message); return; }
     onChange();
