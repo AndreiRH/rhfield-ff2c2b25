@@ -101,6 +101,7 @@ export function SyncCloud() {
 }
 
 function phaseLabel(p: string) {
+  if (p === "edits") return "Uploading edits";
   if (p === "tables") return "Data";
   if (p === "routes") return "Pages";
   if (p === "blobs") return "Photos & files";
