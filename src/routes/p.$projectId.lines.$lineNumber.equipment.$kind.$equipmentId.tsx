@@ -240,7 +240,7 @@ function EquipmentDetail() {
           <Skeleton className="h-40" />
         ) : (
           <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number, equipmentId: data.pe.id }}>
-            <EquipmentBody data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
+            <EquipmentBody key={data.pe.id} data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
           </CurrentLineProvider>
         )}
       </main>
