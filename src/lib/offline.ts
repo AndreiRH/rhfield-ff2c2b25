@@ -23,8 +23,8 @@ type SwMessage =
   | SwFlushCompleteMessage
   | SwAuthExpiredMessage;
 
-function send(type: string) {
-  navigator.serviceWorker?.controller?.postMessage({ type });
+function send(type: string, extra?: Record<string, unknown>) {
+  navigator.serviceWorker?.controller?.postMessage({ type, ...(extra ?? {}) });
 }
 
 async function getFreshAuthToken(): Promise<string | null> {
@@ -50,7 +50,9 @@ async function requestBackgroundSync() {
 }
 
 export function triggerFlush() {
-  send("rhfield-flush");
+  getFreshAuthToken().then((token) => {
+    send("rhfield-flush", token ? { authHeader: `Bearer ${token}` } : undefined);
+  });
   requestBackgroundSync();
 }
 
