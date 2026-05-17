@@ -672,13 +672,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             const goingNext = eqDx < 0;
             const neighbour = goingNext ? nextEq : prevEq;
             if (!neighbour) return null;
-            const neighbourData = qc.getQueryData<any>([
-              "equipment-detail",
-              data.line.project_id,
-              String(data.line.number),
-              data.pe.kind,
-              neighbour.id,
-            ]);
+            const neighbourData = goingNext ? nextEqData : prevEqData;
             const offset = goingNext ? w : -w;
             const { mech: nMech, wiring: nWiring, cold: nCold, overall: nOverall } =
               neighbourData
@@ -739,7 +733,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div className="mt-6">
                   {neighbourData ? (
                     <div style={{ pointerEvents: "none" }}>
-                      {renderSection(section, neighbourData, false, undefined, () => {})}
+                      {renderSection(section, neighbourData, canEdit, userId, () => {})}
                     </div>
                   ) : (
                     <div className="space-y-3">
