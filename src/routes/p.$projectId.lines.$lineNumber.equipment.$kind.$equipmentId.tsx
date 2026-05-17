@@ -378,7 +378,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       if (start.mode === "equipment") {
         let val = dx;
         if ((dx < 0 && !nextEqRef.current) || (dx > 0 && !prevEqRef.current)) val = dx * 0.25;
-        setEqDx(val);
+        setEqDxSync(val);
       } else {
         const cur = SECTION_ORDER.indexOf(sectionRef.current);
         let val = dx;
@@ -395,19 +395,23 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       startRef.current = null;
       if (decided !== "h") {
         setSwipeState("idle"); setSwipeDx(0);
-        setEqState("idle"); setEqDx(0);
+        setEqState("idle"); setEqDxSync(0);
         return;
       }
       if (mode === "equipment") {
-        setEqDx((dx) => {
-          const w = widthRef.current;
-          const ratio = dx / w;
-          const goingNext = dx < 0;
-          const target = goingNext ? nextEqRef.current : prevEqRef.current;
-          if (Math.abs(ratio) > 0.28 && target) {
-            // Navigate immediately — no slide-off animation.
-            // The new page mounts clean at eqDx=0; no white screen.
-            if (!isMounted.current) return dx;
+        const dx = eqDxRef.current;
+        const w = widthRef.current;
+        const ratio = dx / w;
+        const goingNext = dx < 0;
+        const target = goingNext ? nextEqRef.current : prevEqRef.current;
+        if (Math.abs(ratio) > 0.28 && target) {
+          // Animate the slide-off first, then navigate.
+          const slideTarget = goingNext ? -w : w;
+          setEqState("animating");
+          setEqDxSync(slideTarget);
+          eqCommitRef.current = window.setTimeout(() => {
+            eqCommitRef.current = null;
+            if (!isMounted.current) return;
             const d = dataRef.current;
             navigateRef.current({
               to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
@@ -418,18 +422,17 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 equipmentId: target.id,
               },
             });
-            return 0;
-          }
-          // Cancelled swipe — snap back.
-          setEqState("animating");
-          eqCommitRef.current = window.setTimeout(() => {
-            eqCommitRef.current = null;
-            if (!isMounted.current) return;
-            setEqState("idle");
-            setEqDx(0);
           }, 340);
-          return 0;
-        });
+          return;
+        }
+        // Cancelled swipe — snap back.
+        setEqState("animating");
+        setEqDxSync(0);
+        eqCommitRef.current = window.setTimeout(() => {
+          eqCommitRef.current = null;
+          if (!isMounted.current) return;
+          setEqState("idle");
+        }, 340);
         return;
       }
       setSwipeDx((dx) => {
