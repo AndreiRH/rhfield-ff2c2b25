@@ -57,7 +57,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
   component: EquipmentDetail,
 });
 
-async function fetchEquipmentDetail(
+export async function fetchEquipmentDetail(
   projectId: string,
   lineNumber: string,
   kind: string,
@@ -96,12 +96,32 @@ async function fetchEquipmentDetail(
         )
       )
     `;
-  let { data: groups, error: gErr } = await supabase
-    .from("equipment_groups")
-    .select(groupsSelect)
-    .eq("plant_equipment_id", equipmentId)
-    .is("deleted_at", null);
-  if (gErr) throw gErr;
+  // Run the independent queries in parallel.
+  const [groupsRes, photosRes, lineCountRes, siblingsRes] = await Promise.all([
+    supabase
+      .from("equipment_groups")
+      .select(groupsSelect)
+      .eq("plant_equipment_id", equipmentId)
+      .is("deleted_at", null),
+    supabase
+      .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at"),
+    supabase
+      .from("lines").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    supabase
+      .from("plant_equipment")
+      .select("id, name, sort_order")
+      .eq("line_id", line.id)
+      .eq("kind", pe.kind)
+      .is("deleted_at", null)
+      .order("sort_order").order("name"),
+  ]);
+  if (groupsRes.error) throw groupsRes.error;
+  if (photosRes.error) throw photosRes.error;
+  let groups = groupsRes.data;
+  const photos = photosRes.data;
+  const lineCount = lineCountRes.count;
+  const siblings = siblingsRes.data;
 
   const stripDeleted = (gs: any[] | null | undefined): any[] =>
     (gs ?? []).map((g) => ({
@@ -151,22 +171,6 @@ async function fetchEquipmentDetail(
     groups = stripDeleted(refetched.data);
   }
 
-  const { data: photos, error: phErr } = await supabase
-    .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
-  if (phErr) throw phErr;
-
-  const { count: lineCount } = await supabase
-    .from("lines").select("id", { count: "exact", head: true })
-    .eq("project_id", projectId);
-
-  const { data: siblings } = await supabase
-    .from("plant_equipment")
-    .select("id, name, sort_order")
-    .eq("line_id", line.id)
-    .eq("kind", pe.kind)
-    .is("deleted_at", null)
-    .order("sort_order").order("name");
-
   const byChapter = (ch: string) => {
     const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
     return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
@@ -208,13 +212,15 @@ function EquipmentDetail() {
     };
   }, []);
 
+  const queryKey = ["equipment-detail", projectId, lineNumber, kind, equipmentId] as const;
   const { data, isLoading } = useQuery({
     enabled: !!session && !isChildRoute,
-    queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
+    queryKey,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, equipmentId),
-    placeholderData: undefined,
+    initialData: () => qc.getQueryData<any>(queryKey),
+    initialDataUpdatedAt: () => qc.getQueryState(queryKey)?.dataUpdatedAt,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
@@ -236,8 +242,8 @@ function EquipmentDetail() {
           <ChevronLeft className="h-4 w-4" /> {plantLabel}
         </Link>
 
-        {isLoading || !data ? (
-          <Skeleton className="h-40" />
+        {!data ? (
+          isLoading ? <Skeleton className="h-40" /> : null
         ) : (
           <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number, equipmentId: data.pe.id }}>
             <EquipmentBody key={data.pe.id} data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
@@ -323,10 +329,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Prefetch prev/next equipment so the swipe-in pane shows real data instantly.
+  // Prefetch nearby siblings (±2) so the swipe-in pane shows real data instantly.
   useEffect(() => {
-    const toFetch = [prevEq, nextEq].filter(Boolean) as { id: string }[];
-    for (const sibling of toFetch) {
+    const idx = curEqIdx;
+    if (idx < 0) return;
+    const targets = [idx - 2, idx - 1, idx + 1, idx + 2]
+      .map((i) => siblings[i])
+      .filter(Boolean) as { id: string }[];
+    for (const sibling of targets) {
       qc.prefetchQuery({
         queryKey: [
           "equipment-detail",
@@ -335,7 +345,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           data.pe.kind,
           sibling.id,
         ],
-        staleTime: 30_000,
+        staleTime: 5 * 60_000,
         queryFn: () =>
           fetchEquipmentDetail(
             data.line.project_id,
@@ -346,7 +356,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prevEq?.id, nextEq?.id]);
+  }, [curEqIdx, siblings.length]);
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
@@ -672,9 +682,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div className="mt-3 flex items-stretch gap-2">
                   {neighbourData ? (
                     <>
-                      <SectionTab phase="assembly" pct={nMech} weight={1} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="wiring" pct={nWiring} weight={0} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="cold_comm" pct={nCold} weight={0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="assembly" pct={nMech} weight={section === "assembly" ? 1 : 0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="wiring" pct={nWiring} weight={section === "wiring" ? 1 : 0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="cold_comm" pct={nCold} weight={section === "cold_comm" ? 1 : 0} dragging={false} onClick={() => {}} />
                     </>
                   ) : (
                     <>
@@ -685,11 +695,19 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                   )}
                 </div>
 
-                {/* Neighbour content — ghost skeleton */}
-                <div className="mt-6 space-y-3">
-                  <div className="h-20 rounded-lg bg-muted/30" />
-                  <div className="h-10 rounded-lg bg-muted/20" />
-                  <div className="h-10 rounded-lg bg-muted/15" />
+                {/* Neighbour content — real if cached, ghost otherwise */}
+                <div className="mt-6">
+                  {neighbourData ? (
+                    <div style={{ pointerEvents: "none" }}>
+                      {renderSection(section, neighbourData, false, undefined, () => {})}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="h-20 rounded-lg bg-muted/30" />
+                      <div className="h-10 rounded-lg bg-muted/20" />
+                      <div className="h-10 rounded-lg bg-muted/15" />
+                    </div>
+                  )}
                 </div>
               </div>
             );
