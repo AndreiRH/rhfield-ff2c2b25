@@ -71,6 +71,8 @@ async function handleAuthExpired() {
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     await supabase.auth.refreshSession();
+    const token = await getFreshAuthToken();
+    if (token) send("rhfield-outbox-retry-auth-failed", { authHeader: `Bearer ${token}` });
   } catch {
     /* ignore — flush will surface failure on next attempt */
   } finally {
