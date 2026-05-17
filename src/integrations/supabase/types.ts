@@ -685,24 +685,30 @@ export type Database = {
         Row: {
           file_name: string
           id: string
+          is_shared: boolean
           item_id: string
           storage_path: string
+          template_id: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
         Insert: {
           file_name: string
           id?: string
+          is_shared?: boolean
           item_id: string
           storage_path: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
         Update: {
           file_name?: string
           id?: string
+          is_shared?: boolean
           item_id?: string
           storage_path?: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -719,22 +725,28 @@ export type Database = {
       item_photos: {
         Row: {
           id: string
+          is_shared: boolean
           item_id: string
           storage_path: string
+          template_id: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
         Insert: {
           id?: string
+          is_shared?: boolean
           item_id: string
           storage_path: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
         Update: {
           id?: string
+          is_shared?: boolean
           item_id?: string
           storage_path?: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -1057,7 +1069,9 @@ export type Database = {
           equipment_setting_id: string
           file_name: string
           id: string
+          is_shared: boolean
           storage_path: string
+          template_id: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -1065,7 +1079,9 @@ export type Database = {
           equipment_setting_id: string
           file_name: string
           id?: string
+          is_shared?: boolean
           storage_path: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -1073,7 +1089,9 @@ export type Database = {
           equipment_setting_id?: string
           file_name?: string
           id?: string
+          is_shared?: boolean
           storage_path?: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -1127,21 +1145,27 @@ export type Database = {
         Row: {
           equipment_setting_id: string
           id: string
+          is_shared: boolean
           storage_path: string
+          template_id: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
         Insert: {
           equipment_setting_id: string
           id?: string
+          is_shared?: boolean
           storage_path: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
         Update: {
           equipment_setting_id?: string
           id?: string
+          is_shared?: boolean
           storage_path?: string
+          template_id?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
