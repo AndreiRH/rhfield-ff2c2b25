@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +111,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
       name: newName.trim(),
       sort_order: types.length,
     }).select("id").single();
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else {
       setNewName(""); setAdding(false);
       if (data?.id) setOpenIds((prev) => new Set(prev).add(data.id));
@@ -175,7 +176,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
     const { error } = await supabase.from(table as any)
       .update({ deleted_at: new Date().toISOString() }).in("id", ids);
     setConfirmDelete(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     action.setMode("none");
     onChange();
     toast.success(`Deleted ${ids.length} ${kind}${ids.length > 1 ? "s" : ""}${ids.length === 1 ? `: "${labels[0]}"` : ""}`, {
@@ -374,7 +375,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
   const rename = async () => {
     if (!name.trim() || name === type.name) { setEditing(false); return; }
     const { error } = await supabase.from("component_types").update({ name: name.trim() }).eq("id", type.id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setEditing(false); onChange(); }
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,7 @@ export function NotesBoard({ equipmentId, canEdit, userId }: { equipmentId: stri
       equipment_id: equipmentId, title: "Note", body: "",
       position_x: 16 + offset, position_y: 16 + offset, created_by: userId,
     });
-    if (error) toast.error(error.message); else load();
+    if (error) toast.error(toUserMessage(error)); else load();
   };
 
   const update = async (id: string, patch: Partial<Note>) => {
@@ -149,7 +150,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("equipment_notes").update({ photo_path: path }).eq("id", note.id);
     onReload();
@@ -159,7 +160,7 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
     const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
     await supabase.from("equipment_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
     onReload();

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,7 @@ export function CommonFoldersList({
       project_id: projectId, parent_folder_id: parentId, name: "New folder",
       sort_order: siblingCount, created_by: userId,
     }).select().single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await load();
     if (data) {
       setOpenIds((s) => {
@@ -388,7 +389,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
     const bucket = kind === "photo" ? "photos" : "files";
     rememberLocalFile(bucket, path, file);
     const { error } = await supabase.storage.from(bucket).upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     const { error: dbErr } = await supabase.from("common_folder_attachments").insert({
       folder_id: folder.id, kind, storage_path: path, file_name: file.name,
       sort_order: atts.length, uploaded_by: userId,
@@ -557,7 +558,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("common_folder_notes").update({ photo_path: path }).eq("id", note.id);
     onReload();
@@ -566,7 +567,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
     await supabase.from("common_folder_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
     onReload();

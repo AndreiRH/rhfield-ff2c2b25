@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,7 +43,7 @@ export function DeleteProjectButton({ projectId, projectName }: { projectId: str
     const { error } = await supabase.rpc("delete_project_cascade", { p_project_id: projectId });
     setBusy(false);
     if (error) {
-      toast.error(`Delete failed: ${error.message}`);
+      toast.error(toUserMessage(error));
       return;
     }
     toast.success(`Deleted "${projectName}"`);

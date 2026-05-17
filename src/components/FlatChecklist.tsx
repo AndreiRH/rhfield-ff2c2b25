@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     const { error } = await supabase.from("components")
       .insert({ equipment_id: group.id, name: "Checklist", sort_order: 0 });
     setCreating(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else onChange();
   };
 
@@ -129,7 +130,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     const { error } = await supabase.from("checklist_items")
       .update({ deleted_at: new Date().toISOString() }).in("id", ids);
     setConfirmDelete(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     action.setMode("none");
     onChange();
     toast.success(`Deleted ${selectedIds.length} item${selectedIds.length > 1 ? "s" : ""}${selectedIds.length === 1 ? `: "${labels[0]}"` : ""}`, {
@@ -161,7 +162,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
     const { error } = await supabase.from("checklist_items").insert({
       id: localUuid(), component_id: bucket.id, label: newItemText.trim(), sort_order: rootCount,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     setNewItemText(""); setAddingItem(false); onChange();
   };
 

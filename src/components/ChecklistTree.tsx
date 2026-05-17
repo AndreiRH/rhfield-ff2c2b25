@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,7 @@ export function ChecklistTree({
     const { error } = await supabase.from("checklist_items").insert({
       id: localUuid(), ...parentCols, label: text.trim(), sort_order: rootItems.length,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setText(""); setAdding(false); onChange(); }
   };
 
@@ -212,7 +213,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     setEditingLabel(false);
     if (!trimmed || trimmed === item.label) { setLabel(item.label); return; }
     const { error } = await supabase.from("checklist_items").update({ label: trimmed }).eq("id", item.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
 
   const toggle = async () => {
@@ -222,7 +223,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const ids = [item.id, ...descendants.map((d: any) => d.id)];
     const { error } = await supabase.from("checklist_items")
       .update({ done: next, completed_at: next ? nowIso : null }).in("id", ids);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     // Cascade up: marking done propagates when all siblings are done;
     // unmarking propagates to any done ancestor (an item can't be done if a descendant isn't).
     if (next) {
@@ -272,7 +273,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const saveNote = async () => {
     if (note === (item.note ?? "")) return;
     const { error } = await supabase.from("checklist_items").update({ note: note || null }).eq("id", item.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
   const addSub = async () => {
     if (!subText.trim()) return;
@@ -280,14 +281,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       id: localUuid(), ...itemParentCols, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setSubText(""); setAddingSub(false); setOpen(true); onChange(); }
   };
   const uploadPhoto = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("item_photos").insert({ id: localUuid(), item_id: item.id, storage_path: path });
     setOpen(true); setShowPhotos(true); onChange();
   };
@@ -295,14 +296,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("item_files").insert({ id: localUuid(), item_id: item.id, storage_path: path, file_name: file.name });
     setOpen(true); setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     if (!confirmSharedDelete(!!p.is_shared)) return;
     const { error } = await supabase.from("item_photos").delete().eq("id", p.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     onChange();
     let undone = false;
     toast.success("Photo deleted", {
@@ -324,7 +325,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const removeFile = async (f: any) => {
     if (!confirmSharedDelete(!!f.is_shared)) return;
     const { error } = await supabase.from("item_files").delete().eq("id", f.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     onChange();
     let undone = false;
     toast.success("File deleted", {
@@ -353,7 +354,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const toggleSharePhoto = async (p: any) => {
     if (p.is_shared && !confirmUnshare(p.origin_line_id)) return;
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
 
   const attachSensors = useSensors(
@@ -385,7 +386,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const toggleShareFile = async (f: any) => {
     if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
 
   const canExpand = hasContent || canEdit;
@@ -549,7 +550,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                     onClick={async () => {
                       const { error } = await supabase.from("checklist_items")
                         .update({ note_shared: !item.note_shared }).eq("id", item.id);
-                      if (error) toast.error(error.message); else onChange();
+                      if (error) toast.error(toUserMessage(error)); else onChange();
                     }}
                     title={item.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${item.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
