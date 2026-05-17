@@ -57,6 +57,131 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
   component: EquipmentDetail,
 });
 
+async function fetchEquipmentDetail(
+  projectId: string,
+  lineNumber: string,
+  kind: string,
+  equipmentId: string,
+) {
+  const { data: line, error } = await supabase
+    .from("lines").select("id, number, project_id")
+    .eq("project_id", projectId).eq("number", Number(lineNumber)).single();
+  if (error) throw error;
+
+  const { data: pe, error: peErr } = await supabase
+    .from("plant_equipment")
+    .select("id, name, kind, mech_mode, mech_manual_pct, mech_notes")
+    .eq("id", equipmentId).single();
+  if (peErr) throw peErr;
+
+  const groupsSelect = `
+      id, chapter, name, plant_equipment_id,
+      components(
+        id, name, sort_order, deleted_at, note, note_shared,
+        component_photos(id, storage_path),
+        component_files(id, storage_path, file_name),
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+          item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
+      ),
+      component_types(
+        id, name, sort_order, deleted_at,
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id,
+          item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id)),
+        components(
+          id, name, sort_order, deleted_at, note, note_shared,
+          component_photos(id, storage_path),
+          component_files(id, storage_path, file_name),
+          checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+            item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
+        )
+      )
+    `;
+  let { data: groups, error: gErr } = await supabase
+    .from("equipment_groups")
+    .select(groupsSelect)
+    .eq("plant_equipment_id", equipmentId)
+    .is("deleted_at", null);
+  if (gErr) throw gErr;
+
+  const stripDeleted = (gs: any[] | null | undefined): any[] =>
+    (gs ?? []).map((g) => ({
+      ...g,
+      components: (g.components ?? [])
+        .filter((c: any) => !c.deleted_at)
+        .map((c: any) => ({
+          ...c,
+          checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+        })),
+      component_types: (g.component_types ?? [])
+        .filter((t: any) => !t.deleted_at)
+        .map((t: any) => ({
+          ...t,
+          checklist_items: (t.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+          components: (t.components ?? [])
+            .filter((c: any) => !c.deleted_at)
+            .map((c: any) => ({
+              ...c,
+              checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+            })),
+        })),
+    }));
+  groups = stripDeleted(groups);
+
+  const chapters = ["assembly", "wiring", "cold_comm"] as const;
+  const missing = chapters.filter((ch) => !(groups ?? []).some((g: any) => g.chapter === ch));
+  if (missing.length > 0) {
+    const { error: insErr } = await supabase.from("equipment_groups").insert(
+      missing.map((ch) => ({
+        id: localUuid(),
+        line_id: line.id,
+        chapter: ch,
+        kind: pe.kind,
+        name: pe.name,
+        sort_order: 0,
+        plant_equipment_id: equipmentId,
+      })),
+    );
+    if (insErr) throw insErr;
+    const refetched = await supabase
+      .from("equipment_groups")
+      .select(groupsSelect)
+      .eq("plant_equipment_id", equipmentId)
+      .is("deleted_at", null);
+    if (refetched.error) throw refetched.error;
+    groups = stripDeleted(refetched.data);
+  }
+
+  const { data: photos, error: phErr } = await supabase
+    .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
+  if (phErr) throw phErr;
+
+  const { count: lineCount } = await supabase
+    .from("lines").select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+
+  const { data: siblings } = await supabase
+    .from("plant_equipment")
+    .select("id, name, sort_order")
+    .eq("line_id", line.id)
+    .eq("kind", pe.kind)
+    .is("deleted_at", null)
+    .order("sort_order").order("name");
+
+  const byChapter = (ch: string) => {
+    const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
+    return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
+  };
+  return {
+    line, pe, photos: photos ?? [],
+    lineCount: lineCount ?? 1,
+    siblings: (siblings ?? []) as { id: string; name: string; sort_order: number }[],
+    assembly: byChapter("assembly"),
+    wiring: byChapter("wiring"),
+    cold: byChapter("cold_comm"),
+    peWithGroups: { ...pe, equipment_groups: groups ?? [] },
+  };
+}
+
 function EquipmentDetail() {
   const { projectId, lineNumber, kind, equipmentId } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
@@ -88,129 +213,7 @@ function EquipmentDetail() {
     queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
     staleTime: 30_000,
     gcTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data: line, error } = await supabase
-        .from("lines").select("id, number, project_id")
-        .eq("project_id", projectId).eq("number", Number(lineNumber)).single();
-      if (error) throw error;
-
-      const { data: pe, error: peErr } = await supabase
-        .from("plant_equipment")
-        .select("id, name, kind, mech_mode, mech_manual_pct, mech_notes")
-        .eq("id", equipmentId).single();
-      if (peErr) throw peErr;
-
-      const groupsSelect = `
-          id, chapter, name, plant_equipment_id,
-          components(
-            id, name, sort_order, deleted_at, note, note_shared,
-            component_photos(id, storage_path),
-            component_files(id, storage_path, file_name),
-            checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-              item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
-          ),
-          component_types(
-            id, name, sort_order, deleted_at,
-            checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id,
-              item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id)),
-            components(
-              id, name, sort_order, deleted_at, note, note_shared,
-              component_photos(id, storage_path),
-              component_files(id, storage_path, file_name),
-              checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-                item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
-            )
-          )
-        `;
-      let { data: groups, error: gErr } = await supabase
-        .from("equipment_groups")
-        .select(groupsSelect)
-        .eq("plant_equipment_id", equipmentId)
-        .is("deleted_at", null);
-      if (gErr) throw gErr;
-
-      // Strip soft-deleted nested rows (PostgREST doesn't filter embedded resources by default).
-      const stripDeleted = (gs: any[] | null | undefined): any[] =>
-        (gs ?? []).map((g) => ({
-          ...g,
-          components: (g.components ?? [])
-            .filter((c: any) => !c.deleted_at)
-            .map((c: any) => ({
-              ...c,
-              checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
-            })),
-          component_types: (g.component_types ?? [])
-            .filter((t: any) => !t.deleted_at)
-            .map((t: any) => ({
-              ...t,
-              checklist_items: (t.checklist_items ?? []).filter((i: any) => !i.deleted_at),
-              components: (t.components ?? [])
-                .filter((c: any) => !c.deleted_at)
-                .map((c: any) => ({
-                  ...c,
-                  checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
-                })),
-            })),
-        }));
-      groups = stripDeleted(groups);
-
-      // Backfill any missing default chapters (assembly/wiring/cold_comm)
-      const chapters = ["assembly", "wiring", "cold_comm"] as const;
-      const missing = chapters.filter((ch) => !(groups ?? []).some((g: any) => g.chapter === ch));
-      if (missing.length > 0) {
-        const { error: insErr } = await supabase.from("equipment_groups").insert(
-          missing.map((ch) => ({
-            id: localUuid(),
-            line_id: line.id,
-            chapter: ch,
-            kind: pe.kind,
-            name: pe.name,
-            sort_order: 0,
-            plant_equipment_id: equipmentId,
-          })),
-        );
-        if (insErr) throw insErr;
-        const refetched = await supabase
-          .from("equipment_groups")
-          .select(groupsSelect)
-          .eq("plant_equipment_id", equipmentId)
-          .is("deleted_at", null);
-        if (refetched.error) throw refetched.error;
-        groups = stripDeleted(refetched.data);
-      }
-
-      const { data: photos, error: phErr } = await supabase
-        .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
-      if (phErr) throw phErr;
-
-      const { count: lineCount } = await supabase
-        .from("lines").select("id", { count: "exact", head: true })
-        .eq("project_id", projectId);
-
-      // Sibling equipments on the same line + kind, for swipe navigation.
-      const { data: siblings } = await supabase
-        .from("plant_equipment")
-        .select("id, name, sort_order")
-        .eq("line_id", line.id)
-        .eq("kind", pe.kind)
-        .is("deleted_at", null)
-        .order("sort_order").order("name");
-
-      const byChapter = (ch: string) => {
-        const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
-        return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
-      };
-      return {
-        line, pe, photos: photos ?? [],
-        lineCount: lineCount ?? 1,
-        siblings: (siblings ?? []) as { id: string; name: string; sort_order: number }[],
-        assembly: byChapter("assembly"),
-        wiring: byChapter("wiring"),
-        cold: byChapter("cold_comm"),
-        // shape progress fn expects
-        peWithGroups: { ...pe, equipment_groups: groups ?? [] },
-      };
-    },
+    queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, equipmentId),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
@@ -256,6 +259,7 @@ function readLastTab(): Section {
 
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [section, setSectionState] = useState<Section>(() => readLastTab());
   const setSection = (s: Section) => {
     setSectionState(s);
@@ -303,6 +307,31 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { nextEqRef.current = nextEq; }, [nextEq]);
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
+
+  // Prefetch prev/next equipment so the swipe-in pane shows real data instantly.
+  useEffect(() => {
+    const toFetch = [prevEq, nextEq].filter(Boolean) as { id: string }[];
+    for (const sibling of toFetch) {
+      qc.prefetchQuery({
+        queryKey: [
+          "equipment-detail",
+          data.line.project_id,
+          String(data.line.number),
+          data.pe.kind,
+          sibling.id,
+        ],
+        staleTime: 30_000,
+        queryFn: () =>
+          fetchEquipmentDetail(
+            data.line.project_id,
+            String(data.line.number),
+            data.pe.kind,
+            sibling.id,
+          ),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevEq?.id, nextEq?.id]);
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
@@ -393,7 +422,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             if (!isMounted.current) return;
             setEqState("idle");
             setEqDx(0);
-          }, 220);
+          }, 340);
           return 0;
         });
         return;
@@ -412,7 +441,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             setSwipeState("idle");
             setSection(localTarget);
             setSwipeDx(0);
-          }, 260);
+          }, 340);
           return localDir === 1 ? -w : w;
         }
         setSwipeState("animating");
@@ -420,7 +449,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           commitTimeoutRef.current = null;
           if (!isMounted.current) return;
           setSwipeState("idle");
-        }, 260);
+        }, 340);
         return 0;
       });
     };
@@ -445,7 +474,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   }, []);
 
   const dragging = swipeState === "dragging";
-  const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
+  const transformTransition = swipeState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
   const colorTransition = "opacity 180ms linear";
 
   const meta = PHASE_META[section];
@@ -459,7 +488,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     setSection(s);
   };
 
-  const eqTransformTransition = eqState === "animating" ? "transform 230ms ease-out" : "none";
+  const eqTransformTransition = eqState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
 
   return (
     <div>
@@ -474,64 +503,143 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* EVERYTHING BELOW slides with equipment swipe (header + tabs + content). */}
-      <div
-        style={{
-          transform: `translateX(${eqDx}px)`,
-          transition: eqTransformTransition,
-          ...(eqState === "dragging" ? { willChange: "transform" } : {}),
-        }}
-      >
-        {/* HEADER ZONE — equipment-swipe gesture starts here. */}
-        <div className="relative" data-equipment-header>
-          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-            <HeaderInner
-              data={data}
-              plantLabel={plantLabel}
-              overall={overall}
-              accent={meta.accent}
-            />
-          </div>
-          {targetMeta && (
-            <div
-              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-              style={{ opacity: progress, transition: colorTransition }}
-              aria-hidden
-            >
-              <HeaderInner
-                data={data}
-                plantLabel={plantLabel}
-                overall={overall}
-                accent={targetMeta.accent}
-              />
+      {/* Equipment swipe viewport — current pane + incoming neighbour pane. */}
+      <div style={{ overflow: "hidden" }}>
+        <div
+          style={{
+            transform: `translateX(${eqDx}px)`,
+            transition: eqTransformTransition,
+            position: "relative",
+            ...(eqState === "dragging" ? { willChange: "transform" } : {}),
+          }}
+        >
+          {/* ── CURRENT EQUIPMENT PANE ── */}
+          <div>
+            {/* HEADER ZONE — equipment-swipe gesture starts here. */}
+            <div className="relative" data-equipment-header>
+              <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+                <HeaderInner
+                  data={data}
+                  plantLabel={plantLabel}
+                  overall={overall}
+                  accent={meta.accent}
+                />
+              </div>
+              {targetMeta && (
+                <div
+                  className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+                  style={{ opacity: progress, transition: colorTransition }}
+                  aria-hidden
+                >
+                  <HeaderInner
+                    data={data}
+                    plantLabel={plantLabel}
+                    overall={overall}
+                    accent={targetMeta.accent}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
-        <div className="mt-3 flex items-stretch gap-2">
-          <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
-          <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
-          <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
-        </div>
-
-        {/* SECTION CONTENT — section swipe lives inside. */}
-        <div className="relative mt-6 overflow-hidden">
-          <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
-            {renderSection(section, data, canEdit, userId, onChange)}
-          </div>
-          {targetSection && (
-            <div
-              className="absolute inset-0"
-              style={{
-                transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
-                transition: transformTransition,
-              }}
-              aria-hidden
-            >
-              {renderSection(targetSection, data, canEdit, userId, onChange)}
+            {/* TABS */}
+            <div className="mt-3 flex items-stretch gap-2">
+              <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+              <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+              <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
             </div>
-          )}
+
+            {/* SECTION CONTENT */}
+            <div className="relative mt-6 overflow-hidden">
+              <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
+                {renderSection(section, data, canEdit, userId, onChange)}
+              </div>
+              {targetSection && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
+                    transition: transformTransition,
+                  }}
+                  aria-hidden
+                >
+                  {renderSection(targetSection, data, canEdit, userId, onChange)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── NEIGHBOUR EQUIPMENT PANE ── */}
+          {eqDx !== 0 && (() => {
+            const goingNext = eqDx < 0;
+            const neighbour = goingNext ? nextEq : prevEq;
+            if (!neighbour) return null;
+            const neighbourData = qc.getQueryData<any>([
+              "equipment-detail",
+              data.line.project_id,
+              String(data.line.number),
+              data.pe.kind,
+              neighbour.id,
+            ]);
+            const offset = goingNext ? w : -w;
+            const { mech: nMech, wiring: nWiring, cold: nCold, overall: nOverall } =
+              neighbourData
+                ? equipmentProgress(neighbourData.peWithGroups)
+                : { mech: 0, wiring: 0, cold: 0, overall: 0 };
+            return (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateX(${offset}px)`,
+                  pointerEvents: "none",
+                }}
+              >
+                {/* Neighbour header */}
+                <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div>
+                      <div className="mb-1 h-3 w-20 rounded bg-white/20" />
+                      <h1 className="text-3xl font-semibold">
+                        {neighbour.name}
+                        {neighbourData && (
+                          <span className={`ml-3 text-base font-normal ${meta.accent}`}>
+                            {nOverall}%
+                          </span>
+                        )}
+                      </h1>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Neighbour tabs — real data if cached, ghost if not */}
+                <div className="mt-3 flex items-stretch gap-2">
+                  {neighbourData ? (
+                    <>
+                      <SectionTab phase="assembly" pct={nMech} weight={1} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="wiring" pct={nWiring} weight={0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="cold_comm" pct={nCold} weight={0} dragging={false} onClick={() => {}} />
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-12 flex-1 rounded-md border bg-muted/30" />
+                      <div className="h-12 flex-1 rounded-md border bg-muted/20" />
+                      <div className="h-12 flex-1 rounded-md border bg-muted/10" />
+                    </>
+                  )}
+                </div>
+
+                {/* Neighbour content — ghost skeleton */}
+                <div className="mt-6 space-y-3">
+                  <div className="h-20 rounded-lg bg-muted/30" />
+                  <div className="h-10 rounded-lg bg-muted/20" />
+                  <div className="h-10 rounded-lg bg-muted/15" />
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -598,7 +706,7 @@ function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section;
         flexGrow: grow,
         flexShrink: 1,
         flexBasis: 0,
-        transition: dragging ? "none" : "flex-grow 250ms ease-out",
+        transition: dragging ? "none" : "flex-grow 340ms cubic-bezier(0.25, 1, 0.5, 1)",
       }}
       className={`min-w-0 cursor-pointer overflow-hidden rounded-md border ${isActive ? `${meta.tabActive} p-2 text-left` : `${meta.tab} flex flex-col items-center justify-center px-3 py-2`}`}
     >
