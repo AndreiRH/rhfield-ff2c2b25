@@ -97,7 +97,9 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
 function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(currentKey);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
 
   const keyAtPoint = (x: number, y: number): string | null => {
@@ -107,6 +109,34 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     if (!row) return null;
     return row.dataset.switcherKey ?? null;
   };
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      setPos(null);
+      return;
+    }
+    const compute = () => {
+      const t = triggerRef.current;
+      if (!t) return;
+      const r = t.getBoundingClientRect();
+      const margin = 8;
+      const vw = window.innerWidth;
+      const desired = Math.min(260, vw - margin * 2);
+      const width = Math.max(200, desired);
+      const center = r.left + r.width / 2;
+      let left = center - width / 2;
+      if (left < margin) left = margin;
+      if (left + width > vw - margin) left = vw - margin - width;
+      setPos({ top: r.bottom + 6, left, width });
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -147,8 +177,9 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   }, [open]);
 
   return (
-    <div className="relative inline-block" style={{ isolation: "isolate" }}>
+    <div className="relative inline-block">
       <button
+        ref={triggerRef}
         type="button"
         onTouchStart={(e) => {
           e.preventDefault();
@@ -166,7 +197,7 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
         <span className="truncate">{label}</span>
         <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
       </button>
-      {open && (
+      {open && pos && (
         <div
           ref={panelRef}
           role="listbox"
@@ -176,15 +207,11 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-md)",
             boxShadow: "0 8px 24px oklch(0.18 0.03 250 / 0.18)",
-            minWidth: "200px",
             fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            right: "auto",
-            left: "50%",
-            transform: "translateX(-50%)",
-            maxWidth: "min(260px, calc(100vw - 2rem))",
-            width: "max-content",
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
           }}
           className="z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
