@@ -96,18 +96,21 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
         </div>
         {notes.length === 0 ? (
           <p className="text-sm text-muted-foreground">No notes yet.</p>
-        ) : (
+        ) : (() => {
+          const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
+          return (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
               <ul className="space-y-2">
                 {notes.map((n) => (
                   <NoteRow key={n.id} note={n} canEdit={canEdit}
-                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
+                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} gallery={noteGallery} />
                 ))}
               </ul>
             </SortableContext>
           </DndContext>
-        )}
+          );
+        })()}
       </CardContent>
     </Card>
   );
