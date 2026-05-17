@@ -307,6 +307,7 @@ export function StoragePhoto({
   containerClassName,
   canEdit,
   onRemove,
+  gallery,
 }: {
   bucket?: string;
   path: string;
@@ -314,6 +315,7 @@ export function StoragePhoto({
   containerClassName?: string;
   canEdit?: boolean;
   onRemove?: () => void;
+  gallery?: GalleryItem[];
 }) {
   const src = useStorageUrl(bucket, path);
   return (
@@ -321,7 +323,7 @@ export function StoragePhoto({
       {src ? (
         <button
           type="button"
-          onClick={() => openLightbox(bucket, path)}
+          onClick={() => openLightbox(bucket, path, undefined, gallery)}
           className="block w-full"
         >
           <img
