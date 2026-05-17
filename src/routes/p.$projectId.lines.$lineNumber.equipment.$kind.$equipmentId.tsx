@@ -86,6 +86,8 @@ function EquipmentDetail() {
   const { data, isLoading } = useQuery({
     enabled: !!session && !isChildRoute,
     queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data: line, error } = await supabase
         .from("lines").select("id, number, project_id")
@@ -313,6 +315,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         eqCommitRef.current = null;
       }
       const t = e.touches[0];
+      // Ignore touches starting within 20px of either screen edge —
+      // reserved for the Android system back gesture.
+      if (t.clientX < 20 || t.clientX > window.innerWidth - 20) return;
       const target = e.target as HTMLElement | null;
       const inHeader = !!target?.closest?.("[data-equipment-header]");
       startRef.current = { x: t.clientX, y: t.clientY, decided: null, mode: inHeader ? "equipment" : "section" };
@@ -365,31 +370,30 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           const ratio = dx / w;
           const goingNext = dx < 0;
           const target = goingNext ? nextEqRef.current : prevEqRef.current;
-          if (Math.abs(ratio) > 0.38 && target) {
-            setEqState("animating");
-            const end = goingNext ? -w : w;
-            eqCommitRef.current = window.setTimeout(() => {
-              eqCommitRef.current = null;
-              if (!isMounted.current) return;
-              const d = dataRef.current;
-              navigateRef.current({
-                to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
-                params: {
-                  projectId: d.line.project_id,
-                  lineNumber: String(d.line.number),
-                  kind: d.pe.kind,
-                  equipmentId: target.id,
-                },
-              });
-            }, 230);
-            return end;
+          if (Math.abs(ratio) > 0.28 && target) {
+            // Navigate immediately — no slide-off animation.
+            // The new page mounts clean at eqDx=0; no white screen.
+            if (!isMounted.current) return dx;
+            const d = dataRef.current;
+            navigateRef.current({
+              to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
+              params: {
+                projectId: d.line.project_id,
+                lineNumber: String(d.line.number),
+                kind: d.pe.kind,
+                equipmentId: target.id,
+              },
+            });
+            return 0;
           }
+          // Cancelled swipe — snap back.
           setEqState("animating");
           eqCommitRef.current = window.setTimeout(() => {
             eqCommitRef.current = null;
             if (!isMounted.current) return;
             setEqState("idle");
-          }, 230);
+            setEqDx(0);
+          }, 220);
           return 0;
         });
         return;
@@ -400,7 +404,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const localDir = dx < 0 ? 1 : -1;
         const curSection = sectionRef.current;
         const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(curSection) + localDir];
-        if (Math.abs(ratio) > 0.3 && localTarget) {
+        if (Math.abs(ratio) > 0.22 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
             commitTimeoutRef.current = null;
@@ -470,48 +474,48 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* HEADER ZONE — never translates. Equipment-swipe gesture starts here. */}
-      <div className="relative" data-equipment-header>
-        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-          <HeaderInner
-            data={data}
-            plantLabel={plantLabel}
-            overall={overall}
-            accent={meta.accent}
-          />
-        </div>
-        {targetMeta && (
-          <div
-            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-            style={{ opacity: progress, transition: colorTransition }}
-            aria-hidden
-          >
-            <HeaderInner
-              data={data}
-              plantLabel={plantLabel}
-              overall={overall}
-              accent={targetMeta.accent}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
-      <div className="mt-3 flex items-stretch gap-2">
-        <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
-        <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
-        <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
-      </div>
-
-      {/* CONTENT WRAPPER — translates for equipment-swipe; overflow hidden keeps it clean. */}
+      {/* EVERYTHING BELOW slides with equipment swipe (header + tabs + content). */}
       <div
         style={{
           transform: `translateX(${eqDx}px)`,
           transition: eqTransformTransition,
-          overflow: "hidden",
           ...(eqState === "dragging" ? { willChange: "transform" } : {}),
         }}
       >
+        {/* HEADER ZONE — equipment-swipe gesture starts here. */}
+        <div className="relative" data-equipment-header>
+          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+            <HeaderInner
+              data={data}
+              plantLabel={plantLabel}
+              overall={overall}
+              accent={meta.accent}
+            />
+          </div>
+          {targetMeta && (
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+              style={{ opacity: progress, transition: colorTransition }}
+              aria-hidden
+            >
+              <HeaderInner
+                data={data}
+                plantLabel={plantLabel}
+                overall={overall}
+                accent={targetMeta.accent}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
+        <div className="mt-3 flex items-stretch gap-2">
+          <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+          <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+          <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
+        </div>
+
+        {/* SECTION CONTENT — section swipe lives inside. */}
         <div className="relative mt-6 overflow-hidden">
           <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
             {renderSection(section, data, canEdit, userId, onChange)}
