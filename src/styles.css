@@ -116,3 +116,34 @@
   }
   h1, h2, h3, h4 { letter-spacing: -0.02em; }
 }
+
+@layer components {
+  /* Shared breadcrumb pill — line + equipment switchers must be pixel-identical. */
+  .breadcrumb-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 8px;
+    border: 1px solid color-mix(in oklab, currentColor 30%, transparent);
+    border-radius: 9999px;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 120ms ease;
+  }
+  .breadcrumb-pill:hover {
+    background: color-mix(in oklab, currentColor 10%, transparent);
+  }
+  .breadcrumb-pill > span:first-of-type {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
