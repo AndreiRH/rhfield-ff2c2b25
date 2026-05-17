@@ -305,9 +305,16 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [tapSteps, setTapSteps] = useState(0);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
-  const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
-  const targetSection: Section | null = dir !== 0 ? (SECTION_ORDER[sectionIdx + dir] ?? null) : null;
-  const progress = targetSection ? Math.min(1, Math.abs(swipeDx) / widthRef.current) : 0;
+  // While animating, derive direction/target from tapSteps (== animTargetStepsRef snapshot),
+  // so the tint and tab indicator track the final accumulated target — not the
+  // intermediate section the wrapper is gliding through.
+  const dir = tapSteps !== 0 ? (tapSteps > 0 ? 1 : -1) : (swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1);
+  const targetIdxOffset = tapSteps !== 0 ? tapSteps : dir;
+  const targetSection: Section | null = targetIdxOffset !== 0 ? (SECTION_ORDER[sectionIdx + targetIdxOffset] ?? null) : null;
+  // Progress toward the *next single step* in the swipe direction (for tint cross-fade).
+  const w0 = widthRef.current || 1;
+  const stepPortion = dir !== 0 ? Math.min(1, Math.abs(swipeDx + (tapSteps - dir) * w0) / w0) : 0;
+  const progress = tapSteps !== 0 ? 1 : stepPortion;
 
   const weights: Record<Section, number> = { assembly: 0, wiring: 0, cold_comm: 0 };
   weights[section] = 1 - progress;
