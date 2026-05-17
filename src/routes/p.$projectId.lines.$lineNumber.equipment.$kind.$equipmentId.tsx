@@ -160,6 +160,15 @@ function EquipmentDetail() {
         .from("lines").select("id", { count: "exact", head: true })
         .eq("project_id", projectId);
 
+      // Sibling equipments on the same line + kind, for swipe navigation.
+      const { data: siblings } = await supabase
+        .from("plant_equipment")
+        .select("id, name, sort_order")
+        .eq("line_id", line.id)
+        .eq("kind", pe.kind)
+        .is("deleted_at", null)
+        .order("sort_order").order("name");
+
       const byChapter = (ch: string) => {
         const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
         return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
@@ -167,6 +176,7 @@ function EquipmentDetail() {
       return {
         line, pe, photos: photos ?? [],
         lineCount: lineCount ?? 1,
+        siblings: (siblings ?? []) as { id: string; name: string; sort_order: number }[],
         assembly: byChapter("assembly"),
         wiring: byChapter("wiring"),
         cold: byChapter("cold_comm"),
@@ -218,17 +228,27 @@ function readLastTab(): Section {
 }
 
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
+  const navigate = useNavigate();
   const [section, setSectionState] = useState<Section>(() => readLastTab());
   const setSection = (s: Section) => {
     setSectionState(s);
     try { window.localStorage.setItem(LAST_TAB_KEY, s); } catch {}
   };
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
-  const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null } | null>(null);
+  const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null; mode: "section" | "equipment" } | null>(null);
   const widthRef = useRef(1);
   const [swipeDx, setSwipeDx] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
+
+  // Equipment swipe (top header zone): navigates to prev/next equipment on same line+kind.
+  const siblings: { id: string; name: string }[] = data.siblings ?? [];
+  const curEqIdx = siblings.findIndex((s) => s.id === data.pe.id);
+  const prevEq = curEqIdx > 0 ? siblings[curEqIdx - 1] : null;
+  const nextEq = curEqIdx >= 0 && curEqIdx < siblings.length - 1 ? siblings[curEqIdx + 1] : null;
+  const [eqDx, setEqDx] = useState(0);
+  const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
+  const eqCommitRef = useRef<number | null>(null);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
   const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
@@ -241,14 +261,22 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   if (targetSection) weights[targetSection] = progress;
 
   // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
+  // Touches that start inside the top equipment header switch the gesture into
+  // "equipment" mode and navigate to the prev/next equipment instead of switching tabs.
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (commitTimeoutRef.current) {
         window.clearTimeout(commitTimeoutRef.current);
         commitTimeoutRef.current = null;
       }
+      if (eqCommitRef.current) {
+        window.clearTimeout(eqCommitRef.current);
+        eqCommitRef.current = null;
+      }
       const t = e.touches[0];
-      startRef.current = { x: t.clientX, y: t.clientY, decided: null };
+      const target = e.target as HTMLElement | null;
+      const inHeader = !!target?.closest?.("[data-equipment-header]");
+      startRef.current = { x: t.clientX, y: t.clientY, decided: null, mode: inHeader ? "equipment" : "section" };
       widthRef.current = window.innerWidth;
     };
     const onMove = (e: TouchEvent) => {
@@ -260,23 +288,66 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       if (start.decided === null) {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
         start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-        if (start.decided === "h") setSwipeState("dragging");
+        if (start.decided === "h") {
+          if (start.mode === "equipment") setEqState("dragging");
+          else setSwipeState("dragging");
+        }
       }
       if (start.decided !== "h") return;
-      const cur = SECTION_ORDER.indexOf(section);
-      let val = dx;
-      if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
-        val = dx * 0.25; // resist past edges
+      if (start.mode === "equipment") {
+        let val = dx;
+        if ((dx < 0 && !nextEq) || (dx > 0 && !prevEq)) val = dx * 0.25;
+        setEqDx(val);
+      } else {
+        const cur = SECTION_ORDER.indexOf(section);
+        let val = dx;
+        if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
+          val = dx * 0.25;
+        }
+        setSwipeDx(val);
       }
-      setSwipeDx(val);
     };
     const onEnd = () => {
-      const decided = startRef.current?.decided;
-      // We need the latest swipeDx; read via functional state update.
+      const start = startRef.current;
+      const decided = start?.decided;
+      const mode = start?.mode ?? "section";
       startRef.current = null;
       if (decided !== "h") {
-        setSwipeState("idle");
-        setSwipeDx(0);
+        setSwipeState("idle"); setSwipeDx(0);
+        setEqState("idle"); setEqDx(0);
+        return;
+      }
+      if (mode === "equipment") {
+        setEqDx((dx) => {
+          const w = widthRef.current;
+          const ratio = dx / w;
+          // Negative dx → swipe left → go to next; positive dx → previous.
+          const goingNext = dx < 0;
+          const target = goingNext ? nextEq : prevEq;
+          if (Math.abs(ratio) > 0.3 && target) {
+            setEqState("animating");
+            const end = goingNext ? -w : w;
+            eqCommitRef.current = window.setTimeout(() => {
+              eqCommitRef.current = null;
+              navigate({
+                to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
+                params: {
+                  projectId: data.line.project_id,
+                  lineNumber: String(data.line.number),
+                  kind: data.pe.kind,
+                  equipmentId: target.id,
+                },
+              });
+            }, 230);
+            return end;
+          }
+          setEqState("animating");
+          eqCommitRef.current = window.setTimeout(() => {
+            setEqState("idle");
+            eqCommitRef.current = null;
+          }, 230);
+          return 0;
+        });
         return;
       }
       setSwipeDx((dx) => {
@@ -284,7 +355,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const ratio = dx / w;
         const localDir = dx < 0 ? 1 : -1;
         const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
-        // Need to swipe more than half the screen to commit; otherwise snap back.
         if (Math.abs(ratio) > 0.3 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
@@ -313,7 +383,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
     };
-  }, [section]);
+  }, [section, prevEq, nextEq, navigate, data.line.project_id, data.line.number, data.pe.kind]);
 
   const dragging = swipeState === "dragging";
   const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
@@ -331,6 +401,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     setSection(s);
   };
 
+  const eqTransformTransition = eqState === "animating" ? "transform 230ms ease-out" : "none";
+  const eqProgress = widthRef.current > 0 ? Math.min(1, Math.abs(eqDx) / widthRef.current) : 0;
+  const eqDir = eqDx < 0 ? 1 : eqDx > 0 ? -1 : 0;
+  const eqTarget = eqDir === 1 ? nextEq : eqDir === -1 ? prevEq : null;
+
   return (
     <div>
       {/* Background tint: current layer + target layer fading in with progress (rate-limited) */}
@@ -344,55 +419,77 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* Header stack: current header + target header overlay fading in */}
-      <div className="relative">
-        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-          <HeaderInner
-            data={data}
-            plantLabel={plantLabel}
-            overall={overall}
-            accent={meta.accent}
-            mech={mech} wiring={wiring} cold={cold}
-            weights={weights} dragging={dragging}
-            onTap={tapNav}
-          />
-        </div>
-        {targetMeta && (
+      {/* Equipment-swipe wrapper: translates the whole page (header + content) horizontally. */}
+      <div
+        className="relative"
+        style={{ transform: `translateX(${eqDx}px)`, transition: eqTransformTransition, willChange: "transform" }}
+      >
+        {/* Peek of incoming equipment name on the side the user is swiping toward. */}
+        {eqTarget && (
           <div
-            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-            style={{ opacity: progress, transition: colorTransition }}
             aria-hidden
+            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg border ${meta.header} px-4 py-3 text-base font-semibold shadow-lg`}
+            style={{
+              [eqDir === 1 ? "left" : "right"]: "100%",
+              [eqDir === 1 ? "marginLeft" : "marginRight"]: "32px",
+              opacity: 0.4 + eqProgress * 0.6,
+              whiteSpace: "nowrap",
+            }}
           >
+            {eqTarget.name}
+          </div>
+        )}
+
+        {/* Header stack: current header + target header overlay fading in */}
+        <div className="relative" data-equipment-header>
+          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
             <HeaderInner
               data={data}
               plantLabel={plantLabel}
               overall={overall}
-              accent={targetMeta.accent}
+              accent={meta.accent}
               mech={mech} wiring={wiring} cold={cold}
               weights={weights} dragging={dragging}
-              onTap={() => {}}
+              onTap={tapNav}
             />
           </div>
-        )}
-      </div>
-
-      {/* Content track: current pane + adjacent pane following the finger */}
-      <div className="relative mt-6 overflow-hidden">
-        <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
-          {renderSection(section, data, canEdit, userId, onChange)}
+          {targetMeta && (
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+              style={{ opacity: progress, transition: colorTransition }}
+              aria-hidden
+            >
+              <HeaderInner
+                data={data}
+                plantLabel={plantLabel}
+                overall={overall}
+                accent={targetMeta.accent}
+                mech={mech} wiring={wiring} cold={cold}
+                weights={weights} dragging={dragging}
+                onTap={() => {}}
+              />
+            </div>
+          )}
         </div>
-        {targetSection && (
-          <div
-            className="absolute inset-0"
-            style={{
-              transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
-              transition: transformTransition,
-            }}
-            aria-hidden
-          >
-            {renderSection(targetSection, data, canEdit, userId, onChange)}
+
+        {/* Content track: current pane + adjacent pane following the finger */}
+        <div className="relative mt-6 overflow-hidden">
+          <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
+            {renderSection(section, data, canEdit, userId, onChange)}
           </div>
-        )}
+          {targetSection && (
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
+                transition: transformTransition,
+              }}
+              aria-hidden
+            >
+              {renderSection(targetSection, data, canEdit, userId, onChange)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
