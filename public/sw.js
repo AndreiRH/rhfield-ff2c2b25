@@ -285,15 +285,7 @@ async function cacheRoutesForOffline(routes, port) {
         try {
           const html = new TextDecoder().decode(rootShellBytes);
           const urls = sameOriginAssetUrls(html, new URL("/", self.location.origin).href);
-          await Promise.all(urls.map(async (assetUrl) => {
-            try {
-              const cached = await assets.match(assetUrl);
-              if (!cached) {
-                const ar = await fetch(assetUrl, { credentials: "include" });
-                if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
-              }
-            } catch {}
-          }));
+          await Promise.all(urls.map((assetUrl) => cacheAssetAndImports(assetUrl, assets)));
         } catch {}
       }
     } catch {}
@@ -348,12 +340,7 @@ self.addEventListener("install", (e) => {
         } catch {}
         const html = await root.text().catch(() => "");
         const assets = await caches.open(CACHE_ASSETS);
-        await Promise.all(sameOriginAssetUrls(html, rootUrl).map(async (assetUrl) => {
-          try {
-            const res = await fetch(assetUrl, { cache: "no-store" });
-            if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
-          } catch {}
-        }));
+        await Promise.all(sameOriginAssetUrls(html, rootUrl).map((assetUrl) => cacheAssetAndImports(assetUrl, assets)));
       }
     } catch {}
     await self.skipWaiting();
