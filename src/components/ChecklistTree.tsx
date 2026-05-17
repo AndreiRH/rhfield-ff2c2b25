@@ -564,11 +564,25 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
           {showPhotos && photos.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
-              <div className="grid grid-cols-3 gap-1">
-                {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
-                  canEdit={canEdit} onRemove={() => removePhoto(p)}
-                  isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
-              </div>
+              {photos.length > 1 && canEdit ? (
+                <DndContext id={`photos-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderPhotos}>
+                  <SortableContext items={photos.map((p: any) => p.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-3 gap-1">
+                      {photos.map((p: any) => (
+                        <SortablePhotoTile key={p.id} id={p.id} path={p.storage_path}
+                          canEdit={canEdit} onRemove={() => removePhoto(p)}
+                          isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="grid grid-cols-3 gap-1">
+                  {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
+                    canEdit={canEdit} onRemove={() => removePhoto(p)}
+                    isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
+                </div>
+              )}
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
@@ -582,8 +596,19 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
           {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
-              {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit}
-                onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />)}
+              {files.length > 1 && canEdit ? (
+                <DndContext id={`files-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderFiles}>
+                  <SortableContext items={files.map((f: any) => f.id)} strategy={verticalListSortingStrategy}>
+                    {files.map((f: any) => (
+                      <SortableFileChip key={f.id} id={f.id} f={f} canEdit={canEdit}
+                        onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit}
+                  onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />)
+              )}
               {canEdit && (
                 <label title="Add file"
                   className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
