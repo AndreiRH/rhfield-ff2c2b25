@@ -71,7 +71,7 @@ async function probeOnline(): Promise<boolean> {
     const to = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch(url.href, { method: "GET", cache: "no-store", signal: ctrl.signal });
     clearTimeout(to);
-    return !!res;
+    return res.ok;
   } catch {
     return false;
   }
