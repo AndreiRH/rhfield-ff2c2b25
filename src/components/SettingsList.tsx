@@ -31,8 +31,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
 
-interface SettingPhoto { id: string; storage_path: string }
-interface SettingFile { id: string; storage_path: string; file_name: string }
+interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean }
+interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean }
 interface Setting {
   id: string;
   plant_equipment_id: string;
@@ -77,7 +77,7 @@ function SettingsListInner({
     const [{ data: s }, { data: g }] = await Promise.all([
       supabase
         .from("equipment_settings")
-        .select("*, setting_photos(id, storage_path), setting_files(id, storage_path, file_name)")
+        .select("*, setting_photos(id, storage_path, is_shared), setting_files(id, storage_path, file_name, is_shared)")
         .eq("plant_equipment_id", equipmentId)
         .is("deleted_at", null)
         .order("sort_order").order("created_at"),
@@ -742,13 +742,13 @@ function SettingRow({
         onClick: async () => {
           undone = true;
           const { error: undoError } = await supabase.from("setting_photos")
-            .insert({ id: p.id, equipment_setting_id: setting.id, storage_path: p.storage_path });
+            .insert({ id: p.id, equipment_setting_id: setting.id, storage_path: p.storage_path, is_shared: p.is_shared ?? false });
           if (undoError) toast.error(undoError.message); else onReload();
         },
       },
     });
     setTimeout(async () => {
-      if (!undone) await supabase.storage.from("photos").remove([p.storage_path]);
+      if (!undone && !p.is_shared) await supabase.storage.from("photos").remove([p.storage_path]);
     }, 3500);
   };
   const removeFile = async (f: SettingFile) => {
@@ -764,14 +764,22 @@ function SettingRow({
         onClick: async () => {
           undone = true;
           const { error: undoError } = await supabase.from("setting_files")
-            .insert({ id: f.id, equipment_setting_id: setting.id, storage_path: f.storage_path, file_name: f.file_name });
+            .insert({ id: f.id, equipment_setting_id: setting.id, storage_path: f.storage_path, file_name: f.file_name, is_shared: f.is_shared ?? false });
           if (undoError) toast.error(undoError.message); else onReload();
         },
       },
     });
     setTimeout(async () => {
-      if (!undone) await supabase.storage.from("files").remove([f.storage_path]);
+      if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
+  };
+  const togglePhotoShared = async (p: SettingPhoto) => {
+    const { error } = await supabase.from("setting_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
+    if (error) toast.error(error.message); else onReload();
+  };
+  const toggleFileShared = async (f: SettingFile) => {
+    const { error } = await supabase.from("setting_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
+    if (error) toast.error(error.message); else onReload();
   };
 
   const onRowClick = (e: MouseEvent) => {
@@ -895,7 +903,9 @@ function SettingRow({
             <div className="space-y-1">
               <div className="grid grid-cols-3 gap-1">
                 {photos.map((p) => (
-                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit}
+                    onRemove={() => removePhoto(p)}
+                    isShared={!!p.is_shared} onToggleShared={() => togglePhotoShared(p)} />
                 ))}
               </div>
               {canEdit && (
@@ -911,7 +921,9 @@ function SettingRow({
           {showFiles && files.length > 0 && (
             <div className="space-y-1">
               {files.map((f) => (
-                <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
+                <FileChip key={f.id} f={f} canEdit={canEdit}
+                  onRemove={() => removeFile(f)}
+                  onToggleShared={() => toggleFileShared(f)} />
               ))}
               {canEdit && (
                 <label title="Add file"
