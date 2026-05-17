@@ -352,6 +352,33 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
     if (error) toast.error(error.message); else onChange();
   };
+
+  const attachSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+  );
+  const reorderPhotos = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = photos.findIndex((p: any) => p.id === active.id);
+    const newIdx = photos.findIndex((p: any) => p.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(photos, oldIdx, newIdx);
+    await Promise.all(next.map((p: any, i: number) =>
+      supabase.from("item_photos").update({ sort_order: i }).eq("id", p.id)));
+    onChange();
+  };
+  const reorderFiles = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = files.findIndex((f: any) => f.id === active.id);
+    const newIdx = files.findIndex((f: any) => f.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(files, oldIdx, newIdx);
+    await Promise.all(next.map((f: any, i: number) =>
+      supabase.from("item_files").update({ sort_order: i }).eq("id", f.id)));
+    onChange();
+  };
   const toggleShareFile = async (f: any) => {
     if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
