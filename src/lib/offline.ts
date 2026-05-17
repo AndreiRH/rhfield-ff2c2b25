@@ -155,7 +155,7 @@ export function useOfflineStatus() {
       }
       if (d.type === "rhfield-flush-start") {
         setPending(d.pending);
-        setWarm({ phase: "tables", done: 0, total: d.pending });
+        setWarm({ phase: "edits", done: 0, total: d.pending });
       }
       if (d.type === "rhfield-auth-expired") {
         handleAuthExpired();
