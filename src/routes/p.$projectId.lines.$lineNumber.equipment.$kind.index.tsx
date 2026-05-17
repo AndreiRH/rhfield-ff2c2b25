@@ -27,6 +27,7 @@ import {
   SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { fetchEquipmentDetail } from "./p.$projectId.lines.$lineNumber.equipment.$kind.$equipmentId";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/")({
   component: PlantEquipmentList,
