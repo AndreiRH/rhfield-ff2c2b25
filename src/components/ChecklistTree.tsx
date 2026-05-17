@@ -20,7 +20,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy, rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
