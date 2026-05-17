@@ -576,6 +576,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                     overall={overall}
                     accent={targetMeta.accent}
                   />
+                  <div className="mt-3 flex items-stretch gap-2">
+                    <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => {}} />
+                    <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => {}} />
+                    <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => {}} />
+                  </div>
                 </div>
               )}
             </div>
