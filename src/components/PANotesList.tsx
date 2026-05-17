@@ -116,7 +116,7 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
