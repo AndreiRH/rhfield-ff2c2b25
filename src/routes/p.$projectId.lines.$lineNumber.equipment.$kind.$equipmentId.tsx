@@ -285,6 +285,19 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   weights[section] = 1 - progress;
   if (targetSection) weights[targetSection] = progress;
 
+  // Refs mirror mutable values so the gesture effect can register listeners
+  // exactly once and never tear down mid-swipe (which would cancel gestures).
+  const sectionRef = useRef(section);
+  const prevEqRef = useRef(prevEq);
+  const nextEqRef = useRef(nextEq);
+  const navigateRef = useRef(navigate);
+  const dataRef = useRef(data);
+  useEffect(() => { sectionRef.current = section; }, [section]);
+  useEffect(() => { prevEqRef.current = prevEq; }, [prevEq]);
+  useEffect(() => { nextEqRef.current = nextEq; }, [nextEq]);
+  useEffect(() => { navigateRef.current = navigate; }, [navigate]);
+  useEffect(() => { dataRef.current = data; }, [data]);
+
   // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
   // Touches that start inside the top equipment header switch the gesture into
   // "equipment" mode and navigate to the prev/next equipment instead of switching tabs.
@@ -321,10 +334,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       if (start.decided !== "h") return;
       if (start.mode === "equipment") {
         let val = dx;
-        if ((dx < 0 && !nextEq) || (dx > 0 && !prevEq)) val = dx * 0.25;
+        if ((dx < 0 && !nextEqRef.current) || (dx > 0 && !prevEqRef.current)) val = dx * 0.25;
         setEqDx(val);
       } else {
-        const cur = SECTION_ORDER.indexOf(section);
+        const cur = SECTION_ORDER.indexOf(sectionRef.current);
         let val = dx;
         if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
           val = dx * 0.25;
@@ -348,18 +361,19 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           const ratio = dx / w;
           // Negative dx → swipe left → go to next; positive dx → previous.
           const goingNext = dx < 0;
-          const target = goingNext ? nextEq : prevEq;
+          const target = goingNext ? nextEqRef.current : prevEqRef.current;
           if (Math.abs(ratio) > 0.3 && target) {
             setEqState("animating");
             const end = goingNext ? -w : w;
             eqCommitRef.current = window.setTimeout(() => {
               eqCommitRef.current = null;
-              navigate({
+              const d = dataRef.current;
+              navigateRef.current({
                 to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
                 params: {
-                  projectId: data.line.project_id,
-                  lineNumber: String(data.line.number),
-                  kind: data.pe.kind,
+                  projectId: d.line.project_id,
+                  lineNumber: String(d.line.number),
+                  kind: d.pe.kind,
                   equipmentId: target.id,
                 },
               });
@@ -379,7 +393,8 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const w = widthRef.current;
         const ratio = dx / w;
         const localDir = dx < 0 ? 1 : -1;
-        const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
+        const curSection = sectionRef.current;
+        const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(curSection) + localDir];
         if (Math.abs(ratio) > 0.3 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
@@ -407,8 +422,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
+      if (commitTimeoutRef.current) { window.clearTimeout(commitTimeoutRef.current); commitTimeoutRef.current = null; }
+      if (eqCommitRef.current) { window.clearTimeout(eqCommitRef.current); eqCommitRef.current = null; }
     };
-  }, [section, prevEq, nextEq, navigate, data.line.project_id, data.line.number, data.pe.kind]);
+  }, []);
 
   const dragging = swipeState === "dragging";
   const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
