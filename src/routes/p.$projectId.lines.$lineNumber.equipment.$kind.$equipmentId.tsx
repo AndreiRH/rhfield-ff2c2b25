@@ -285,6 +285,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [swipeDx, setSwipeDx] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
+  // Accumulated signed step target of the in-flight animation (0 when idle/dragging from rest).
+  // Lets fast consecutive swipes stack instead of cancelling the pending commit.
+  const animTargetStepsRef = useRef(0);
 
   const siblings: { id: string; name: string }[] = data.siblings ?? [];
   const curEqIdx = siblings.findIndex((s) => s.id === data.pe.id);
