@@ -131,6 +131,19 @@ function PlantEquipmentList() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["plant-equip-list", projectId, lineNumber, kind] });
 
+  // Warm equipment-detail cache for every sibling so opening / swiping is instant.
+  useEffect(() => {
+    if (!data || !isPlant) return;
+    const list = (data.plantEquipment ?? []) as { id: string }[];
+    for (const pe of list) {
+      qc.prefetchQuery({
+        queryKey: ["equipment-detail", projectId, lineNumber, kind, pe.id],
+        staleTime: 5 * 60_000,
+        queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, pe.id),
+      });
+    }
+  }, [data, isPlant, projectId, lineNumber, kind, qc]);
+
   if (!session) return null;
 
   return (
