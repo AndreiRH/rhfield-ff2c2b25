@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { ChevronLeft, ScrollText } from "lucide-react";
 import { SettingsList } from "@/components/SettingsList";
 import { Button } from "@/components/ui/button";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
+import { PillSwitcher } from "@/components/PillSwitcher";
 import { CurrentLineProvider } from "@/lib/current-line";
 
 export const Route = createFileRoute(
