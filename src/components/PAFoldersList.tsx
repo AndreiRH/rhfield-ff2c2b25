@@ -420,7 +420,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   );
 }
 
-function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
+function AttPhoto({ att, canEdit, onRemove, gallery }: { att: Attachment; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
   return (
     <StoragePhoto
       bucket="photos"
@@ -429,6 +429,7 @@ function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolea
       containerClassName="h-28"
       canEdit={canEdit}
       onRemove={onRemove}
+      gallery={gallery}
     />
   );
 }
