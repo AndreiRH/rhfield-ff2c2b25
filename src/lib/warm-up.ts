@@ -85,7 +85,9 @@ function emit(p: Partial<Progress>) {
   listeners.forEach((fn) => {
     try {
       fn(current);
-    } catch {}
+    } catch {
+      // Ignore listener errors so one UI subscriber cannot stop warm-up.
+    }
   });
 }
 export function onWarmUpProgress(fn: Listener) {
@@ -228,7 +230,9 @@ export function warmUp(force = false): Promise<void> {
         if (typeof navigator !== "undefined" && navigator.storage?.persist) {
           await navigator.storage.persist();
         }
-      } catch {}
+      } catch {
+        // Storage persistence is best-effort.
+      }
 
       // 1) Pull every table fully (paged).
       emit({ phase: "tables", done: 0, total: TABLES.length, error: undefined });
@@ -264,14 +268,18 @@ export function warmUp(force = false): Promise<void> {
         await Promise.all(
           loads.map((load) =>
             load()
-              .catch(() => {})
+              .catch(() => {
+                // Ignore individual route-module preload failures.
+              })
               .finally(() => {
                 loaded++;
                 emit({ done: routes.length + loaded });
               }),
           ),
         );
-      } catch {}
+      } catch {
+        // Route chunk preloading is an optimization; the SW route cache remains valid.
+      }
 
       // 2) Collect every storage path, skipping anything already cached locally.
       type Job = { bucket: "photos" | "files"; path: string };
@@ -323,7 +331,9 @@ export function warmUp(force = false): Promise<void> {
             for (const r of data ?? [])
               if (r.signedUrl && r.path)
                 signed.push({ bucket, path: r.path, signedUrl: r.signedUrl });
-          } catch {}
+          } catch {
+            // Continue with other signed URL batches.
+          }
         }
       }
       const CONCURRENCY = 6;
@@ -338,10 +348,14 @@ export function warmUp(force = false): Promise<void> {
               try {
                 res = await fetch(job.signedUrl, { cache: "no-store" });
                 if (res.ok) break;
-              } catch {}
+              } catch {
+                // Retry below.
+              }
             }
             if (res?.ok) await putBlob(job.bucket, job.path, await res.blob());
-          } catch {}
+          } catch {
+            // Continue warming other blobs.
+          }
           emit({ done: current.done + 1 });
         }
       }
