@@ -313,8 +313,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const targetSection: Section | null = targetIdxOffset !== 0 ? (SECTION_ORDER[sectionIdx + targetIdxOffset] ?? null) : null;
   // Progress toward the *next single step* in the swipe direction (for tint cross-fade).
   const w0 = widthRef.current || 1;
-  const stepPortion = dir !== 0 ? Math.min(1, Math.abs(swipeDx + (tapSteps - dir) * w0) / w0) : 0;
-  const progress = tapSteps !== 0 ? 1 : stepPortion;
+  const progress = tapSteps !== 0 ? 1 : (dir !== 0 ? Math.min(1, Math.abs(swipeDx) / w0) : 0);
 
   const weights: Record<Section, number> = { assembly: 0, wiring: 0, cold_comm: 0 };
   weights[section] = 1 - progress;
