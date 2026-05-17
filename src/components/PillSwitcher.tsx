@@ -40,10 +40,10 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 leading-none transition hover:bg-current/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
+        className="breadcrumb-pill focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
       >
         <span>{label}</span>
-        <ChevronDown className="h-3 w-3" aria-hidden />
+        <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
