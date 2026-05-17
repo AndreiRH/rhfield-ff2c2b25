@@ -690,7 +690,7 @@ function renderSection(s: Section, data: any, canEdit: boolean, userId: string |
 
 function HeaderInner({ data, plantLabel, overall, accent }: any) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-3">
+    <div className="flex flex-col gap-2">
       <div>
         <LineBreadcrumb
           projectId={data.line.project_id}
