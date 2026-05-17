@@ -283,6 +283,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [swipeDx, setSwipeDx] = useState(0);
+  const swipeDxRef = useRef(0);
+  const setSwipeDxSync = (val: number) => {
+    swipeDxRef.current = val;
+    setSwipeDx(val);
+  };
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
   // Accumulated signed step target of the in-flight animation (0 when idle/dragging from rest).
@@ -380,7 +385,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     const w = widthRef.current;
     setTapSteps(clamped);
     setSwipeState("animating");
-    setSwipeDx(-clamped * w);
+    setSwipeDxSync(-clamped * w);
     if (commitTimeoutRef.current) {
       window.clearTimeout(commitTimeoutRef.current);
       commitTimeoutRef.current = null;
@@ -395,7 +400,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const target = SECTION_ORDER[SECTION_ORDER.indexOf(sectionRef.current) + finalSteps];
         if (target) setSection(target);
       }
-      setSwipeDx(0);
+      setSwipeDxSync(0);
       setTapSteps(0);
     }, 340);
   };
@@ -455,7 +460,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         if ((dx < 0 && effectiveIdx === SECTION_ORDER.length - 1) || (dx > 0 && effectiveIdx === 0)) {
           val = baseDx + dx * 0.25;
         }
-        setSwipeDx(val);
+        setSwipeDxSync(val);
       }
     };
     const onEnd = () => {
@@ -509,9 +514,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       const w = widthRef.current;
       const base = animTargetStepsRef.current;
       const baseDx = -base * w;
-      // Use functional setSwipeDx purely as a sync read of latest swipeDx.
-      let liveDx = 0;
-      setSwipeDx((v) => { liveDx = v - baseDx; return v; });
+      const liveDx = swipeDxRef.current - baseDx;
       const ratio = liveDx / w;
       let added = 0;
       if (Math.abs(ratio) > 0.22) added = liveDx < 0 ? 1 : -1;
