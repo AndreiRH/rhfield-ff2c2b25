@@ -77,7 +77,7 @@ function SettingsListInner({
     const [{ data: s }, { data: g }] = await Promise.all([
       supabase
         .from("equipment_settings")
-        .select("*, setting_photos(id, storage_path), setting_files(id, storage_path, file_name)")
+        .select("*, setting_photos(id, storage_path, is_shared), setting_files(id, storage_path, file_name, is_shared)")
         .eq("plant_equipment_id", equipmentId)
         .is("deleted_at", null)
         .order("sort_order").order("created_at"),
