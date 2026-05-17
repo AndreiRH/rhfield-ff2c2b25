@@ -422,7 +422,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             if (!isMounted.current) return;
             setEqState("idle");
             setEqDx(0);
-          }, 220);
+          }, 340);
           return 0;
         });
         return;
@@ -441,7 +441,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             setSwipeState("idle");
             setSection(localTarget);
             setSwipeDx(0);
-          }, 260);
+          }, 340);
           return localDir === 1 ? -w : w;
         }
         setSwipeState("animating");
@@ -449,7 +449,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           commitTimeoutRef.current = null;
           if (!isMounted.current) return;
           setSwipeState("idle");
-        }, 260);
+        }, 340);
         return 0;
       });
     };
@@ -474,7 +474,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   }, []);
 
   const dragging = swipeState === "dragging";
-  const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
+  const transformTransition = swipeState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
   const colorTransition = "opacity 180ms linear";
 
   const meta = PHASE_META[section];
@@ -488,7 +488,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     setSection(s);
   };
 
-  const eqTransformTransition = eqState === "animating" ? "transform 230ms ease-out" : "none";
+  const eqTransformTransition = eqState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
 
   return (
     <div>
@@ -627,7 +627,7 @@ function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section;
         flexGrow: grow,
         flexShrink: 1,
         flexBasis: 0,
-        transition: dragging ? "none" : "flex-grow 250ms ease-out",
+        transition: dragging ? "none" : "flex-grow 340ms cubic-bezier(0.25, 1, 0.5, 1)",
       }}
       className={`min-w-0 cursor-pointer overflow-hidden rounded-md border ${isActive ? `${meta.tabActive} p-2 text-left` : `${meta.tab} flex flex-col items-center justify-center px-3 py-2`}`}
     >
