@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v12";
+const VER = "v13";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -208,15 +208,49 @@ function rememberAuth(req) {
 
 function sameOriginAssetUrls(html, baseUrl) {
   const out = new Set();
-  const re = /(?:src|href)=["']([^"']+)["']/g;
-  let m;
-  while ((m = re.exec(html))) {
-    try {
-      const u = new URL(m[1], baseUrl);
-      if (u.origin === self.location.origin && !u.hash) out.add(u.href);
-    } catch {}
+  const patterns = [
+    /(?:src|href)=["']([^"']+)["']/g,
+    /import\(["']([^"']+)["']\)/g,
+    /__vitePreload\(\(\)\s*=>\s*import\(["']([^"']+)["']\)/g,
+  ];
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(html))) {
+      try {
+        const u = new URL(m[1], baseUrl);
+        if (u.origin === self.location.origin && !u.hash) out.add(u.href);
+      } catch {}
+    }
   }
   return [...out];
+}
+
+async function fetchWithTimeout(input, ms = 2500, init = {}) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const req = input instanceof Request ? new Request(input, { signal: ctrl.signal }) : input;
+    return await fetch(req, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+async function cacheAssetAndImports(assetUrl, assets, seen = new Set()) {
+  if (seen.has(assetUrl)) return;
+  seen.add(assetUrl);
+  try {
+    let res = await assets.match(assetUrl);
+    if (!res) {
+      res = await fetchWithTimeout(assetUrl, 5000, { credentials: "include" });
+      if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
+    }
+    const ct = res?.headers?.get("Content-Type") || "";
+    if (res && (ct.includes("javascript") || new URL(assetUrl).pathname.endsWith(".js"))) {
+      const text = await res.clone().text().catch(() => "");
+      await Promise.all(sameOriginAssetUrls(text, assetUrl).map((u) => cacheAssetAndImports(u, assets, seen)));
+    }
+  } catch {}
 }
 
 async function cacheRoutesForOffline(routes, port) {
