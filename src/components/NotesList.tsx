@@ -50,7 +50,7 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
     if (pe?.template_id) {
       const { data: sibs } = await supabase
         .from("plant_equipment").select("id")
-        .eq("template_id", pe.template_id).neq("id", equipmentId);
+        .eq("template_id", pe.template_id).neq("id", equipmentId).is("deleted_at", null);
       siblingIds = (sibs ?? []).map((s: any) => s.id);
     }
     const orFilter = siblingIds.length > 0
