@@ -267,7 +267,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   };
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
   const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null; mode: "section" | "equipment" } | null>(null);
-  const widthRef = useRef(1);
+  const widthRef = useRef(
+    typeof window !== "undefined" ? window.innerWidth : 390
+  );
+  useEffect(() => {
+    const onResize = () => { widthRef.current = window.innerWidth; };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [swipeDx, setSwipeDx] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
