@@ -679,38 +679,43 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                   pointerEvents: "none",
                 }}
               >
-                {/* Neighbour header */}
+                {/* Neighbour header — same layout as current pane so the tabs stay inside the colored card */}
                 <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <div>
-                      <div className="mb-1 h-3 w-20 rounded bg-white/20" />
-                      <h1 className="text-3xl font-semibold">
-                        {neighbour.name}
-                        {neighbourData && (
-                          <span className={`ml-3 text-base font-normal ${meta.accent}`}>
-                            {nOverall}%
-                          </span>
-                        )}
-                      </h1>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Neighbour tabs — real data if cached, ghost if not */}
-                <div className="mt-3 flex items-stretch gap-2">
                   {neighbourData ? (
-                    <>
-                      <SectionTab phase="assembly" pct={nMech} weight={section === "assembly" ? 1 : 0} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="wiring" pct={nWiring} weight={section === "wiring" ? 1 : 0} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="cold_comm" pct={nCold} weight={section === "cold_comm" ? 1 : 0} dragging={false} onClick={() => {}} />
-                    </>
+                    <HeaderInner
+                      data={neighbourData}
+                      plantLabel={plantLabel}
+                      overall={nOverall}
+                      accent={meta.accent}
+                    />
                   ) : (
-                    <>
-                      <div className="h-12 flex-1 rounded-md border bg-muted/30" />
-                      <div className="h-12 flex-1 rounded-md border bg-muted/20" />
-                      <div className="h-12 flex-1 rounded-md border bg-muted/10" />
-                    </>
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <div className="mb-1 h-3 w-32 rounded bg-white/20" />
+                        <h1 className="text-3xl font-semibold">
+                          {neighbour.name}
+                        </h1>
+                      </div>
+                      <div className="self-start inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900">
+                        <SettingsIcon className="h-3.5 w-3.5" /> Settings
+                      </div>
+                    </div>
                   )}
+                  <div className="mt-3 flex items-stretch gap-2">
+                    {neighbourData ? (
+                      <>
+                        <SectionTab phase="assembly" pct={nMech} weight={section === "assembly" ? 1 : 0} dragging={false} onClick={() => {}} />
+                        <SectionTab phase="wiring" pct={nWiring} weight={section === "wiring" ? 1 : 0} dragging={false} onClick={() => {}} />
+                        <SectionTab phase="cold_comm" pct={nCold} weight={section === "cold_comm" ? 1 : 0} dragging={false} onClick={() => {}} />
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-12 flex-1 rounded-md border border-white/30 bg-white/20" />
+                        <div className="h-12 flex-1 rounded-md border border-white/30 bg-white/15" />
+                        <div className="h-12 flex-1 rounded-md border border-white/30 bg-white/10" />
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Neighbour content — real if cached, ghost otherwise */}
