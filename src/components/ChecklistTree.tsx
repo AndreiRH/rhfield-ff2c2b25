@@ -682,9 +682,10 @@ function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
   );
 }
 
-export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared }: {
+export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared, gallery }: {
   path: string; canEdit: boolean; onRemove: () => void;
   isShared?: boolean; onToggleShared?: () => void;
+  gallery?: { bucket: string; path: string; name?: string }[];
 }) {
   return (
     <div className="relative">
@@ -694,6 +695,7 @@ export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared }:
         imgClassName="h-16 w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
+        gallery={gallery}
       />
       {canEdit && onToggleShared && (
         <button
