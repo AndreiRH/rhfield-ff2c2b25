@@ -293,6 +293,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
   const eqCommitRef = useRef<number | null>(null);
   const sectionWrapRef = useRef<HTMLDivElement>(null);
+  const [tapSteps, setTapSteps] = useState(0);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
   const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
@@ -506,9 +507,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     }
     const cur = SECTION_ORDER.indexOf(sectionRef.current);
     const next = SECTION_ORDER.indexOf(s);
-    const direction = next > cur ? 1 : -1;
+    const steps = next - cur; // signed (±1 or ±2)
     const w = widthRef.current;
-    setSwipeDx(direction === 1 ? -w : w);
+    setTapSteps(steps);
+    setSwipeDx(-steps * w);
     setSwipeState("animating");
     commitTimeoutRef.current = window.setTimeout(() => {
       commitTimeoutRef.current = null;
@@ -516,6 +518,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       setSwipeState("idle");
       setSection(s);
       setSwipeDx(0);
+      setTapSteps(0);
     }, 340);
   };
 
@@ -592,21 +595,34 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div>
                   {renderSection(section, data, canEdit, userId, onChange)}
                 </div>
-                {targetSection && (
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateX(${dir === 1 ? w : -w}px)`,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {renderSection(targetSection, data, canEdit, userId, onChange)}
-                  </div>
-                )}
+                {(() => {
+                  const span = tapSteps !== 0 ? tapSteps : (targetSection ? dir : 0);
+                  if (span === 0) return null;
+                  const stepSign = span > 0 ? 1 : -1;
+                  const panes: React.ReactNode[] = [];
+                  for (let i = 1; i <= Math.abs(span); i++) {
+                    const idx = sectionIdx + i * stepSign;
+                    const tgt = SECTION_ORDER[idx];
+                    if (!tgt) break;
+                    panes.push(
+                      <div
+                        key={tgt}
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateX(${i * stepSign * w}px)`,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {renderSection(tgt, data, canEdit, userId, onChange)}
+                      </div>
+                    );
+                  }
+                  return panes;
+                })()}
               </div>
             </div>
           </div>
