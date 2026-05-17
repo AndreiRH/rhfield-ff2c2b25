@@ -15,7 +15,11 @@ type SwFlushCompleteMessage = {
   failureSamples: Array<{ url: string; method: string; status: number; body: string }>;
   stalled: boolean;
 };
-type SwMessage = SwQueueMessage | SwDataChangedMessage | SwFlushCompleteMessage | SwAuthExpiredMessage;
+type SwMessage =
+  | SwQueueMessage
+  | SwDataChangedMessage
+  | SwFlushCompleteMessage
+  | SwAuthExpiredMessage;
 
 function send(type: string) {
   navigator.serviceWorker?.controller?.postMessage({ type });
@@ -94,12 +98,18 @@ export function useOfflineStatus() {
       return real;
     };
 
-    const onOnline  = () => { refreshOnline().then((ok) => { if (ok) triggerFlush(); }); };
+    const onOnline = () => {
+      refreshOnline().then((ok) => {
+        if (ok) triggerFlush();
+      });
+    };
     const onOffline = () => setOnline(false);
-    const onVis     = () => {
+    const onVis = () => {
       if (document.visibilityState === "visible") {
         send("rhfield-queue?");
-        refreshOnline().then((ok) => { if (ok) triggerFlush(); });
+        refreshOnline().then((ok) => {
+          if (ok) triggerFlush();
+        });
       }
     };
     const onMsg = (e: MessageEvent<SwMessage>) => {
