@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v16";
+const VER = "v17";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -431,6 +431,26 @@ self.addEventListener("activate", (e) => {
 
       await self.clients.claim();
       broadcastQueueCount();
+
+      // Force already-open/installed PWA windows to do a real navigation after
+      // an updated worker takes control. This fixes old cached app shells that
+      // cannot run the newer client-side update handoff code yet.
+      try {
+        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        await Promise.all(
+          clients.map((client) => {
+            try {
+              const u = new URL(client.url);
+              if (u.origin !== self.location.origin) return Promise.resolve();
+              if (u.searchParams.get("rhfield-sw") === VER) return Promise.resolve();
+              u.searchParams.set("rhfield-sw", VER);
+              return client.navigate(u.toString());
+            } catch {
+              return Promise.resolve();
+            }
+          }),
+        );
+      } catch {}
     })(),
   );
 });
