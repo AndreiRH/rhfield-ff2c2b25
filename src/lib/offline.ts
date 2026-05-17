@@ -51,7 +51,8 @@ async function requestBackgroundSync() {
 
 export function triggerFlush() {
   getFreshAuthToken().then((token) => {
-    send("rhfield-flush", token ? { authHeader: `Bearer ${token}` } : undefined);
+    if (token) send("rhfield-outbox-retry-auth-failed", { authHeader: `Bearer ${token}` });
+    else send("rhfield-flush");
   });
   requestBackgroundSync();
 }
