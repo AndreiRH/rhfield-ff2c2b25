@@ -745,7 +745,7 @@ function SettingRow({
           undone = true;
           const { error: undoError } = await supabase.from("setting_photos")
             .insert({ id: p.id, equipment_setting_id: setting.id, storage_path: p.storage_path, is_shared: p.is_shared ?? false });
-          if (undoError) toast.error(undoError.message); else onReload();
+          if (undoError) toast.error(toUserMessage(undoError)); else onReload();
         },
       },
     });
@@ -767,7 +767,7 @@ function SettingRow({
           undone = true;
           const { error: undoError } = await supabase.from("setting_files")
             .insert({ id: f.id, equipment_setting_id: setting.id, storage_path: f.storage_path, file_name: f.file_name, is_shared: f.is_shared ?? false });
-          if (undoError) toast.error(undoError.message); else onReload();
+          if (undoError) toast.error(toUserMessage(undoError)); else onReload();
         },
       },
     });

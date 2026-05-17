@@ -140,7 +140,7 @@ function FlatChecklistInner({ group, canEdit, onChange, lineCount, headerLeading
         onClick: async () => {
           const { error: undoErr } = await supabase.from("checklist_items")
             .update({ deleted_at: null }).in("id", ids);
-          if (undoErr) toast.error(undoErr.message); else { toast.success("Restored"); onChange(); }
+          if (undoErr) toast.error(toUserMessage(undoErr)); else { toast.success("Restored"); onChange(); }
         },
       },
     });
