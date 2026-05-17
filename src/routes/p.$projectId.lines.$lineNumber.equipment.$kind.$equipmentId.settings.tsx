@@ -9,6 +9,7 @@ import { ChevronLeft, ScrollText } from "lucide-react";
 import { SettingsList } from "@/components/SettingsList";
 import { Button } from "@/components/ui/button";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
+import { CurrentLineProvider } from "@/lib/current-line";
 
 export const Route = createFileRoute(
   "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings",
@@ -31,11 +32,14 @@ function EquipmentSettingsPage() {
       const { data: pe, error } = await supabase
         .from("plant_equipment").select("id, name").eq("id", equipmentId).single();
       if (error) throw error;
+      const { data: lineRow } = await supabase
+        .from("lines").select("id")
+        .eq("project_id", projectId).eq("number", Number(lineNumber)).single();
       const { count: lineCount } = await supabase
         .from("lines")
         .select("id", { count: "exact", head: true })
         .eq("project_id", projectId);
-      return { pe, lineCount: lineCount ?? 10 };
+      return { pe, lineId: lineRow?.id ?? null, lineCount: lineCount ?? 10 };
     },
   });
 
@@ -80,12 +84,14 @@ function EquipmentSettingsPage() {
                 </Link>
               </Button>
             </div>
-            <SettingsList
-              equipmentId={equipmentId}
-              canEdit={canEdit}
-              userId={user?.id}
+            <CurrentLineProvider value={{ lineId: data.lineId ?? "", lineNumber: Number(lineNumber), equipmentId }}>
+              <SettingsList
+                equipmentId={equipmentId}
+                canEdit={canEdit}
+                userId={user?.id}
                 lineCount={data.lineCount}
-            />
+              />
+            </CurrentLineProvider>
           </>
         )}
       </main>

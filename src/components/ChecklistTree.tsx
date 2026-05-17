@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
+import { useCurrentLine } from "@/lib/current-line";
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
@@ -335,11 +336,20 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
   };
+  const currentLine = useCurrentLine();
+  const confirmUnshare = (origin?: string | null) => {
+    if (!origin || !currentLine?.lineId || origin === currentLine.lineId) return true;
+    return window.confirm(
+      "This attachment was shared from another production line. Making it local will remove it from this line and keep it only on the original line. Continue?",
+    );
+  };
   const toggleSharePhoto = async (p: any) => {
+    if (p.is_shared && !confirmUnshare(p.origin_line_id)) return;
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
     if (error) toast.error(error.message); else onChange();
   };
   const toggleShareFile = async (f: any) => {
+    if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
     if (error) toast.error(error.message); else onChange();
   };

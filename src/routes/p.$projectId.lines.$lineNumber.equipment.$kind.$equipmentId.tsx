@@ -51,6 +51,7 @@ import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
 import { FlatChecklist } from "@/components/FlatChecklist";
 import { NotesList } from "@/components/NotesList";
+import { CurrentLineProvider } from "@/lib/current-line";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId")({
   component: EquipmentDetail,
@@ -104,18 +105,18 @@ function EquipmentDetail() {
             component_photos(id, storage_path),
             component_files(id, storage_path, file_name),
             checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-              item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
+              item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
           ),
           component_types(
             id, name, sort_order, deleted_at,
             checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id,
-              item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared)),
+              item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id)),
             components(
               id, name, sort_order, deleted_at, note, note_shared,
               component_photos(id, storage_path),
               component_files(id, storage_path, file_name),
               checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-                item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
+                item_photos(id, storage_path, is_shared, origin_line_id), item_files(id, storage_path, file_name, is_shared, origin_line_id))
             )
           )
         `;
@@ -197,7 +198,9 @@ function EquipmentDetail() {
         {isLoading || !data ? (
           <Skeleton className="h-40" />
         ) : (
-          <EquipmentBody data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
+          <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number, equipmentId: data.pe.id }}>
+            <EquipmentBody data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
+          </CurrentLineProvider>
         )}
       </main>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { Check, ChevronDown } from "lucide-react";
@@ -8,30 +9,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 type Props = {
   projectId: string;
   lineNumber: number | string;
-  /** Trailing segments rendered after the Line pill (e.g. ["Kiln", "Switchboards"]). */
   segments?: string[];
-  /** Current page heading. If the last segment equals this, it is omitted to avoid duplication. */
   currentTitle?: string;
-  /** Optional override for the wrapper text color (defaults to text-muted-foreground). */
   className?: string;
 };
 
-/**
- * Breadcrumb where the Line segment is an interactive pill with a dropdown of
- * all lines in the project. Selecting a different line performs a hard
- * navigation to the same URL with the new line id, guaranteeing a full
- * remount with fresh data. Middle segments collapse to "…" on mobile.
- */
 export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTitle, className }: Props) {
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const searchStr = useRouterState({ select: (s) => s.location.searchStr ?? "" });
   const currentN = Number(lineNumber);
+  const isMobile = useIsMobile();
 
   const { data: lines } = useQuery({
     queryKey: ["project-lines-breadcrumb", projectId],
@@ -49,42 +43,23 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
   const goToLine = async (n: number, targetLineId: string) => {
     if (n === currentN) return;
     let newPath = pathname.replace(/(\/lines\/)(\d+)/, `$1${n}`);
-
-    // If we're on an equipment detail (or sub-page), map the current
-    // equipmentId to the same-named equipment on the target line so the
-    // user stays on the same equipment, just for a different line.
     const eqMatch = pathname.match(/\/equipment\/([^/]+)\/([0-9a-f-]{36})/i);
     if (eqMatch) {
       const [, , equipmentId] = eqMatch;
       const { data: cur } = await supabase
-        .from("plant_equipment")
-        .select("name, kind")
-        .eq("id", equipmentId)
-        .maybeSingle();
+        .from("plant_equipment").select("name, kind").eq("id", equipmentId).maybeSingle();
       if (cur?.name) {
         const { data: target } = await supabase
-          .from("plant_equipment")
-          .select("id")
-          .eq("line_id", targetLineId)
-          .eq("kind", cur.kind)
-          .eq("name", cur.name)
-          .maybeSingle();
+          .from("plant_equipment").select("id")
+          .eq("line_id", targetLineId).eq("kind", cur.kind).eq("name", cur.name).maybeSingle();
         if (target?.id) {
-          newPath = newPath.replace(
-            /(\/equipment\/[^/]+\/)[0-9a-f-]{36}/i,
-            `$1${target.id}`,
-          );
+          newPath = newPath.replace(/(\/equipment\/[^/]+\/)[0-9a-f-]{36}/i, `$1${target.id}`);
         } else {
-          // Equivalent equipment doesn't exist on target line — fall back
-          // to that line's equipment list for the same kind.
           newPath = newPath.replace(/(\/equipment\/[^/]+)\/.*$/, "$1");
         }
       }
     }
-
     const qs = searchStr ? (searchStr.startsWith("?") ? searchStr : `?${searchStr}`) : "";
-    // Soft client-side navigation — no full reload. The line layout
-    // uses lineNumber as a React key so the page tree remounts cleanly.
     router.history.push(newPath + qs);
   };
 
@@ -95,7 +70,9 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
   const first = visible[0];
   const rest = visible.slice(1);
 
-  const linePill = (
+  const linePill = isMobile ? (
+    <MobileLineSwitcher lines={lines ?? []} currentN={currentN} onPick={goToLine} />
+  ) : (
     <DropdownMenu>
       <DropdownMenuTrigger
         className="inline-flex items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 leading-none transition hover:bg-current/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
@@ -160,7 +137,6 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
         className ?? "text-muted-foreground",
       )}
     >
-      {/* Line 1: line pill + first context segment */}
       <div className="flex items-center gap-1.5">
         {linePill}
         {first != null && (
@@ -170,8 +146,6 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
           </>
         )}
       </div>
-
-      {/* Line 2 on mobile, inline on desktop: remaining segments (excluding page title). */}
       {rest.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           {rest.map((s, i) => (
@@ -183,5 +157,157 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
         </div>
       )}
     </nav>
+  );
+}
+
+/**
+ * Mobile-only line switcher with touch drag-to-select:
+ * - touchstart on the pill opens the panel immediately
+ * - touchmove tracks the finger across rows (live highlight)
+ * - touchend selects the currently highlighted row; releasing outside cancels
+ */
+function MobileLineSwitcher({
+  lines,
+  currentN,
+  onPick,
+}: {
+  lines: { id: string; number: number }[];
+  currentN: number;
+  onPick: (n: number, id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState<number | null>(currentN);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+
+  // Find the line number under the finger by walking up from elementFromPoint.
+  const numberAtPoint = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const row = (el as HTMLElement).closest?.("[data-line-number]") as HTMLElement | null;
+    if (!row) return null;
+    const n = Number(row.dataset.lineNumber);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const n = numberAtPoint(t.clientX, t.clientY);
+      setHighlight(n);
+      if (draggingRef.current) e.preventDefault();
+    };
+    const onEnd = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      const n = t ? numberAtPoint(t.clientX, t.clientY) : null;
+      draggingRef.current = false;
+      setOpen(false);
+      if (n != null) {
+        const target = lines.find((l) => l.number === n);
+        if (target) onPick(target.number, target.id);
+      }
+    };
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+    document.addEventListener("touchcancel", onEnd);
+    return () => {
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      document.removeEventListener("touchcancel", onEnd);
+    };
+  }, [open, lines, onPick]);
+
+  // Close on outside click for tap-without-drag flows (e.g. accidental tap).
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (panelRef.current && !panelRef.current.contains(target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onTouchStart={(e) => {
+          e.preventDefault();
+          draggingRef.current = true;
+          setHighlight(currentN);
+          setOpen(true);
+        }}
+        onClick={(e) => {
+          // Click fallback (no touch): toggle.
+          if (draggingRef.current) return;
+          e.preventDefault();
+          setOpen((o) => !o);
+        }}
+        className="inline-flex items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 leading-none transition hover:bg-current/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
+      >
+        <span>Line {currentN}</span>
+        <ChevronDown className="h-3 w-3" aria-hidden />
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          role="listbox"
+          style={{
+            background: "var(--popover)",
+            color: "var(--popover-foreground)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "0 8px 24px oklch(0.18 0.03 250 / 0.18)",
+            minWidth: "180px",
+            fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+          }}
+          className="absolute left-0 top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
+        >
+          {lines.map((l) => {
+            const active = l.number === currentN;
+            const hovered = highlight === l.number;
+            return (
+              <div
+                key={l.id}
+                data-line-number={l.number}
+                role="option"
+                aria-selected={hovered}
+                style={{
+                  minHeight: 48,
+                  padding: "12px 16px",
+                  fontSize: "0.95rem",
+                  background: hovered ? "var(--primary)" : "transparent",
+                  color: hovered ? "var(--primary-foreground)" : undefined,
+                }}
+                className={cn(
+                  "flex cursor-pointer items-center justify-between gap-3 rounded-[calc(var(--radius-md)-4px)]",
+                  "normal-case tracking-normal select-none transition-colors duration-75",
+                  active && !hovered && "font-medium text-[var(--primary)]",
+                )}
+                onClick={() => {
+                  // Pointer-click fallback (mouse on touch device).
+                  setOpen(false);
+                  if (!active) onPick(l.number, l.id);
+                }}
+              >
+                <span>Line {l.number}</span>
+                {active ? (
+                  <Check
+                    className="h-4 w-4 shrink-0"
+                    style={{ color: hovered ? "var(--primary-foreground)" : "var(--primary)" }}
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
