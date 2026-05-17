@@ -212,13 +212,15 @@ function EquipmentDetail() {
     };
   }, []);
 
+  const queryKey = ["equipment-detail", projectId, lineNumber, kind, equipmentId] as const;
   const { data, isLoading } = useQuery({
     enabled: !!session && !isChildRoute,
-    queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
+    queryKey,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, equipmentId),
-    placeholderData: undefined,
+    initialData: () => qc.getQueryData<any>(queryKey),
+    initialDataUpdatedAt: () => qc.getQueryState(queryKey)?.dataUpdatedAt,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
@@ -240,8 +242,8 @@ function EquipmentDetail() {
           <ChevronLeft className="h-4 w-4" /> {plantLabel}
         </Link>
 
-        {isLoading || !data ? (
-          <Skeleton className="h-40" />
+        {!data ? (
+          isLoading ? <Skeleton className="h-40" /> : null
         ) : (
           <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number, equipmentId: data.pe.id }}>
             <EquipmentBody key={data.pe.id} data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
