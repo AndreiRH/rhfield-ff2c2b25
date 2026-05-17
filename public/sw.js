@@ -1355,6 +1355,7 @@ self.addEventListener("sync", (e) => {
 });
 self.addEventListener("message", (e) => {
   const d = e.data || {};
+  if (typeof d.authHeader === "string" && d.authHeader) latestAuthHeader = d.authHeader;
   if (d.type === "rhfield-flush") e.waitUntil(flushQueue());
   if (d.type === "rhfield-queue?") e.waitUntil(broadcastQueueCount());
   if (d.type === "rhfield-cache-routes")
