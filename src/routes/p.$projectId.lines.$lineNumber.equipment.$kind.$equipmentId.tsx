@@ -401,6 +401,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     setSection(s);
   };
 
+  const eqTransformTransition = eqState === "animating" ? "transform 230ms ease-out" : "none";
+  const eqProgress = widthRef.current > 0 ? Math.min(1, Math.abs(eqDx) / widthRef.current) : 0;
+  const eqDir = eqDx < 0 ? 1 : eqDx > 0 ? -1 : 0;
+  const eqTarget = eqDir === 1 ? nextEq : eqDir === -1 ? prevEq : null;
+
   return (
     <div>
       {/* Background tint: current layer + target layer fading in with progress (rate-limited) */}
@@ -414,55 +419,77 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* Header stack: current header + target header overlay fading in */}
-      <div className="relative">
-        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-          <HeaderInner
-            data={data}
-            plantLabel={plantLabel}
-            overall={overall}
-            accent={meta.accent}
-            mech={mech} wiring={wiring} cold={cold}
-            weights={weights} dragging={dragging}
-            onTap={tapNav}
-          />
-        </div>
-        {targetMeta && (
+      {/* Equipment-swipe wrapper: translates the whole page (header + content) horizontally. */}
+      <div
+        className="relative"
+        style={{ transform: `translateX(${eqDx}px)`, transition: eqTransformTransition, willChange: "transform" }}
+      >
+        {/* Peek of incoming equipment name on the side the user is swiping toward. */}
+        {eqTarget && (
           <div
-            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-            style={{ opacity: progress, transition: colorTransition }}
             aria-hidden
+            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg border ${meta.header} px-4 py-3 text-base font-semibold shadow-lg`}
+            style={{
+              [eqDir === 1 ? "left" : "right"]: "100%",
+              [eqDir === 1 ? "marginLeft" : "marginRight"]: "32px",
+              opacity: 0.4 + eqProgress * 0.6,
+              whiteSpace: "nowrap",
+            }}
           >
+            {eqTarget.name}
+          </div>
+        )}
+
+        {/* Header stack: current header + target header overlay fading in */}
+        <div className="relative" data-equipment-header>
+          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
             <HeaderInner
               data={data}
               plantLabel={plantLabel}
               overall={overall}
-              accent={targetMeta.accent}
+              accent={meta.accent}
               mech={mech} wiring={wiring} cold={cold}
               weights={weights} dragging={dragging}
-              onTap={() => {}}
+              onTap={tapNav}
             />
           </div>
-        )}
-      </div>
-
-      {/* Content track: current pane + adjacent pane following the finger */}
-      <div className="relative mt-6 overflow-hidden">
-        <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
-          {renderSection(section, data, canEdit, userId, onChange)}
+          {targetMeta && (
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+              style={{ opacity: progress, transition: colorTransition }}
+              aria-hidden
+            >
+              <HeaderInner
+                data={data}
+                plantLabel={plantLabel}
+                overall={overall}
+                accent={targetMeta.accent}
+                mech={mech} wiring={wiring} cold={cold}
+                weights={weights} dragging={dragging}
+                onTap={() => {}}
+              />
+            </div>
+          )}
         </div>
-        {targetSection && (
-          <div
-            className="absolute inset-0"
-            style={{
-              transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
-              transition: transformTransition,
-            }}
-            aria-hidden
-          >
-            {renderSection(targetSection, data, canEdit, userId, onChange)}
+
+        {/* Content track: current pane + adjacent pane following the finger */}
+        <div className="relative mt-6 overflow-hidden">
+          <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
+            {renderSection(section, data, canEdit, userId, onChange)}
           </div>
-        )}
+          {targetSection && (
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
+                transition: transformTransition,
+              }}
+              aria-hidden
+            >
+              {renderSection(targetSection, data, canEdit, userId, onChange)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
