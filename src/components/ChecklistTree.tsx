@@ -526,7 +526,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             <div className="space-y-1 px-3 pb-2">
               <div className="grid grid-cols-3 gap-1">
                 {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
-                  canEdit={canEdit} onRemove={() => removePhoto(p)} />)}
+                  canEdit={canEdit} onRemove={() => removePhoto(p)}
+                  isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
               </div>
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
@@ -541,7 +542,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
           {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
-              {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />)}
+              {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit}
+                onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />)}
               {canEdit && (
                 <label title="Add file"
                   className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
