@@ -419,6 +419,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   };
 
   const deleteNote = async (n: Note) => {
+    if (!confirmSharedDelete(true)) return;
     if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
     if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
     await supabase.from("common_folder_notes").delete().eq("id", n.id);
