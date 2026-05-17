@@ -595,21 +595,34 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div>
                   {renderSection(section, data, canEdit, userId, onChange)}
                 </div>
-                {targetSection && (
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateX(${dir === 1 ? w : -w}px)`,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {renderSection(targetSection, data, canEdit, userId, onChange)}
-                  </div>
-                )}
+                {(() => {
+                  const span = tapSteps !== 0 ? tapSteps : (targetSection ? dir : 0);
+                  if (span === 0) return null;
+                  const stepSign = span > 0 ? 1 : -1;
+                  const panes: JSX.Element[] = [];
+                  for (let i = 1; i <= Math.abs(span); i++) {
+                    const idx = sectionIdx + i * stepSign;
+                    const tgt = SECTION_ORDER[idx];
+                    if (!tgt) break;
+                    panes.push(
+                      <div
+                        key={tgt}
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateX(${i * stepSign * w}px)`,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {renderSection(tgt, data, canEdit, userId, onChange)}
+                      </div>
+                    );
+                  }
+                  return panes;
+                })()}
               </div>
             </div>
           </div>
