@@ -58,6 +58,7 @@ export function getWarmUpState() { return current; }
 
 const THROTTLE_MS = 30 * 1000;
 const PAGE_SIZE = 1000;
+const ROUTE_BATCH = 8;
 let lastRunAt = 0;
 let inflight: Promise<void> | null = null;
 
