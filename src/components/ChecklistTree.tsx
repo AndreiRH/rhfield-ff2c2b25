@@ -419,9 +419,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           onClick={(e) => { if (!inMode) e.stopPropagation(); }}
           onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
           title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
+          className={`shrink-0 text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
         >{item.label}</span>
       )}
+      {!editingLabel && <span className="flex-1 min-w-0 self-stretch" />}
       {/* Always-visible content indicators */}
       {!inMode && (
         <span className="flex items-center gap-2">
