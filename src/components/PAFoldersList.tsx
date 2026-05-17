@@ -471,11 +471,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     onReload();
   };
   const removePhoto = async () => {
+    if (!confirmSharedDelete(!!note.is_shared)) return;
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("pa_notes").update({ photo_path: null }).eq("id", note.id);
     onReload();
   };
   const removeFile = async () => {
+    if (!confirmSharedDelete(!!note.is_shared)) return;
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
     await supabase.from("pa_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
     onReload();
