@@ -305,13 +305,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         onClick: async () => {
           undone = true;
           const { error: e } = await supabase.from("item_photos")
-            .insert({ id: p.id, item_id: item.id, storage_path: p.storage_path });
+            .insert({ id: p.id, item_id: item.id, storage_path: p.storage_path, is_shared: p.is_shared ?? false });
           if (e) toast.error(e.message); else onChange();
         },
       },
     });
     setTimeout(async () => {
-      if (!undone) await supabase.storage.from("photos").remove([p.storage_path]);
+      if (!undone && !p.is_shared) await supabase.storage.from("photos").remove([p.storage_path]);
     }, 3500);
   };
   const removeFile = async (f: any) => {
@@ -326,14 +326,22 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         onClick: async () => {
           undone = true;
           const { error: e } = await supabase.from("item_files")
-            .insert({ id: f.id, item_id: item.id, storage_path: f.storage_path, file_name: f.file_name });
+            .insert({ id: f.id, item_id: item.id, storage_path: f.storage_path, file_name: f.file_name, is_shared: f.is_shared ?? false });
           if (e) toast.error(e.message); else onChange();
         },
       },
     });
     setTimeout(async () => {
-      if (!undone) await supabase.storage.from("files").remove([f.storage_path]);
+      if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
+  };
+  const toggleSharePhoto = async (p: any) => {
+    const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
+    if (error) toast.error(error.message); else onChange();
+  };
+  const toggleShareFile = async (f: any) => {
+    const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
+    if (error) toast.error(error.message); else onChange();
   };
 
   const canExpand = hasContent || canEdit;
