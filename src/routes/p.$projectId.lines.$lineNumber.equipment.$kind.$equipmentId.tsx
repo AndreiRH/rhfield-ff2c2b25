@@ -363,6 +363,8 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       // reserved for the Android system back gesture.
       if (t.clientX < 20 || t.clientX > window.innerWidth - 20) return;
       const target = e.target as HTMLElement | null;
+      // Ignore touches on drag handles / sortable items — they own the gesture.
+      if (target?.closest?.("[data-no-swipe]")) return;
       const inHeader = !!target?.closest?.("[data-equipment-header]");
       startRef.current = { x: t.clientX, y: t.clientY, decided: null, mode: inHeader ? "equipment" : "section" };
       widthRef.current = window.innerWidth;
