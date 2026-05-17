@@ -97,9 +97,7 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
 function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(currentKey);
-  const [dropAlign, setDropAlign] = useState<"left" | "right">("left");
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
 
   const keyAtPoint = (x: number, y: number): string | null => {
@@ -148,18 +146,9 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  useEffect(() => {
-    if (open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const spaceRight = window.innerWidth - rect.left;
-      setDropAlign(spaceRight < 220 ? "right" : "left");
-    }
-  }, [open]);
-
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" style={{ isolation: "isolate" }}>
       <button
-        ref={triggerRef}
         type="button"
         onTouchStart={(e) => {
           e.preventDefault();
@@ -188,12 +177,16 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             borderRadius: "var(--radius-md)",
             boxShadow: "0 8px 24px oklch(0.18 0.03 250 / 0.18)",
             minWidth: "200px",
-            maxWidth: "80vw",
             fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-            left: dropAlign === "left" ? 0 : "auto",
-            right: dropAlign === "right" ? 0 : "auto",
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: "auto",
+            left: "50%",
+            transform: "translateX(-50%)",
+            maxWidth: "min(260px, calc(100vw - 2rem))",
+            width: "max-content",
           }}
-          className="absolute top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
+          className="z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
           {items.map((item) => {
             const active = item.key === currentKey;
