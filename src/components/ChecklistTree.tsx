@@ -562,7 +562,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
 
-          {showPhotos && photos.length > 0 && (
+          {showPhotos && photos.length > 0 && (() => {
+            const photoGallery = photos.map((p: any) => ({ bucket: "photos", path: p.storage_path }));
+            return (
             <div className="space-y-1 px-3 pb-2">
               {photos.length > 1 && canEdit ? (
                 <DndContext id={`photos-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderPhotos}>
@@ -571,7 +573,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                       {photos.map((p: any) => (
                         <SortablePhotoTile key={p.id} id={p.id} path={p.storage_path}
                           canEdit={canEdit} onRemove={() => removePhoto(p)}
-                          isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />
+                          isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)}
+                          gallery={photoGallery} />
                       ))}
                     </div>
                   </SortableContext>
@@ -580,7 +583,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 <div className="grid grid-cols-3 gap-1">
                   {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
                     canEdit={canEdit} onRemove={() => removePhoto(p)}
-                    isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
+                    isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)}
+                    gallery={photoGallery} />)}
                 </div>
               )}
               {canEdit && (
@@ -592,7 +596,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                 </PhotoPicker>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
@@ -677,9 +682,10 @@ function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
   );
 }
 
-export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared }: {
+export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared, gallery }: {
   path: string; canEdit: boolean; onRemove: () => void;
   isShared?: boolean; onToggleShared?: () => void;
+  gallery?: { bucket: string; path: string; name?: string }[];
 }) {
   return (
     <div className="relative">
@@ -689,6 +695,7 @@ export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared }:
         imgClassName="h-16 w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
+        gallery={gallery}
       />
       {canEdit && onToggleShared && (
         <button
@@ -735,9 +742,10 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
   );
 }
 
-function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShared }: {
+function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShared, gallery }: {
   id: string; path: string; canEdit: boolean; onRemove: () => void;
   isShared?: boolean; onToggleShared?: () => void;
+  gallery?: { bucket: string; path: string; name?: string }[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -753,6 +761,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
         imgClassName="h-16 w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
+        gallery={gallery}
       />
       {canEdit && onToggleShared && (
         <button

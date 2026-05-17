@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Download } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getCachedLocalBlob,
@@ -93,11 +93,23 @@ function onImgError(e: React.SyntheticEvent<HTMLImageElement>) {
 
 // ---------------- Lightbox (singleton, portal) ----------------
 
-type LightboxState = { bucket: string; path: string; name?: string } | null;
+export type GalleryItem = { bucket: string; path: string; name?: string };
+type LightboxState = {
+  gallery: GalleryItem[];
+  index: number;
+} | null;
 let lightboxSetter: ((s: LightboxState) => void) | null = null;
 
-export function openLightbox(bucket: string, path: string, name?: string) {
-  if (lightboxSetter) lightboxSetter({ bucket, path, name });
+export function openLightbox(
+  bucket: string,
+  path: string,
+  name?: string,
+  gallery?: GalleryItem[],
+) {
+  if (!lightboxSetter) return;
+  const list = gallery && gallery.length > 0 ? gallery : [{ bucket, path, name }];
+  const idx = Math.max(0, list.findIndex((g) => g.bucket === bucket && g.path === path));
+  lightboxSetter({ gallery: list, index: idx === -1 ? 0 : idx });
 }
 
 export function LightboxRoot() {
@@ -107,48 +119,110 @@ export function LightboxRoot() {
   return createPortal(<Lightbox state={state} onClose={() => setState(null)} />, document.body);
 }
 
+async function resolveUrl(bucket: string, path: string): Promise<string | null> {
+  const local = getCachedLocalBlob(bucket, path);
+  if (local) return URL.createObjectURL(local);
+  if (navigator.onLine) {
+    try {
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+      if (data?.signedUrl) return data.signedUrl;
+    } catch {}
+  }
+  const blob = await getLocalBlob(bucket, path);
+  if (blob) return URL.createObjectURL(blob);
+  return null;
+}
+
 function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClose: () => void }) {
+  const [index, setIndex] = useState(state.index);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const objRef = useRef<string | null>(null);
+  const cacheRef = useRef<Map<string, string>>(new Map());
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  const gallery = state.gallery;
+  const current = gallery[index];
+
+  const cacheKey = (g: GalleryItem) => `${g.bucket}:${g.path}`;
+
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
+      objectUrlsRef.current.clear();
+      cacheRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const cleanup = () => {
-      if (objRef.current) { try { URL.revokeObjectURL(objRef.current); } catch {} objRef.current = null; }
+    setError(null);
+    const key = cacheKey(current);
+    const cached = cacheRef.current.get(key);
+    if (cached) {
+      setSrc(cached);
+    } else {
+      setSrc(null);
+      (async () => {
+        const u = await resolveUrl(current.bucket, current.path);
+        if (cancelled) return;
+        if (u) {
+          if (u.startsWith("blob:")) objectUrlsRef.current.add(u);
+          cacheRef.current.set(key, u);
+          setSrc(u);
+        } else {
+          setError(navigator.onLine ? "Could not load this photo." : "Photo not available offline.");
+        }
+      })();
+    }
+    // Preload neighbors.
+    const preload = async (i: number) => {
+      if (i < 0 || i >= gallery.length) return;
+      const g = gallery[i];
+      const k = cacheKey(g);
+      if (cacheRef.current.has(k)) return;
+      const u = await resolveUrl(g.bucket, g.path);
+      if (u) {
+        if (u.startsWith("blob:")) objectUrlsRef.current.add(u);
+        cacheRef.current.set(k, u);
+      }
     };
-    (async () => {
-      const local = getCachedLocalBlob(state.bucket, state.path);
-      if (local) {
-        const u = URL.createObjectURL(local);
-        objRef.current = u;
-        if (!cancelled) setSrc(u);
-        return;
-      }
-      if (navigator.onLine) {
-        try {
-          const { data } = await supabase.storage.from(state.bucket).createSignedUrl(state.path, 3600);
-          if (!cancelled && data?.signedUrl) { setSrc(data.signedUrl); return; }
-        } catch {}
-      }
-      const blob = await getLocalBlob(state.bucket, state.path);
-      if (cancelled) return;
-      if (blob) {
-        const u = URL.createObjectURL(blob);
-        objRef.current = u;
-        setSrc(u);
-      } else {
-        setError(navigator.onLine ? "Could not load this photo." : "Photo not available offline.");
-      }
-    })();
-    return () => { cancelled = true; cleanup(); };
-  }, [state.bucket, state.path]);
+    preload(index - 1);
+    preload(index + 1);
+    return () => { cancelled = true; };
+  }, [current.bucket, current.path, index, gallery]);
+
+  const go = (delta: number) => {
+    if (gallery.length <= 1) return;
+    setIndex((i) => (i + delta + gallery.length) % gallery.length);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+      else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [gallery.length, onClose]);
+
+  const touchStartXRef = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (start == null) return;
+    const delta = (e.changedTouches[0]?.clientX ?? start) - start;
+    if (delta < -50) go(1);
+    else if (delta > 50) go(-1);
+  };
 
   const download = async () => {
-    let blob = getCachedLocalBlob(state.bucket, state.path) ?? await getLocalBlob(state.bucket, state.path);
+    let blob = getCachedLocalBlob(current.bucket, current.path) ?? await getLocalBlob(current.bucket, current.path);
     if (!blob && navigator.onLine) {
       try {
-        const { data } = await supabase.storage.from(state.bucket).download(state.path);
+        const { data } = await supabase.storage.from(current.bucket).download(current.path);
         if (data) blob = data;
       } catch {}
     }
@@ -156,16 +230,20 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = state.name || state.path.split("/").pop() || "photo";
+    a.download = current.name || current.path.split("/").pop() || "photo";
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const hasNav = gallery.length > 1;
+
   return (
     <div
       onClick={onClose}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
     >
       <button
@@ -182,6 +260,27 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
       >
         <Download className="h-5 w-5" />
       </button>
+      {hasNav && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); go(-1); }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); go(1); }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Next"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+            {index + 1} / {gallery.length}
+          </div>
+        </>
+      )}
       {error ? (
         <p className="text-sm text-white">{error}</p>
       ) : src ? (
@@ -208,6 +307,7 @@ export function StoragePhoto({
   containerClassName,
   canEdit,
   onRemove,
+  gallery,
 }: {
   bucket?: string;
   path: string;
@@ -215,6 +315,7 @@ export function StoragePhoto({
   containerClassName?: string;
   canEdit?: boolean;
   onRemove?: () => void;
+  gallery?: GalleryItem[];
 }) {
   const src = useStorageUrl(bucket, path);
   return (
@@ -222,7 +323,7 @@ export function StoragePhoto({
       {src ? (
         <button
           type="button"
-          onClick={() => openLightbox(bucket, path)}
+          onClick={() => openLightbox(bucket, path, undefined, gallery)}
           className="block w-full"
         >
           <img
