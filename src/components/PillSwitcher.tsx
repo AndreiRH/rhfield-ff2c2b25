@@ -118,7 +118,12 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     const compute = () => {
       const t = triggerRef.current;
       if (!t) return;
-      const r = t.getBoundingClientRect();
+      // Use a Range-based rect — immune to transformed ancestors that would
+      // otherwise turn position:fixed into a transform-relative containing block.
+      const range = document.createRange();
+      range.selectNodeContents(t);
+      const rects = range.getClientRects();
+      const r = rects.length > 0 ? rects[0] : t.getBoundingClientRect();
       const margin = 8;
       const vw = window.innerWidth;
       const desired = Math.min(260, vw - margin * 2);
