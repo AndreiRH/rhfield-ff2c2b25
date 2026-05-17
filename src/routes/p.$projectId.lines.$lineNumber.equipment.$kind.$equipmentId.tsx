@@ -682,9 +682,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div className="mt-3 flex items-stretch gap-2">
                   {neighbourData ? (
                     <>
-                      <SectionTab phase="assembly" pct={nMech} weight={1} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="wiring" pct={nWiring} weight={0} dragging={false} onClick={() => {}} />
-                      <SectionTab phase="cold_comm" pct={nCold} weight={0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="assembly" pct={nMech} weight={section === "assembly" ? 1 : 0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="wiring" pct={nWiring} weight={section === "wiring" ? 1 : 0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="cold_comm" pct={nCold} weight={section === "cold_comm" ? 1 : 0} dragging={false} onClick={() => {}} />
                     </>
                   ) : (
                     <>
@@ -695,11 +695,19 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                   )}
                 </div>
 
-                {/* Neighbour content — ghost skeleton */}
-                <div className="mt-6 space-y-3">
-                  <div className="h-20 rounded-lg bg-muted/30" />
-                  <div className="h-10 rounded-lg bg-muted/20" />
-                  <div className="h-10 rounded-lg bg-muted/15" />
+                {/* Neighbour content — real if cached, ghost otherwise */}
+                <div className="mt-6">
+                  {neighbourData ? (
+                    <div style={{ pointerEvents: "none" }}>
+                      {renderSection(section, neighbourData, false, undefined, () => {})}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="h-20 rounded-lg bg-muted/30" />
+                      <div className="h-10 rounded-lg bg-muted/20" />
+                      <div className="h-10 rounded-lg bg-muted/15" />
+                    </div>
+                  )}
                 </div>
               </div>
             );
