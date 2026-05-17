@@ -59,6 +59,24 @@ async function handleAuthExpired() {
   }
 }
 
+// Active connectivity probe — `navigator.onLine` is unreliable on iOS/Android
+// PWAs (often stays true after losing connection). Ping a tiny Supabase asset
+// to ground-truth it.
+async function probeOnline(): Promise<boolean> {
+  if (typeof navigator === "undefined") return true;
+  if (!navigator.onLine) return false;
+  try {
+    const url = new URL("/auth/v1/health", import.meta.env.VITE_SUPABASE_URL as string);
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(url.href, { method: "GET", cache: "no-store", signal: ctrl.signal });
+    clearTimeout(to);
+    return !!res;
+  } catch {
+    return false;
+  }
+}
+
 export function useOfflineStatus() {
   const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [pending, setPending] = useState(0);
@@ -69,15 +87,19 @@ export function useOfflineStatus() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const onOnline  = () => {
-      setOnline(true);
-      triggerFlush();
+    let cancelled = false;
+    const refreshOnline = async () => {
+      const real = await probeOnline();
+      if (!cancelled) setOnline(real);
+      return real;
     };
+
+    const onOnline  = () => { refreshOnline().then((ok) => { if (ok) triggerFlush(); }); };
     const onOffline = () => setOnline(false);
     const onVis     = () => {
       if (document.visibilityState === "visible") {
         send("rhfield-queue?");
-        if (navigator.onLine) triggerFlush();
+        refreshOnline().then((ok) => { if (ok) triggerFlush(); });
       }
     };
     const onMsg = (e: MessageEvent<SwMessage>) => {
@@ -114,8 +136,14 @@ export function useOfflineStatus() {
     const off = onWarmUpProgress(setWarm);
 
     send("rhfield-queue?");
+    refreshOnline();
+    // Poll every 15s so the cloud icon reflects reality even when the
+    // browser doesn't fire offline/online events (common on iOS PWAs).
+    const poll = window.setInterval(refreshOnline, 15000);
 
     return () => {
+      cancelled = true;
+      window.clearInterval(poll);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       document.removeEventListener("visibilitychange", onVis);

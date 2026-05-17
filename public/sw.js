@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v11";
+const VER = "v12";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -293,13 +293,25 @@ async function cacheRoutesForOffline(routes, port) {
 self.addEventListener("install", (e) => {
   e.waitUntil((async () => {
     const shell = await caches.open(CACHE_SHELL);
-    await shell.addAll(SHELL);
+    // Per-item add so one failure (missing icon, etc.) doesn't abort install.
+    await Promise.all(SHELL.map(async (u) => {
+      try {
+        const r = await fetch(u, { cache: "no-store" });
+        if (r && r.ok) await shell.put(u, r.clone());
+      } catch {}
+    }));
     try {
       const rootUrl = new URL("/", self.location.origin).href;
       const root = await fetch(rootUrl, { cache: "no-store" });
       if (root && root.ok) {
         await shell.put(rootUrl, root.clone());
         await shell.put("/", root.clone());
+        // Also cache /login since first-launch navigations often land there.
+        try {
+          const loginUrl = new URL("/login", self.location.origin).href;
+          const loginRes = await fetch(loginUrl, { cache: "no-store" });
+          if (loginRes && loginRes.ok) await shell.put(loginUrl, loginRes.clone());
+        } catch {}
         const html = await root.text().catch(() => "");
         const assets = await caches.open(CACHE_ASSETS);
         await Promise.all(sameOriginAssetUrls(html, rootUrl).map(async (assetUrl) => {
@@ -1394,15 +1406,25 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate") {
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE_SHELL);
+      const cachedShell = async () =>
+        (await cache.match(req, { ignoreSearch: true })) ||
+        (await cache.match("/")) ||
+        (await cache.match(new URL("/", self.location.origin).href));
+      // Offline → serve cached shell immediately, don't wait for fetch to time out.
+      if (self.navigator && self.navigator.onLine === false) {
+        const hit = await cachedShell();
+        if (hit) return hit;
+      }
       try {
         const fresh = await fetch(req);
-        const cache = await caches.open(CACHE_SHELL);
-        cache.put("/", fresh.clone()).catch(() => {});
+        if (fresh && fresh.ok) {
+          cache.put("/", fresh.clone()).catch(() => {});
+        }
         return fresh;
       } catch {
-        const cache = await caches.open(CACHE_SHELL);
-        return (await cache.match(req)) || (await cache.match(req.url)) || (await cache.match("/")) || (await cache.match(new URL("/", self.location.origin).href)) ||
-          new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
+        const hit = await cachedShell();
+        return hit || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
       }
     })());
     return;
