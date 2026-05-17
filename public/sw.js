@@ -348,6 +348,7 @@ self.addEventListener("install", (e) => {
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
+    try { if (self.registration.navigationPreload) await self.registration.navigationPreload.disable(); } catch {}
     const names = await caches.keys();
     await Promise.all(names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n)));
 
@@ -1432,19 +1433,18 @@ self.addEventListener("fetch", (event) => {
         (await cache.match(req, { ignoreSearch: true })) ||
         (await cache.match("/")) ||
         (await cache.match(new URL("/", self.location.origin).href));
-      // Offline → serve cached shell immediately, don't wait for fetch to time out.
-      if (self.navigator && self.navigator.onLine === false) {
-        const hit = await cachedShell();
-        if (hit) return hit;
-      }
+      const hit = await cachedShell();
+      // If this route was deliberately warmed, serve it instantly. This avoids
+      // iOS standalone launches waiting on a doomed network navigation.
+      if (hit && ((await cache.match(req, { ignoreSearch: true })) || (self.navigator && self.navigator.onLine === false))) return hit;
       try {
-        const fresh = await fetch(req);
+        const fresh = await fetchWithTimeout(req, 2500);
         if (fresh && fresh.ok) {
           cache.put("/", fresh.clone()).catch(() => {});
+          cache.put(req, fresh.clone()).catch(() => {});
         }
         return fresh;
       } catch {
-        const hit = await cachedShell();
         return hit || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
       }
     })());
@@ -1456,7 +1456,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_ASSETS);
     const cached = await cache.match(req);
-    const network = fetch(req).then((res) => {
+    const network = fetchWithTimeout(req, cached ? 1500 : 5000).then((res) => {
       if (res && res.ok && res.type === "basic") cache.put(req, res.clone()).catch(() => {});
       return res;
     }).catch(() => cached);
