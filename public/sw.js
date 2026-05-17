@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v13";
+const VER = "v14";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
