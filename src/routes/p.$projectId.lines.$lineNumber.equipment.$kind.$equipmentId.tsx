@@ -329,10 +329,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Prefetch prev/next equipment so the swipe-in pane shows real data instantly.
+  // Prefetch nearby siblings (±2) so the swipe-in pane shows real data instantly.
   useEffect(() => {
-    const toFetch = [prevEq, nextEq].filter(Boolean) as { id: string }[];
-    for (const sibling of toFetch) {
+    const idx = curEqIdx;
+    if (idx < 0) return;
+    const targets = [idx - 2, idx - 1, idx + 1, idx + 2]
+      .map((i) => siblings[i])
+      .filter(Boolean) as { id: string }[];
+    for (const sibling of targets) {
       qc.prefetchQuery({
         queryKey: [
           "equipment-detail",
@@ -341,7 +345,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           data.pe.kind,
           sibling.id,
         ],
-        staleTime: 30_000,
+        staleTime: 5 * 60_000,
         queryFn: () =>
           fetchEquipmentDetail(
             data.line.project_id,
@@ -352,7 +356,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prevEq?.id, nextEq?.id]);
+  }, [curEqIdx, siblings.length]);
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
