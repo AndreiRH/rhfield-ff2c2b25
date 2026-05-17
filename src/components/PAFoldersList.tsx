@@ -406,15 +406,18 @@ function FolderContents({ folder, canEdit, userId }: any) {
         />
         {notesOpen && (notes.length === 0 ? (
           <p className="text-xs text-muted-foreground">No notes.</p>
-        ) : (
+        ) : (() => {
+          const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
+          return (
           <ul className="space-y-2">
             {notes.map((n) => (
               <NoteRow key={n.id} note={n} canEdit={canEdit}
                 onUpdate={(p: Partial<Note>) => updateNote(n.id, p)}
-                onDelete={() => deleteNote(n)} onReload={load} />
+                onDelete={() => deleteNote(n)} onReload={load} gallery={noteGallery} />
             ))}
           </ul>
-        ))}
+          );
+        })())}
       </section>
     </div>
   );
