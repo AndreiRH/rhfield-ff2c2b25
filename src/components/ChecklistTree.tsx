@@ -742,9 +742,10 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
   );
 }
 
-function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShared }: {
+function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShared, gallery }: {
   id: string; path: string; canEdit: boolean; onRemove: () => void;
   isShared?: boolean; onToggleShared?: () => void;
+  gallery?: { bucket: string; path: string; name?: string }[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -760,6 +761,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
         imgClassName="h-16 w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
+        gallery={gallery}
       />
       {canEdit && onToggleShared && (
         <button
