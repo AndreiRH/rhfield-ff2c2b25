@@ -86,7 +86,6 @@ async function handleAuthExpired() {
 // to ground-truth it.
 async function probeOnline(): Promise<boolean> {
   if (typeof navigator === "undefined") return true;
-  if (!navigator.onLine) return false;
   try {
     const url = new URL("/auth/v1/user", import.meta.env.VITE_SUPABASE_URL as string);
     url.searchParams.set("rhfield_probe", "1");
@@ -104,7 +103,7 @@ async function probeOnline(): Promise<boolean> {
       },
     });
     clearTimeout(to);
-    // 200 or 401 both prove the backend is reachable; only synthetic SW 503 is offline.
+    // Any real HTTP response proves the backend is reachable; only synthetic SW 503 is offline.
     return res.status > 0 && res.headers.get("X-RHfield-Offline") !== "1";
   } catch {
     // Probe failed (CORS, DNS hiccup, transient). Trust the browser's signal
@@ -184,7 +183,9 @@ export function useOfflineStatus() {
     const off = onWarmUpProgress(setWarm);
 
     send("rhfield-queue?");
-    refreshOnline();
+    refreshOnline().then((ok) => {
+      if (ok) triggerFlush();
+    });
     // Poll every 15s so the cloud icon reflects reality even when the
     // browser doesn't fire offline/online events (common on iOS PWAs).
     const poll = window.setInterval(refreshOnline, 15000);
