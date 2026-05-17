@@ -277,6 +277,11 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const prevEq = curEqIdx > 0 ? siblings[curEqIdx - 1] : null;
   const nextEq = curEqIdx >= 0 && curEqIdx < siblings.length - 1 ? siblings[curEqIdx + 1] : null;
   const [eqDx, setEqDx] = useState(0);
+  const eqDxRef = useRef(0);
+  const setEqDxSync = (val: number) => {
+    eqDxRef.current = val;
+    setEqDx(val);
+  };
   const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
   const eqCommitRef = useRef<number | null>(null);
 
