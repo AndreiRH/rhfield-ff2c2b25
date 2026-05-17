@@ -712,7 +712,7 @@ function HeaderInner({ data, plantLabel, overall, accent }: any) {
           kind: data.pe.kind,
           equipmentId: data.pe.id,
         }}
-        className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
+        className="self-start inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
       >
         <SettingsIcon className="h-3.5 w-3.5" /> Settings
       </Link>
