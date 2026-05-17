@@ -580,14 +580,25 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             </div>
 
             {/* SECTION CONTENT */}
-            <div className="relative mt-6 overflow-hidden">
+            <div
+              ref={sectionWrapRef}
+              className="relative mt-6 overflow-hidden"
+              style={{
+                minHeight: swipeState !== "idle" && sectionWrapRef.current
+                  ? sectionWrapRef.current.scrollHeight
+                  : undefined,
+              }}
+            >
               <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
                 {renderSection(section, data, canEdit, userId, onChange)}
               </div>
               {targetSection && (
                 <div
-                  className="absolute inset-0"
                   style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
                     transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
                     transition: transformTransition,
                   }}
