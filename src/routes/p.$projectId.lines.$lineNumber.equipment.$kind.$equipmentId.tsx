@@ -160,6 +160,15 @@ function EquipmentDetail() {
         .from("lines").select("id", { count: "exact", head: true })
         .eq("project_id", projectId);
 
+      // Sibling equipments on the same line + kind, for swipe navigation.
+      const { data: siblings } = await supabase
+        .from("plant_equipment")
+        .select("id, name, sort_order")
+        .eq("line_id", line.id)
+        .eq("kind", pe.kind)
+        .is("deleted_at", null)
+        .order("sort_order").order("name");
+
       const byChapter = (ch: string) => {
         const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
         return matches.sort((a: any, b: any) => groupWeight(b) - groupWeight(a))[0] ?? null;
@@ -167,6 +176,7 @@ function EquipmentDetail() {
       return {
         line, pe, photos: photos ?? [],
         lineCount: lineCount ?? 1,
+        siblings: (siblings ?? []) as { id: string; name: string; sort_order: number }[],
         assembly: byChapter("assembly"),
         wiring: byChapter("wiring"),
         cold: byChapter("cold_comm"),
