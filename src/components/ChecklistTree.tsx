@@ -167,8 +167,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     .filter((i: any) => i.parent_item_id === item.id)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
-  const photos = item.item_photos ?? [];
-  const files = item.item_files ?? [];
+  const photos = ((item.item_photos ?? []) as any[])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const files = ((item.item_files ?? []) as any[])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState<boolean>(!!defaultOpen);
