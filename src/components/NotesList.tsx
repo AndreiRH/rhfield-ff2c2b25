@@ -79,6 +79,7 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
   };
 
   const remove = async (n: Note) => {
+    if (!confirmSharedDelete(!!n.is_shared)) return;
     if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
     if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
     await supabase.from("equipment_notes").delete().eq("id", n.id);
