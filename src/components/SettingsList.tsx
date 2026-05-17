@@ -30,9 +30,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
+import { useCurrentLine } from "@/lib/current-line";
 
-interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean }
-interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean }
+interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean; origin_line_id?: string | null }
+interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean; origin_line_id?: string | null }
 interface Setting {
   id: string;
   plant_equipment_id: string;
@@ -77,7 +78,7 @@ function SettingsListInner({
     const [{ data: s }, { data: g }] = await Promise.all([
       supabase
         .from("equipment_settings")
-        .select("*, setting_photos(id, storage_path, is_shared), setting_files(id, storage_path, file_name, is_shared)")
+        .select("*, setting_photos(id, storage_path, is_shared, origin_line_id), setting_files(id, storage_path, file_name, is_shared, origin_line_id)")
         .eq("plant_equipment_id", equipmentId)
         .is("deleted_at", null)
         .order("sort_order").order("created_at"),
@@ -773,11 +774,20 @@ function SettingRow({
       if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
   };
+  const currentLine = useCurrentLine();
+  const confirmUnshare = (origin?: string | null) => {
+    if (!origin || !currentLine?.lineId || origin === currentLine.lineId) return true;
+    return window.confirm(
+      "This attachment was shared from another production line. Making it local will remove it from this line and keep it only on the original line. Continue?",
+    );
+  };
   const togglePhotoShared = async (p: SettingPhoto) => {
+    if (p.is_shared && !confirmUnshare(p.origin_line_id)) return;
     const { error } = await supabase.from("setting_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
     if (error) toast.error(error.message); else onReload();
   };
   const toggleFileShared = async (f: SettingFile) => {
+    if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("setting_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
     if (error) toast.error(error.message); else onReload();
   };

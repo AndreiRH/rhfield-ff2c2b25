@@ -234,7 +234,16 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
         )}
         {canEdit && (
           <button
-            onClick={() => onUpdate({ is_shared: !note.is_shared })}
+            onClick={() => {
+              if (note.is_shared && note.equipment_id && note.equipment_id !== (window as any).__currentEquipmentId) {
+                // The note's home is another line; double-check before yanking it from there.
+                const ok = window.confirm(
+                  "This note is shared from another production line. Making it local will remove it from this line and keep it only on its original line. Continue?",
+                );
+                if (!ok) return;
+              }
+              onUpdate({ is_shared: !note.is_shared });
+            }}
             title={note.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
             className={`p-1 ${note.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
