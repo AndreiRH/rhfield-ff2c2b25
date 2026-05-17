@@ -775,6 +775,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
       )}
       <button
         type="button"
+        data-no-swipe
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
