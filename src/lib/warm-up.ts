@@ -214,7 +214,6 @@ function buildOfflineRoutes(results: Array<readonly [string, Record<string, unkn
 }
 
 export function warmUp(force = false): Promise<void> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve();
   if (inflight) return inflight;
   if (!force && Date.now() - lastRunAt < THROTTLE_MS) return Promise.resolve();
 
