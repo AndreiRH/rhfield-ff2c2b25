@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v14";
+const VER = "v15";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -1197,6 +1197,12 @@ function storagePathFromUrl(url) {
 // ============================================================
 async function flushQueue() {
   const items = await outboxAll();
+  const pendingItems = items.filter((it) => !it?.failed);
+  if (pendingItems.length) {
+    try {
+      await broadcast({ type: "rhfield-flush-start", pending: pendingItems.length });
+    } catch {}
+  }
   // Process in insertion order (parents first → children second) so FK refs to
   // local UUIDs resolve once the parent has been created server-side.
   items.sort((a, b) => (a.id || 0) - (b.id || 0));
@@ -1210,10 +1216,8 @@ async function flushQueue() {
     try {
       // If we've seen a fresher auth header since this item was queued, use it.
       const headers = { ...(item.headers || {}) };
-      if (latestAuthHeader && headers.authorization && headers.authorization !== latestAuthHeader) {
-        headers.authorization = latestAuthHeader;
-      }
-      const res = await fetch(item.url, {
+      if (latestAuthHeader) headers.authorization = latestAuthHeader;
+      const res = await fetchWithTimeout(item.url, 12000, {
         method: item.method,
         headers,
         body: item.body || undefined,
@@ -1307,6 +1311,21 @@ async function retryFailedOutbox() {
   }
   await flushQueue();
 }
+async function retryAuthFailedOutbox() {
+  const items = await outboxAll();
+  for (const it of items) {
+    if (it?.failed && it?.lastStatus === 401) {
+      await outboxUpdate(it.id, {
+        failed: false,
+        authRetried: false,
+        lastStatus: null,
+        lastError: null,
+        failedAt: null,
+      });
+    }
+  }
+  await flushQueue();
+}
 async function discardFailedOutbox() {
   const items = await outboxAll();
   for (const it of items) {
@@ -1349,12 +1368,14 @@ self.addEventListener("sync", (e) => {
 });
 self.addEventListener("message", (e) => {
   const d = e.data || {};
+  if (typeof d.authHeader === "string" && d.authHeader) latestAuthHeader = d.authHeader;
   if (d.type === "rhfield-flush") e.waitUntil(flushQueue());
   if (d.type === "rhfield-queue?") e.waitUntil(broadcastQueueCount());
   if (d.type === "rhfield-cache-routes")
     e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
   if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
+  if (d.type === "rhfield-outbox-retry-auth-failed") e.waitUntil(retryAuthFailedOutbox());
   if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
   if (d.type === "rhfield-get-blob") {
     const port = e.ports?.[0];
@@ -1386,7 +1407,8 @@ self.addEventListener("fetch", (event) => {
   // detectably offline, short-circuit with a fast 503 so the Supabase SDK
   // doesn't hang for ~30s on a TCP timeout (which freezes app launch).
   if (isSupabaseAuth(url) || isSupabaseRealtime(url)) {
-    if (self.navigator && self.navigator.onLine === false) {
+    const isConnectivityProbe = url.searchParams.get("rhfield_probe") === "1";
+    if (!isConnectivityProbe && self.navigator && self.navigator.onLine === false) {
       event.respondWith(
         new Response(JSON.stringify({ error: "offline" }), {
           status: 503,
