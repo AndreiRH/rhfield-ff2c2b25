@@ -214,6 +214,7 @@ function EquipmentDetail() {
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, equipmentId),
+    placeholderData: undefined,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
