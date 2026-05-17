@@ -228,17 +228,27 @@ function readLastTab(): Section {
 }
 
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
+  const navigate = useNavigate();
   const [section, setSectionState] = useState<Section>(() => readLastTab());
   const setSection = (s: Section) => {
     setSectionState(s);
     try { window.localStorage.setItem(LAST_TAB_KEY, s); } catch {}
   };
   const { mech, wiring, cold, overall } = equipmentProgress(data.peWithGroups);
-  const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null } | null>(null);
+  const startRef = useRef<{ x: number; y: number; decided: "h" | "v" | null; mode: "section" | "equipment" } | null>(null);
   const widthRef = useRef(1);
   const [swipeDx, setSwipeDx] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
+
+  // Equipment swipe (top header zone): navigates to prev/next equipment on same line+kind.
+  const siblings: { id: string; name: string }[] = data.siblings ?? [];
+  const curEqIdx = siblings.findIndex((s) => s.id === data.pe.id);
+  const prevEq = curEqIdx > 0 ? siblings[curEqIdx - 1] : null;
+  const nextEq = curEqIdx >= 0 && curEqIdx < siblings.length - 1 ? siblings[curEqIdx + 1] : null;
+  const [eqDx, setEqDx] = useState(0);
+  const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
+  const eqCommitRef = useRef<number | null>(null);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
   const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
@@ -251,14 +261,22 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   if (targetSection) weights[targetSection] = progress;
 
   // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
+  // Touches that start inside the top equipment header switch the gesture into
+  // "equipment" mode and navigate to the prev/next equipment instead of switching tabs.
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (commitTimeoutRef.current) {
         window.clearTimeout(commitTimeoutRef.current);
         commitTimeoutRef.current = null;
       }
+      if (eqCommitRef.current) {
+        window.clearTimeout(eqCommitRef.current);
+        eqCommitRef.current = null;
+      }
       const t = e.touches[0];
-      startRef.current = { x: t.clientX, y: t.clientY, decided: null };
+      const target = e.target as HTMLElement | null;
+      const inHeader = !!target?.closest?.("[data-equipment-header]");
+      startRef.current = { x: t.clientX, y: t.clientY, decided: null, mode: inHeader ? "equipment" : "section" };
       widthRef.current = window.innerWidth;
     };
     const onMove = (e: TouchEvent) => {
@@ -270,23 +288,66 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       if (start.decided === null) {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
         start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-        if (start.decided === "h") setSwipeState("dragging");
+        if (start.decided === "h") {
+          if (start.mode === "equipment") setEqState("dragging");
+          else setSwipeState("dragging");
+        }
       }
       if (start.decided !== "h") return;
-      const cur = SECTION_ORDER.indexOf(section);
-      let val = dx;
-      if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
-        val = dx * 0.25; // resist past edges
+      if (start.mode === "equipment") {
+        let val = dx;
+        if ((dx < 0 && !nextEq) || (dx > 0 && !prevEq)) val = dx * 0.25;
+        setEqDx(val);
+      } else {
+        const cur = SECTION_ORDER.indexOf(section);
+        let val = dx;
+        if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
+          val = dx * 0.25;
+        }
+        setSwipeDx(val);
       }
-      setSwipeDx(val);
     };
     const onEnd = () => {
-      const decided = startRef.current?.decided;
-      // We need the latest swipeDx; read via functional state update.
+      const start = startRef.current;
+      const decided = start?.decided;
+      const mode = start?.mode ?? "section";
       startRef.current = null;
       if (decided !== "h") {
-        setSwipeState("idle");
-        setSwipeDx(0);
+        setSwipeState("idle"); setSwipeDx(0);
+        setEqState("idle"); setEqDx(0);
+        return;
+      }
+      if (mode === "equipment") {
+        setEqDx((dx) => {
+          const w = widthRef.current;
+          const ratio = dx / w;
+          // Negative dx → swipe left → go to next; positive dx → previous.
+          const goingNext = dx < 0;
+          const target = goingNext ? nextEq : prevEq;
+          if (Math.abs(ratio) > 0.3 && target) {
+            setEqState("animating");
+            const end = goingNext ? -w : w;
+            eqCommitRef.current = window.setTimeout(() => {
+              eqCommitRef.current = null;
+              navigate({
+                to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
+                params: {
+                  projectId: data.line.project_id,
+                  lineNumber: String(data.line.number),
+                  kind: data.pe.kind,
+                  equipmentId: target.id,
+                },
+              });
+            }, 230);
+            return end;
+          }
+          setEqState("animating");
+          eqCommitRef.current = window.setTimeout(() => {
+            setEqState("idle");
+            eqCommitRef.current = null;
+          }, 230);
+          return 0;
+        });
         return;
       }
       setSwipeDx((dx) => {
@@ -294,7 +355,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const ratio = dx / w;
         const localDir = dx < 0 ? 1 : -1;
         const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(section) + localDir];
-        // Need to swipe more than half the screen to commit; otherwise snap back.
         if (Math.abs(ratio) > 0.3 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
@@ -323,7 +383,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
     };
-  }, [section]);
+  }, [section, prevEq, nextEq, navigate, data.line.project_id, data.line.number, data.pe.kind]);
 
   const dragging = swipeState === "dragging";
   const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
