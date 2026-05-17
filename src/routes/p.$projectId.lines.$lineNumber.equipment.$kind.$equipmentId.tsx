@@ -580,33 +580,34 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
             </div>
 
             {/* SECTION CONTENT */}
-            <div
-              ref={sectionWrapRef}
-              className="relative mt-6 overflow-hidden"
-              style={{
-                minHeight: swipeState !== "idle" && sectionWrapRef.current
-                  ? sectionWrapRef.current.scrollHeight
-                  : undefined,
-              }}
-            >
-              <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
-                {renderSection(section, data, canEdit, userId, onChange)}
-              </div>
-              {targetSection && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
-                    transition: transformTransition,
-                  }}
-                  aria-hidden
-                >
-                  {renderSection(targetSection, data, canEdit, userId, onChange)}
+            <div ref={sectionWrapRef} className="mt-6" style={{ overflow: "hidden" }}>
+              <div
+                style={{
+                  transform: `translateX(${swipeDx}px)`,
+                  transition: transformTransition,
+                  position: "relative",
+                  ...(dragging ? { willChange: "transform" } : {}),
+                }}
+              >
+                <div>
+                  {renderSection(section, data, canEdit, userId, onChange)}
                 </div>
-              )}
+                {targetSection && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateX(${dir === 1 ? w : -w}px)`,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {renderSection(targetSection, data, canEdit, userId, onChange)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
