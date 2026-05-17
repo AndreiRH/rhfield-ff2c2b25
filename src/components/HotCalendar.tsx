@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Calendar } from "@/components/ui/calendar";
@@ -50,7 +51,7 @@ export function HotCalendar({
     const patch = which === "start" ? { hot_planned_start: d ? format(d, "yyyy-MM-dd") : null }
                                     : { hot_planned_end: d ? format(d, "yyyy-MM-dd") : null };
     const { error } = await supabase.from("lines").update(patch).eq("id", lineId);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else onChange();
   };
 
@@ -62,13 +63,13 @@ export function HotCalendar({
       label: newLabel.trim(),
       created_by: user?.id,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setNewDate(undefined); setNewLabel(""); refresh(); }
   };
 
   const deleteMilestone = async (id: string) => {
     const { error } = await supabase.from("milestones").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else refresh();
   };
 

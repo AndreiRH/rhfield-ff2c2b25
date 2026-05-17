@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,7 @@ function SettingsListInner({
       sort_order: rows.length, created_by: userId,
       group_template_id: groupTemplateId,
     }).select("id, title").single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await logSetting({
       plant_equipment_id: equipmentId,
       equipment_setting_id: data?.id, setting_title: data?.title ?? "Setting",
@@ -126,7 +127,7 @@ function SettingsListInner({
       name: "New group",
       sort_order: groups.length,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     load();
   };
 
@@ -135,7 +136,7 @@ function SettingsListInner({
     if (next === g.name) return;
     setGroups((arr) => arr.map((x) => (x.id === g.id ? { ...x, name: next } : x)));
     supabase.from("equipment_setting_groups").update({ name: next }).eq("id", g.id).then(({ error }) => {
-      if (error) toast.error(error.message);
+      if (error) toast.error(toUserMessage(error));
     });
   };
 
@@ -716,7 +717,7 @@ function SettingRow({
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("setting_photos").insert({ equipment_setting_id: setting.id, storage_path: path });
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_added", new_value: file.name, user_id: userId });
     onReload();
@@ -725,14 +726,14 @@ function SettingRow({
     const path = `equipment-settings/${setting.plant_equipment_id}/${setting.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("setting_files").insert({ equipment_setting_id: setting.id, storage_path: path, file_name: file.name });
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_added", new_value: file.name, user_id: userId });
     onReload();
   };
   const removePhoto = async (p: SettingPhoto) => {
     const { error } = await supabase.from("setting_photos").delete().eq("id", p.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "photo_deleted", old_value: p.storage_path.split("/").pop() ?? null, user_id: userId });
     onReload();
     let undone = false;
@@ -754,7 +755,7 @@ function SettingRow({
   };
   const removeFile = async (f: SettingFile) => {
     const { error } = await supabase.from("setting_files").delete().eq("id", f.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await logSetting({ plant_equipment_id: plantEquipmentId, equipment_setting_id: setting.id, setting_title: setting.title, action: "file_deleted", old_value: f.file_name, user_id: userId });
     onReload();
     let undone = false;
@@ -784,12 +785,12 @@ function SettingRow({
   const togglePhotoShared = async (p: SettingPhoto) => {
     if (p.is_shared && !confirmUnshare(p.origin_line_id)) return;
     const { error } = await supabase.from("setting_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
-    if (error) toast.error(error.message); else onReload();
+    if (error) toast.error(toUserMessage(error)); else onReload();
   };
   const toggleFileShared = async (f: SettingFile) => {
     if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("setting_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
-    if (error) toast.error(error.message); else onReload();
+    if (error) toast.error(toUserMessage(error)); else onReload();
   };
 
   const onRowClick = (e: MouseEvent) => {

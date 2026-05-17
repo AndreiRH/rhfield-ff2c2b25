@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { toUserMessage } from "@/lib/errors";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -210,7 +211,7 @@ function ExtraWorksSection({ line, works, canEdit, isAdmin, onChange }: any) {
       id: groupId, line_id: line.id, chapter: "after_sales", kind: "extra_work",
       name: newWork.trim(), sort_order: works.length,
     }).select().single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("components").insert({ id: localUuid(), equipment_id: eg.id, name: "Tasks", sort_order: 0 });
     setNewWork("");
     onChange();
@@ -263,7 +264,7 @@ function ExtraWorksSection({ line, works, canEdit, isAdmin, onChange }: any) {
                             .from("equipment_groups")
                             .update({ deleted_at: new Date().toISOString() })
                             .eq("id", w.id);
-                          if (error) toast.error(error.message);
+                          if (error) toast.error(toUserMessage(error));
                           else { toast.success("Extra work deleted"); onChange(); }
                         }}
                       >

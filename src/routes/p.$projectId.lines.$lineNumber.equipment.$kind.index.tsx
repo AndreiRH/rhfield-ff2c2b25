@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { toUserMessage } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -201,7 +202,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
     const { error } = await supabase.from("plant_equipment").insert({
       id: localUuid(), line_id: lineId, kind, name: newName.trim(), sort_order: equipment.length,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setNewName(""); setAdding(false); onChange(); }
   };
 
@@ -209,7 +210,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
     const { error } = await supabase.from("plant_equipment").insert({
       id: localUuid(), line_id: lineId, kind, name: `${pe.name} (copy)`, sort_order: equipment.length,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { toast.success(`Duplicated "${pe.name}"`); onChange(); }
   };
 
@@ -397,13 +398,13 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
   const save = async () => {
     if (!name.trim()) return;
     const { error } = await supabase.from("plant_equipment").update({ name: name.trim() }).eq("id", pe.id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setEditing(false); onChange(); }
   };
 
   const remove = async () => {
     const { error } = await supabase.from("plant_equipment").update({ deleted_at: new Date().toISOString() }).eq("id", pe.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     setConfirmDelete(false);
     onChange();
     toast.success(`"${pe.name}" deleted`, {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { toUserMessage } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -857,7 +858,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
     const n = pct === "" ? null : Math.max(0, Math.min(100, parseInt(pct, 10) || 0));
     const { error } = await supabase.from("plant_equipment")
       .update({ mech_manual_pct: n }).eq("id", pe.id);
-    if (error) toast.error(error.message); else { toast.success("Saved"); onChange(); }
+    if (error) toast.error(toUserMessage(error)); else { toast.success("Saved"); onChange(); }
   };
 
   const modeToggle = (

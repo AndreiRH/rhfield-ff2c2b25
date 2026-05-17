@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
       line_id: lineId, kind: kind as any, title: "Note", body: "",
       sort_order: notes.length, created_by: userId,
     });
-    if (error) toast.error(error.message); else load();
+    if (error) toast.error(toUserMessage(error)); else load();
   };
 
   const update = (id: string, patch: Partial<Note>) => {
@@ -126,7 +127,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("pa_notes").update({ photo_path: path }).eq("id", note.id);
     onReload();
@@ -135,7 +136,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
     await supabase.from("pa_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
     onReload();

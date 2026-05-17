@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from "react";
+import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -86,7 +87,7 @@ export function ComponentsList({ group, canEdit, onChange, parentKind = "equipme
       ? { id, component_type_id: group.id, name: newName.trim(), sort_order: components.length }
       : { id, equipment_id: group.id, name: newName.trim(), sort_order: components.length };
     const { error } = await supabase.from("components").insert(payload);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setNewName(""); setAdding(false); onChange(); }
   };
 
@@ -232,19 +233,19 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   const renameComponent = async () => {
     if (!name.trim() || name === component.name) { setEditingName(false); return; }
     const { error } = await supabase.from("components").update({ name: name.trim() }).eq("id", component.id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(toUserMessage(error));
     else { setEditingName(false); onChange(); }
   };
   const saveNote = async () => {
     if (note === (component.note ?? "")) return;
     const { error } = await supabase.from("components").update({ note: note || null }).eq("id", component.id);
-    if (error) toast.error(error.message); else onChange();
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
   const uploadPhoto = async (file: File) => {
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("component_photos").insert({ id: localUuid(), component_id: component.id, storage_path: path });
     setShowPhotos(true); onChange();
   };
@@ -252,13 +253,13 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
     const path = `component/${component.id}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     await supabase.from("component_files").insert({ id: localUuid(), component_id: component.id, storage_path: path, file_name: file.name });
     setShowFiles(true); onChange();
   };
   const removePhoto = async (p: any) => {
     const { error } = await supabase.from("component_photos").delete().eq("id", p.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     onChange();
     let undone = false;
     toast.success("Photo deleted", {
@@ -279,7 +280,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
   };
   const removeFile = async (f: any) => {
     const { error } = await supabase.from("component_files").delete().eq("id", f.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(toUserMessage(error)); return; }
     onChange();
     let undone = false;
     toast.success("File deleted", {
@@ -420,7 +421,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                     onClick={async () => {
                       const { error } = await supabase.from("components")
                         .update({ note_shared: !component.note_shared }).eq("id", component.id);
-                      if (error) toast.error(error.message); else onChange();
+                      if (error) toast.error(toUserMessage(error)); else onChange();
                     }}
                     title={component.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${component.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
