@@ -86,6 +86,8 @@ function EquipmentDetail() {
   const { data, isLoading } = useQuery({
     enabled: !!session && !isChildRoute,
     queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data: line, error } = await supabase
         .from("lines").select("id, number, project_id")
