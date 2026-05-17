@@ -244,6 +244,7 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
       onClick={onClose}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      data-no-swipe
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
     >
       <button
