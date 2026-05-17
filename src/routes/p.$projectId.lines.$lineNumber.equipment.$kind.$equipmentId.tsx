@@ -104,18 +104,18 @@ function EquipmentDetail() {
             component_photos(id, storage_path),
             component_files(id, storage_path, file_name),
             checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-              item_photos(id, storage_path), item_files(id, storage_path, file_name))
+              item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
           ),
           component_types(
             id, name, sort_order, deleted_at,
             checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id,
-              item_photos(id, storage_path), item_files(id, storage_path, file_name)),
+              item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared)),
             components(
               id, name, sort_order, deleted_at, note, note_shared,
               component_photos(id, storage_path),
               component_files(id, storage_path, file_name),
               checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
-                item_photos(id, storage_path), item_files(id, storage_path, file_name))
+                item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
             )
           )
         `;
