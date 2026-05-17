@@ -308,6 +308,31 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
 
+  // Prefetch prev/next equipment so the swipe-in pane shows real data instantly.
+  useEffect(() => {
+    const toFetch = [prevEq, nextEq].filter(Boolean) as { id: string }[];
+    for (const sibling of toFetch) {
+      qc.prefetchQuery({
+        queryKey: [
+          "equipment-detail",
+          data.line.project_id,
+          String(data.line.number),
+          data.pe.kind,
+          sibling.id,
+        ],
+        staleTime: 30_000,
+        queryFn: () =>
+          fetchEquipmentDetail(
+            data.line.project_id,
+            String(data.line.number),
+            data.pe.kind,
+            sibling.id,
+          ),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevEq?.id, nextEq?.id]);
+
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (commitTimeoutRef.current) {
