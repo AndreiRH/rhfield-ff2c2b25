@@ -1311,6 +1311,21 @@ async function retryFailedOutbox() {
   }
   await flushQueue();
 }
+async function retryAuthFailedOutbox() {
+  const items = await outboxAll();
+  for (const it of items) {
+    if (it?.failed && it?.lastStatus === 401) {
+      await outboxUpdate(it.id, {
+        failed: false,
+        authRetried: false,
+        lastStatus: null,
+        lastError: null,
+        failedAt: null,
+      });
+    }
+  }
+  await flushQueue();
+}
 async function discardFailedOutbox() {
   const items = await outboxAll();
   for (const it of items) {
@@ -1360,6 +1375,7 @@ self.addEventListener("message", (e) => {
     e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
   if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
+  if (d.type === "rhfield-outbox-retry-auth-failed") e.waitUntil(retryAuthFailedOutbox());
   if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
   if (d.type === "rhfield-get-blob") {
     const port = e.ports?.[0];
