@@ -775,6 +775,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
       )}
       <button
         type="button"
+        data-no-swipe
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
@@ -801,6 +802,7 @@ function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
     <div ref={setNodeRef} style={style} className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
       <button
         type="button"
+        data-no-swipe
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
