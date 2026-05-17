@@ -7,6 +7,7 @@ import { onWarmUpProgress, warmUp, getWarmUpState } from "./warm-up";
 type SwQueueMessage = { type: "rhfield-queue"; count: number; failed?: number };
 type SwDataChangedMessage = { type: "rhfield-data-changed" };
 type SwAuthExpiredMessage = { type: "rhfield-auth-expired" };
+type SwFlushStartMessage = { type: "rhfield-flush-start"; pending: number };
 type SwFlushCompleteMessage = {
   type: "rhfield-flush-complete";
   remaining: number;
@@ -18,11 +19,22 @@ type SwFlushCompleteMessage = {
 type SwMessage =
   | SwQueueMessage
   | SwDataChangedMessage
+  | SwFlushStartMessage
   | SwFlushCompleteMessage
   | SwAuthExpiredMessage;
 
 function send(type: string) {
   navigator.serviceWorker?.controller?.postMessage({ type });
+}
+
+async function getFreshAuthToken(): Promise<string | null> {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function requestBackgroundSync() {
@@ -72,19 +84,24 @@ async function probeOnline(): Promise<boolean> {
   if (typeof navigator === "undefined") return true;
   if (!navigator.onLine) return false;
   try {
-    const url = new URL("/auth/v1/health", import.meta.env.VITE_SUPABASE_URL as string);
+    const url = new URL("/auth/v1/user", import.meta.env.VITE_SUPABASE_URL as string);
+    url.searchParams.set("rhfield_probe", "1");
     const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 4000);
+    const to = setTimeout(() => ctrl.abort(), 2500);
     const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    const token = await getFreshAuthToken();
     const res = await fetch(url.href, {
       method: "GET",
       cache: "no-store",
       signal: ctrl.signal,
-      headers: apikey ? { apikey } : undefined,
+      headers: {
+        ...(apikey ? { apikey } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     clearTimeout(to);
-    // Any HTTP response means the network reached Supabase — we're online.
-    return res.status > 0;
+    // 200 or 401 both prove the backend is reachable; only synthetic SW 503 is offline.
+    return res.status > 0 && res.headers.get("X-RHfield-Offline") !== "1";
   } catch {
     // Probe failed (CORS, DNS hiccup, transient). Trust the browser's signal
     // rather than incorrectly flipping the cloud icon to offline.
@@ -133,6 +150,10 @@ export function useOfflineStatus() {
       if (d.type === "rhfield-data-changed") {
         qc.invalidateQueries();
       }
+      if (d.type === "rhfield-flush-start") {
+        setPending(d.pending);
+        setWarm({ phase: "tables", done: 0, total: d.pending });
+      }
       if (d.type === "rhfield-auth-expired") {
         handleAuthExpired();
       }
@@ -146,6 +167,8 @@ export function useOfflineStatus() {
         }
         if (!d.stalled && d.remaining === 0) {
           warmUp(true).then(() => qc.invalidateQueries());
+        } else {
+          setWarm((prev) => ({ ...prev, phase: "done" }));
         }
       }
     };
