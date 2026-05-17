@@ -370,31 +370,30 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           const ratio = dx / w;
           const goingNext = dx < 0;
           const target = goingNext ? nextEqRef.current : prevEqRef.current;
-          if (Math.abs(ratio) > 0.38 && target) {
-            setEqState("animating");
-            const end = goingNext ? -w : w;
-            eqCommitRef.current = window.setTimeout(() => {
-              eqCommitRef.current = null;
-              if (!isMounted.current) return;
-              const d = dataRef.current;
-              navigateRef.current({
-                to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
-                params: {
-                  projectId: d.line.project_id,
-                  lineNumber: String(d.line.number),
-                  kind: d.pe.kind,
-                  equipmentId: target.id,
-                },
-              });
-            }, 230);
-            return end;
+          if (Math.abs(ratio) > 0.28 && target) {
+            // Navigate immediately — no slide-off animation.
+            // The new page mounts clean at eqDx=0; no white screen.
+            if (!isMounted.current) return dx;
+            const d = dataRef.current;
+            navigateRef.current({
+              to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
+              params: {
+                projectId: d.line.project_id,
+                lineNumber: String(d.line.number),
+                kind: d.pe.kind,
+                equipmentId: target.id,
+              },
+            });
+            return 0;
           }
+          // Cancelled swipe — snap back.
           setEqState("animating");
           eqCommitRef.current = window.setTimeout(() => {
             eqCommitRef.current = null;
             if (!isMounted.current) return;
             setEqState("idle");
-          }, 230);
+            setEqDx(0);
+          }, 220);
           return 0;
         });
         return;
@@ -405,7 +404,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         const localDir = dx < 0 ? 1 : -1;
         const curSection = sectionRef.current;
         const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(curSection) + localDir];
-        if (Math.abs(ratio) > 0.3 && localTarget) {
+        if (Math.abs(ratio) > 0.22 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
             commitTimeoutRef.current = null;
