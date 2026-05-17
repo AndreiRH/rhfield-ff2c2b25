@@ -150,12 +150,6 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     <div className="relative inline-block" style={{ isolation: "isolate" }}>
       <button
         type="button"
-
-  return (
-    <div className="relative inline-block">
-      <button
-        ref={triggerRef}
-        type="button"
         onTouchStart={(e) => {
           e.preventDefault();
           draggingRef.current = true;
@@ -183,12 +177,16 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             borderRadius: "var(--radius-md)",
             boxShadow: "0 8px 24px oklch(0.18 0.03 250 / 0.18)",
             minWidth: "200px",
-            maxWidth: "80vw",
             fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-            left: dropAlign === "left" ? 0 : "auto",
-            right: dropAlign === "right" ? 0 : "auto",
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: "auto",
+            left: "50%",
+            transform: "translateX(-50%)",
+            maxWidth: "min(260px, calc(100vw - 2rem))",
+            width: "max-content",
           }}
-          className="absolute top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
+          className="z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
           {items.map((item) => {
             const active = item.key === currentKey;
