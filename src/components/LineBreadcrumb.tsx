@@ -91,7 +91,11 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
       {rest.map((s, i) => (
         <span key={i} className="inline-flex min-w-0 items-center gap-1.5">
           <span aria-hidden className="shrink-0">·</span>
-          <span className="min-w-0 truncate">{s}</span>
+          {typeof s === "string" ? (
+            <span className="min-w-0 truncate">{s}</span>
+          ) : (
+            <span className="shrink-0">{s}</span>
+          )}
         </span>
       ))}
     </nav>
