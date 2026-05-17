@@ -125,7 +125,7 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
               <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
                 <ul className="space-y-2">
                   {notes.map((n) => (
-                    <NoteRow key={n.id} note={n} canEdit={canEdit}
+                    <NoteRow key={n.id} note={n} canEdit={canEdit} currentEquipmentId={equipmentId}
                       onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
                   ))}
                 </ul>
@@ -138,7 +138,7 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+function NoteRow({ note, canEdit, currentEquipmentId, onUpdate, onDelete, onReload }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
@@ -235,7 +235,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
         {canEdit && (
           <button
             onClick={() => {
-              if (note.is_shared && note.equipment_id && note.equipment_id !== (window as any).__currentEquipmentId) {
+              if (note.is_shared && note.equipment_id && note.equipment_id !== currentEquipmentId) {
                 // The note's home is another line; double-check before yanking it from there.
                 const ok = window.confirm(
                   "This note is shared from another production line. Making it local will remove it from this line and keep it only on its original line. Continue?",
