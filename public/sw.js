@@ -656,22 +656,37 @@ function balancedEnd(s) {
 // ============================================================
 // Reconstruct embedded children from snapshot
 // ============================================================
-async function expandEmbeds(table, rows, embeds) {
+// FK index cache, scoped per-call so a single request reuses indexes
+// across recursive expansions but doesn't leak across requests.
+function buildFkIndex(childRows, fk) {
+  const idx = new Map();
+  for (const c of childRows) {
+    const k = c?.[fk];
+    if (k == null) continue;
+    let arr = idx.get(k);
+    if (!arr) { arr = []; idx.set(k, arr); }
+    arr.push(c);
+  }
+  return idx;
+}
+
+async function expandEmbeds(table, rows, embeds, ctx) {
   if (!embeds.length) return rows;
-  const childCache = {};
+  ctx = ctx || { tables: {}, indexes: {} };
   for (const emb of embeds) {
     const rel = REL[table]?.[emb.name];
     if (!rel) continue; // unknown relation → leave undefined
-    const childRows = childCache[rel.table] || (childCache[rel.table] = await readTable(rel.table));
+    const childRows = ctx.tables[rel.table] || (ctx.tables[rel.table] = await readTable(rel.table)) || [];
+    const idxKey = `${rel.table}::${rel.fk}`;
+    const idx = ctx.indexes[idxKey] || (ctx.indexes[idxKey] = buildFkIndex(childRows, rel.fk));
     const inner = parseSelect(emb.select);
-    // Pre-expand inner embeds for all child rows (we'll filter per parent below)
-    // For perf, just attach matched children per parent and recurse on those.
     for (const parent of rows) {
-      const matches = childRows.filter((c) => c?.[rel.fk] === parent.id);
+      const matches = idx.get(parent.id) || [];
       const projected = await expandEmbeds(
         rel.table,
         matches.map((m) => projectRow(m, inner.columns)),
         inner.embeds,
+        ctx,
       );
       parent[emb.name] = projected;
     }
@@ -683,15 +698,28 @@ async function expandEmbeds(table, rows, embeds) {
     if (componentSelect) {
       const compInner = parseSelect(componentSelect);
       const components =
-        childCache.components || (childCache.components = await readTable("components"));
+        ctx.tables.components || (ctx.tables.components = await readTable("components")) || [];
+      // Index components by equipment_id, only those without a component_type_id.
+      const idxKey = "components::equipment_id::direct";
+      const idx = ctx.indexes[idxKey] || (ctx.indexes[idxKey] = (() => {
+        const m = new Map();
+        for (const c of components) {
+          if (c?.component_type_id) continue;
+          const k = c?.equipment_id;
+          if (k == null) continue;
+          let arr = m.get(k);
+          if (!arr) { arr = []; m.set(k, arr); }
+          arr.push(c);
+        }
+        return m;
+      })());
       for (const parent of rows) {
-        const direct = components.filter(
-          (c) => c?.equipment_id === parent.id && !c?.component_type_id,
-        );
+        const direct = idx.get(parent.id) || [];
         parent.components = await expandEmbeds(
           "components",
           direct.map((m) => projectRow(m, compInner.columns)),
           compInner.embeds,
+          ctx,
         );
       }
     }
