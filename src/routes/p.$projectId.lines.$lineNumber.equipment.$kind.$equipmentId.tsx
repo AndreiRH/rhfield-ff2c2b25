@@ -503,64 +503,143 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* EVERYTHING BELOW slides with equipment swipe (header + tabs + content). */}
-      <div
-        style={{
-          transform: `translateX(${eqDx}px)`,
-          transition: eqTransformTransition,
-          ...(eqState === "dragging" ? { willChange: "transform" } : {}),
-        }}
-      >
-        {/* HEADER ZONE — equipment-swipe gesture starts here. */}
-        <div className="relative" data-equipment-header>
-          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-            <HeaderInner
-              data={data}
-              plantLabel={plantLabel}
-              overall={overall}
-              accent={meta.accent}
-            />
-          </div>
-          {targetMeta && (
-            <div
-              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-              style={{ opacity: progress, transition: colorTransition }}
-              aria-hidden
-            >
-              <HeaderInner
-                data={data}
-                plantLabel={plantLabel}
-                overall={overall}
-                accent={targetMeta.accent}
-              />
+      {/* Equipment swipe viewport — current pane + incoming neighbour pane. */}
+      <div style={{ overflow: "hidden" }}>
+        <div
+          style={{
+            transform: `translateX(${eqDx}px)`,
+            transition: eqTransformTransition,
+            position: "relative",
+            ...(eqState === "dragging" ? { willChange: "transform" } : {}),
+          }}
+        >
+          {/* ── CURRENT EQUIPMENT PANE ── */}
+          <div>
+            {/* HEADER ZONE — equipment-swipe gesture starts here. */}
+            <div className="relative" data-equipment-header>
+              <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+                <HeaderInner
+                  data={data}
+                  plantLabel={plantLabel}
+                  overall={overall}
+                  accent={meta.accent}
+                />
+              </div>
+              {targetMeta && (
+                <div
+                  className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+                  style={{ opacity: progress, transition: colorTransition }}
+                  aria-hidden
+                >
+                  <HeaderInner
+                    data={data}
+                    plantLabel={plantLabel}
+                    overall={overall}
+                    accent={targetMeta.accent}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
-        <div className="mt-3 flex items-stretch gap-2">
-          <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
-          <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
-          <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
-        </div>
-
-        {/* SECTION CONTENT — section swipe lives inside. */}
-        <div className="relative mt-6 overflow-hidden">
-          <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
-            {renderSection(section, data, canEdit, userId, onChange)}
-          </div>
-          {targetSection && (
-            <div
-              className="absolute inset-0"
-              style={{
-                transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
-                transition: transformTransition,
-              }}
-              aria-hidden
-            >
-              {renderSection(targetSection, data, canEdit, userId, onChange)}
+            {/* TABS */}
+            <div className="mt-3 flex items-stretch gap-2">
+              <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+              <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+              <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
             </div>
-          )}
+
+            {/* SECTION CONTENT */}
+            <div className="relative mt-6 overflow-hidden">
+              <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
+                {renderSection(section, data, canEdit, userId, onChange)}
+              </div>
+              {targetSection && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    transform: `translateX(${swipeDx + (dir === 1 ? w + PANE_GAP : -w - PANE_GAP)}px)`,
+                    transition: transformTransition,
+                  }}
+                  aria-hidden
+                >
+                  {renderSection(targetSection, data, canEdit, userId, onChange)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── NEIGHBOUR EQUIPMENT PANE ── */}
+          {eqDx !== 0 && (() => {
+            const goingNext = eqDx < 0;
+            const neighbour = goingNext ? nextEq : prevEq;
+            if (!neighbour) return null;
+            const neighbourData = qc.getQueryData<any>([
+              "equipment-detail",
+              data.line.project_id,
+              String(data.line.number),
+              data.pe.kind,
+              neighbour.id,
+            ]);
+            const offset = goingNext ? w : -w;
+            const { mech: nMech, wiring: nWiring, cold: nCold, overall: nOverall } =
+              neighbourData
+                ? equipmentProgress(neighbourData.peWithGroups)
+                : { mech: 0, wiring: 0, cold: 0, overall: 0 };
+            return (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateX(${offset}px)`,
+                  pointerEvents: "none",
+                }}
+              >
+                {/* Neighbour header */}
+                <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div>
+                      <div className="mb-1 h-3 w-20 rounded bg-white/20" />
+                      <h1 className="text-3xl font-semibold">
+                        {neighbour.name}
+                        {neighbourData && (
+                          <span className={`ml-3 text-base font-normal ${meta.accent}`}>
+                            {nOverall}%
+                          </span>
+                        )}
+                      </h1>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Neighbour tabs — real data if cached, ghost if not */}
+                <div className="mt-3 flex items-stretch gap-2">
+                  {neighbourData ? (
+                    <>
+                      <SectionTab phase="assembly" pct={nMech} weight={1} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="wiring" pct={nWiring} weight={0} dragging={false} onClick={() => {}} />
+                      <SectionTab phase="cold_comm" pct={nCold} weight={0} dragging={false} onClick={() => {}} />
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-12 flex-1 rounded-md border bg-muted/30" />
+                      <div className="h-12 flex-1 rounded-md border bg-muted/20" />
+                      <div className="h-12 flex-1 rounded-md border bg-muted/10" />
+                    </>
+                  )}
+                </div>
+
+                {/* Neighbour content — ghost skeleton */}
+                <div className="mt-6 space-y-3">
+                  <div className="h-20 rounded-lg bg-muted/30" />
+                  <div className="h-10 rounded-lg bg-muted/20" />
+                  <div className="h-10 rounded-lg bg-muted/15" />
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
