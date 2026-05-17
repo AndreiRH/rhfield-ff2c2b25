@@ -315,6 +315,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         eqCommitRef.current = null;
       }
       const t = e.touches[0];
+      // Ignore touches starting within 20px of either screen edge —
+      // reserved for the Android system back gesture.
+      if (t.clientX < 20 || t.clientX > window.innerWidth - 20) return;
       const target = e.target as HTMLElement | null;
       const inHeader = !!target?.closest?.("[data-equipment-header]");
       startRef.current = { x: t.clientX, y: t.clientY, decided: null, mode: inHeader ? "equipment" : "section" };
