@@ -356,13 +356,16 @@ function FolderContents({ folder, canEdit, userId }: any) {
         />
         {photosOpen && (photos.length === 0 ? (
           <p className="text-xs text-muted-foreground">No photos.</p>
-        ) : (
+        ) : (() => {
+          const photoGallery = photos.map((p) => ({ bucket: "photos", path: p.storage_path }));
+          return (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {photos.map((p) => (
-              <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} />
+              <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} gallery={photoGallery} />
             ))}
           </div>
-        ))}
+          );
+        })())}
       </section>
 
       {/* Files */}
@@ -403,21 +406,24 @@ function FolderContents({ folder, canEdit, userId }: any) {
         />
         {notesOpen && (notes.length === 0 ? (
           <p className="text-xs text-muted-foreground">No notes.</p>
-        ) : (
+        ) : (() => {
+          const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
+          return (
           <ul className="space-y-2">
             {notes.map((n) => (
               <NoteRow key={n.id} note={n} canEdit={canEdit}
                 onUpdate={(p: Partial<Note>) => updateNote(n.id, p)}
-                onDelete={() => deleteNote(n)} onReload={load} />
+                onDelete={() => deleteNote(n)} onReload={load} gallery={noteGallery} />
             ))}
           </ul>
-        ))}
+          );
+        })())}
       </section>
     </div>
   );
 }
 
-function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean; onRemove: () => void }) {
+function AttPhoto({ att, canEdit, onRemove, gallery }: { att: Attachment; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
   return (
     <StoragePhoto
       bucket="photos"
@@ -426,6 +432,7 @@ function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolea
       containerClassName="h-28"
       canEdit={canEdit}
       onRemove={onRemove}
+      gallery={gallery}
     />
   );
 }
@@ -445,7 +452,7 @@ function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [open, setOpen] = useState(false);
@@ -519,7 +526,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} gallery={gallery} />}
           {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
           {canEdit && (
             <div className="flex gap-2">
@@ -541,7 +548,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   );
 }
 
-function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
+function NotePhoto({ path, canEdit, onRemove, gallery }: { path: string; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
   return (
     <StoragePhoto
       bucket="photos"
@@ -549,6 +556,7 @@ function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean
       imgClassName="max-h-40 w-full rounded border object-cover"
       canEdit={canEdit}
       onRemove={onRemove}
+      gallery={gallery}
     />
   );
 }

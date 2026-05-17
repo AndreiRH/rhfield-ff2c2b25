@@ -96,24 +96,27 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
         </div>
         {notes.length === 0 ? (
           <p className="text-sm text-muted-foreground">No notes yet.</p>
-        ) : (
+        ) : (() => {
+          const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
+          return (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
               <ul className="space-y-2">
                 {notes.map((n) => (
                   <NoteRow key={n.id} note={n} canEdit={canEdit}
-                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
+                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} gallery={noteGallery} />
                 ))}
               </ul>
             </SortableContext>
           </DndContext>
-        )}
+          );
+        })()}
       </CardContent>
     </Card>
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
@@ -182,7 +185,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
           placeholder="Write something…"
           className="min-h-[60px] resize-y text-sm"
         />
-        {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+        {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} gallery={gallery} />}
         {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
         {canEdit && (
           <div className="flex gap-2">
@@ -203,7 +206,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   );
 }
 
-function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
+function NotePhoto({ path, canEdit, onRemove, gallery }: { path: string; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
   return (
     <StoragePhoto
       bucket="photos"
@@ -211,6 +214,7 @@ function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean
       imgClassName="max-h-40 w-full rounded border object-cover"
       canEdit={canEdit}
       onRemove={onRemove}
+      gallery={gallery}
     />
   );
 }
