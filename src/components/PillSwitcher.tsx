@@ -203,7 +203,7 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
         <span className="truncate">{label}</span>
         <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
       </button>
-      {open && pos && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
           ref={panelRef}
           role="listbox"
@@ -260,7 +260,8 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
               </div>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
