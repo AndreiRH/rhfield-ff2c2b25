@@ -602,19 +602,37 @@ function ActionBtn({ onClick, icon, label, active, iconOnly }: any) {
   );
 }
 
-export function PhotoTile({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
+export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared }: {
+  path: string; canEdit: boolean; onRemove: () => void;
+  isShared?: boolean; onToggleShared?: () => void;
+}) {
   return (
-    <StoragePhoto
-      bucket="photos"
-      path={path}
-      imgClassName="h-16 w-full rounded border object-cover"
-      canEdit={canEdit}
-      onRemove={onRemove}
-    />
+    <div className="relative">
+      <StoragePhoto
+        bucket="photos"
+        path={path}
+        imgClassName="h-16 w-full rounded border object-cover"
+        canEdit={canEdit}
+        onRemove={onRemove}
+      />
+      {canEdit && onToggleShared && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
+          title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          {isShared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+        </button>
+      )}
+    </div>
   );
 }
 
-export function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; onRemove: () => void }) {
+export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
+  f: any; canEdit: boolean; onRemove: () => void;
+  onToggleShared?: () => void;
+}) {
   return (
     <div className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
       <button
@@ -623,6 +641,16 @@ export function FileChip({ f, canEdit, onRemove }: { f: any; canEdit: boolean; o
       >
         <Paperclip className="h-3 w-3 shrink-0" /> <span className="truncate">{f.file_name}</span>
       </button>
+      {canEdit && onToggleShared && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
+          title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          className={`shrink-0 ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          {f.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+        </button>
+      )}
       {canEdit && (
         <button onClick={onRemove} className="shrink-0 text-destructive hover:opacity-80">
           <X className="h-3 w-3" />
