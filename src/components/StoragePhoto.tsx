@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Download } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getCachedLocalBlob,
