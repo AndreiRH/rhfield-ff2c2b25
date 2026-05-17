@@ -148,6 +148,14 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const spaceRight = window.innerWidth - rect.left;
+      setDropAlign(spaceRight < 220 ? "right" : "left");
+    }
+  }, [open]);
+
   return (
     <div className="relative inline-block">
       <button
