@@ -112,7 +112,8 @@ Always include 1-5 keywords (lowercase, no punctuation). If the question is in a
     const text = await res.text();
     if (res.status === 429) throw new Error("AI rate limit exceeded. Please retry in a moment.");
     if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Settings → Workspace → Usage.");
-    throw new Error(`AI gateway error ${res.status}: ${text.slice(0, 200)}`);
+    console.error("AI gateway error", res.status, text);
+    throw new Error("Search is temporarily unavailable. Please try again.");
   }
 
   const json = (await res.json()) as {
