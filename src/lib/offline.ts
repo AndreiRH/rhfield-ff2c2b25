@@ -15,7 +15,11 @@ type SwFlushCompleteMessage = {
   failureSamples: Array<{ url: string; method: string; status: number; body: string }>;
   stalled: boolean;
 };
-type SwMessage = SwQueueMessage | SwDataChangedMessage | SwFlushCompleteMessage | SwAuthExpiredMessage;
+type SwMessage =
+  | SwQueueMessage
+  | SwDataChangedMessage
+  | SwFlushCompleteMessage
+  | SwAuthExpiredMessage;
 
 function send(type: string) {
   navigator.serviceWorker?.controller?.postMessage({ type });
@@ -28,7 +32,9 @@ async function requestBackgroundSync() {
       // @ts-expect-error - SyncManager isn't in lib.dom yet
       await reg.sync.register("rhfield-flush");
     }
-  } catch {}
+  } catch {
+    // Background sync is optional; direct flush messages still run.
+  }
 }
 
 export function triggerFlush() {
@@ -71,7 +77,7 @@ async function probeOnline(): Promise<boolean> {
     const to = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch(url.href, { method: "GET", cache: "no-store", signal: ctrl.signal });
     clearTimeout(to);
-    return !!res;
+    return res.ok;
   } catch {
     return false;
   }
@@ -94,12 +100,18 @@ export function useOfflineStatus() {
       return real;
     };
 
-    const onOnline  = () => { refreshOnline().then((ok) => { if (ok) triggerFlush(); }); };
+    const onOnline = () => {
+      refreshOnline().then((ok) => {
+        if (ok) triggerFlush();
+      });
+    };
     const onOffline = () => setOnline(false);
-    const onVis     = () => {
+    const onVis = () => {
       if (document.visibilityState === "visible") {
         send("rhfield-queue?");
-        refreshOnline().then((ok) => { if (ok) triggerFlush(); });
+        refreshOnline().then((ok) => {
+          if (ok) triggerFlush();
+        });
       }
     };
     const onMsg = (e: MessageEvent<SwMessage>) => {

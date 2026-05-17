@@ -9,64 +9,124 @@ import { supabase } from "@/integrations/supabase/client";
 import { putTable, hasBlob, putBlob, setMeta } from "./snapshot-store";
 
 const TABLES = [
-  "projects", "lines", "plant_equipment", "equipment_groups",
-  "component_types", "components", "checklist_items",
-  "equipment_settings", "equipment_notes", "equipment_photos",
-  "item_photos", "item_files",
-  "component_photos", "component_files",
-  "setting_photos", "setting_files", "setting_logs",
-  "pa_folders", "pa_notes", "pa_attachments",
+  "projects",
+  "lines",
+  "plant_equipment",
+  "equipment_groups",
+  "component_types",
+  "components",
+  "checklist_items",
+  "equipment_settings",
+  "equipment_notes",
+  "equipment_photos",
+  "item_photos",
+  "item_files",
+  "component_photos",
+  "component_files",
+  "setting_photos",
+  "setting_files",
+  "setting_logs",
+  "pa_folders",
+  "pa_notes",
+  "pa_attachments",
   "milestones",
-  "common_notes", "common_files",
-  "common_folders", "common_folder_notes", "common_folder_attachments",
-  "profiles", "user_roles",
+  "common_notes",
+  "common_files",
+  "common_folders",
+  "common_folder_notes",
+  "common_folder_attachments",
+  "profiles",
+  "user_roles",
 ] as const;
 
 type PathSpec = { bucket: "photos" | "files"; col: string };
 const PATH_COLUMNS: Record<string, PathSpec[]> = {
-  equipment_photos:           [{ bucket: "photos", col: "storage_path" }],
-  item_photos:                [{ bucket: "photos", col: "storage_path" }],
-  component_photos:           [{ bucket: "photos", col: "storage_path" }],
-  setting_photos:             [{ bucket: "photos", col: "storage_path" }],
-  item_files:                 [{ bucket: "files",  col: "storage_path" }],
-  component_files:            [{ bucket: "files",  col: "storage_path" }],
-  setting_files:              [{ bucket: "files",  col: "storage_path" }],
-  pa_attachments:             [{ bucket: "files",  col: "storage_path" }],
-  common_files:               [{ bucket: "files",  col: "storage_path" }],
-  common_folder_attachments:  [{ bucket: "files",  col: "storage_path" }],
-  equipment_notes:            [{ bucket: "photos", col: "photo_path" }, { bucket: "files", col: "file_path" }],
-  equipment_settings:         [{ bucket: "photos", col: "photo_path" }, { bucket: "files", col: "file_path" }],
-  pa_notes:                   [{ bucket: "photos", col: "photo_path" }, { bucket: "files", col: "file_path" }],
-  common_folder_notes:        [{ bucket: "photos", col: "photo_path" }, { bucket: "files", col: "file_path" }],
+  equipment_photos: [{ bucket: "photos", col: "storage_path" }],
+  item_photos: [{ bucket: "photos", col: "storage_path" }],
+  component_photos: [{ bucket: "photos", col: "storage_path" }],
+  setting_photos: [{ bucket: "photos", col: "storage_path" }],
+  item_files: [{ bucket: "files", col: "storage_path" }],
+  component_files: [{ bucket: "files", col: "storage_path" }],
+  setting_files: [{ bucket: "files", col: "storage_path" }],
+  pa_attachments: [{ bucket: "files", col: "storage_path" }],
+  common_files: [{ bucket: "files", col: "storage_path" }],
+  common_folder_attachments: [{ bucket: "files", col: "storage_path" }],
+  equipment_notes: [
+    { bucket: "photos", col: "photo_path" },
+    { bucket: "files", col: "file_path" },
+  ],
+  equipment_settings: [
+    { bucket: "photos", col: "photo_path" },
+    { bucket: "files", col: "file_path" },
+  ],
+  pa_notes: [
+    { bucket: "photos", col: "photo_path" },
+    { bucket: "files", col: "file_path" },
+  ],
+  common_folder_notes: [
+    { bucket: "photos", col: "photo_path" },
+    { bucket: "files", col: "file_path" },
+  ],
 };
 
 export type WarmPhase = "idle" | "tables" | "routes" | "blobs" | "done";
-export type Progress = { phase: WarmPhase; done: number; total: number; lastSync?: number; error?: string };
+export type Progress = {
+  phase: WarmPhase;
+  done: number;
+  total: number;
+  lastSync?: number;
+  error?: string;
+};
 type Listener = (p: Progress) => void;
 const listeners = new Set<Listener>();
 let current: Progress = { phase: "idle", done: 0, total: 0 };
 function emit(p: Partial<Progress>) {
   current = { ...current, ...p };
-  listeners.forEach((fn) => { try { fn(current); } catch {} });
+  listeners.forEach((fn) => {
+    try {
+      fn(current);
+    } catch {
+      // Ignore listener errors so one UI subscriber cannot stop warm-up.
+    }
+  });
 }
 export function onWarmUpProgress(fn: Listener) {
   fn(current);
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
-export function getWarmUpState() { return current; }
+export function getWarmUpState() {
+  return current;
+}
 
 const THROTTLE_MS = 30 * 1000;
 const PAGE_SIZE = 1000;
-const ROUTE_BATCH = 8;
 let lastRunAt = 0;
 let inflight: Promise<void> | null = null;
+
+async function waitForServiceWorkerControl(timeoutMs = 5000) {
+  if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+  if (navigator.serviceWorker.controller) return;
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      const onChange = () => {
+        navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+        resolve();
+      };
+      navigator.serviceWorker.addEventListener("controllerchange", onChange);
+    }),
+    new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ]);
+}
 
 async function pageTable(table: string): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const to = from + PAGE_SIZE - 1;
-    const { data, error } = await supabase.from(table as never).select("*").range(from, to);
+    const { data, error } = await supabase
+      .from(table as never)
+      .select("*")
+      .range(from, to);
     if (error) throw error;
     const rows = (data ?? []) as Record<string, unknown>[];
     out.push(...rows);
@@ -89,14 +149,27 @@ async function cacheOfflineRoutes(routes: string[]) {
     const timeout = window.setTimeout(resolve, Math.max(15000, routes.length * 2500));
     channel.port1.onmessage = (event) => {
       const data = event.data || {};
-      if (data.type === "progress") emit({ done: data.done ?? 0, total: data.total ?? routes.length });
-      if (data.type === "done") { window.clearTimeout(timeout); resolve(); }
+      if (data.type === "progress")
+        emit({ done: data.done ?? 0, total: data.total ?? routes.length });
+      if (data.type === "done") {
+        window.clearTimeout(timeout);
+        resolve();
+      }
     };
-    navigator.serviceWorker.ready.then((reg) => {
-      const sw = navigator.serviceWorker.controller || reg.active;
-      if (!sw) { window.clearTimeout(timeout); resolve(); return; }
-      sw.postMessage({ type: "rhfield-cache-routes", routes }, [channel.port2]);
-    }).catch(() => { window.clearTimeout(timeout); resolve(); });
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        const sw = navigator.serviceWorker.controller || reg.active;
+        if (!sw) {
+          window.clearTimeout(timeout);
+          resolve();
+          return;
+        }
+        sw.postMessage({ type: "rhfield-cache-routes", routes }, [channel.port2]);
+      })
+      .catch(() => {
+        window.clearTimeout(timeout);
+        resolve();
+      });
   });
 }
 
@@ -105,7 +178,9 @@ function buildOfflineRoutes(results: Array<readonly [string, Record<string, unkn
   const routes = new Set<string>(["/", "/login"]);
   const lines = tables.lines ?? [];
   const plant = tables.plant_equipment ?? [];
-  const extraGroups = (tables.equipment_groups ?? []).filter((g) => g.kind === "extra_work" && !g.deleted_at);
+  const extraGroups = (tables.equipment_groups ?? []).filter(
+    (g) => g.kind === "extra_work" && !g.deleted_at,
+  );
 
   for (const project of tables.projects ?? []) {
     const projectId = String(project.id ?? "");
@@ -145,7 +220,9 @@ export function warmUp(force = false): Promise<void> {
 
   inflight = (async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       // Ask Android/Chromium to keep our storage. No-op on browsers without it.
@@ -153,7 +230,9 @@ export function warmUp(force = false): Promise<void> {
         if (typeof navigator !== "undefined" && navigator.storage?.persist) {
           await navigator.storage.persist();
         }
-      } catch {}
+      } catch {
+        // Storage persistence is best-effort.
+      }
 
       // 1) Pull every table fully (paged).
       emit({ phase: "tables", done: 0, total: TABLES.length, error: undefined });
@@ -174,6 +253,7 @@ export function warmUp(force = false): Promise<void> {
 
       const routes = buildOfflineRoutes(results);
       emit({ phase: "routes", done: 0, total: routes.length });
+      await waitForServiceWorkerControl();
       await cacheOfflineRoutes(routes);
 
       // Eagerly fetch every route JS chunk so the SW asset cache has them
@@ -182,10 +262,24 @@ export function warmUp(force = false): Promise<void> {
       // throws "Failed to fetch dynamically imported module".
       try {
         const routeModules = import.meta.glob("/src/routes/**/*.{tsx,ts}");
+        const loads = Object.values(routeModules);
+        let loaded = 0;
+        emit({ phase: "routes", done: 0, total: routes.length + loads.length });
         await Promise.all(
-          Object.values(routeModules).map((load) => load().catch(() => {})),
+          loads.map((load) =>
+            load()
+              .catch(() => {
+                // Ignore individual route-module preload failures.
+              })
+              .finally(() => {
+                loaded++;
+                emit({ done: routes.length + loaded });
+              }),
+          ),
         );
-      } catch {}
+      } catch {
+        // Route chunk preloading is an optimization; the SW route cache remains valid.
+      }
 
       // 2) Collect every storage path, skipping anything already cached locally.
       type Job = { bucket: "photos" | "files"; path: string };
@@ -199,7 +293,8 @@ export function warmUp(force = false): Promise<void> {
             const path = (row?.[col] ?? null) as string | null;
             if (!path) continue;
             const actualBucket =
-              (table === "pa_attachments" || table === "common_folder_attachments") && row?.kind === "photo"
+              (table === "pa_attachments" || table === "common_folder_attachments") &&
+              row?.kind === "photo"
                 ? "photos"
                 : bucket;
             const key = `${actualBucket}:${path}`;
@@ -230,9 +325,15 @@ export function warmUp(force = false): Promise<void> {
         for (let i = 0; i < paths.length; i += chunk) {
           const slice = paths.slice(i, i + chunk);
           try {
-            const { data } = await supabase.storage.from(bucket).createSignedUrls(slice, 60 * 60 * 12);
-            for (const r of data ?? []) if (r.signedUrl && r.path) signed.push({ bucket, path: r.path, signedUrl: r.signedUrl });
-          } catch {}
+            const { data } = await supabase.storage
+              .from(bucket)
+              .createSignedUrls(slice, 60 * 60 * 12);
+            for (const r of data ?? [])
+              if (r.signedUrl && r.path)
+                signed.push({ bucket, path: r.path, signedUrl: r.signedUrl });
+          } catch {
+            // Continue with other signed URL batches.
+          }
         }
       }
       const CONCURRENCY = 6;
@@ -247,10 +348,14 @@ export function warmUp(force = false): Promise<void> {
               try {
                 res = await fetch(job.signedUrl, { cache: "no-store" });
                 if (res.ok) break;
-              } catch {}
+              } catch {
+                // Retry below.
+              }
             }
             if (res?.ok) await putBlob(job.bucket, job.path, await res.blob());
-          } catch {}
+          } catch {
+            // Continue warming other blobs.
+          }
           emit({ done: current.done + 1 });
         }
       }

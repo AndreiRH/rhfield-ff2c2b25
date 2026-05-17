@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v12";
+const VER = "v13";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -29,12 +29,17 @@ function isServableMediaType(t) {
   return /^(image|video|audio)\//i.test(t) || t === "application/pdf";
 }
 function isValidStoredBlob(stored) {
-  return !!(stored && stored.blob && stored.blob.size > 0 && isServableMediaType(stored.type || stored.blob.type));
+  return !!(
+    stored &&
+    stored.blob &&
+    stored.blob.size > 0 &&
+    isServableMediaType(stored.type || stored.blob.type)
+  );
 }
-const CACHE_SHELL  = `rhfield-shell-${VER}`;
+const CACHE_SHELL = `rhfield-shell-${VER}`;
 const CACHE_ASSETS = `rhfield-assets-${VER}`;
-const CACHE_DATA   = `rhfield-data-${VER}`;
-const CACHE_BLOBS  = `rhfield-blobs-${VER}`;
+const CACHE_DATA = `rhfield-data-${VER}`;
+const CACHE_BLOBS = `rhfield-blobs-${VER}`;
 const ALL_CACHES = [CACHE_SHELL, CACHE_ASSETS, CACHE_DATA, CACHE_BLOBS];
 
 const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
@@ -87,8 +92,12 @@ async function outboxCount() {
 }
 async function outboxStats() {
   const items = await outboxAll();
-  let pending = 0, failed = 0;
-  for (const it of items) { if (it?.failed) failed++; else pending++; }
+  let pending = 0,
+    failed = 0;
+  for (const it of items) {
+    if (it?.failed) failed++;
+    else pending++;
+  }
   return { pending, failed };
 }
 async function outboxUpdate(id, patch) {
@@ -99,7 +108,10 @@ async function outboxUpdate(id, patch) {
     const g = store.get(id);
     g.onsuccess = () => {
       const cur = g.result;
-      if (cur) { Object.assign(cur, patch); store.put(cur); }
+      if (cur) {
+        Object.assign(cur, patch);
+        store.put(cur);
+      }
     };
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
@@ -112,8 +124,8 @@ async function outboxUpdate(id, patch) {
 const SNAP_DB = "rhfield-snapshot";
 const SNAP_VER = 2;
 const SNAP_TABLES = "tables";
-const SNAP_BLOBS  = "blobs";   // key = "<bucket>/<path>", value = { blob, type, savedAt }
-const SNAP_META   = "meta";    // key = string, value = anything
+const SNAP_BLOBS = "blobs"; // key = "<bucket>/<path>", value = { blob, type, savedAt }
+const SNAP_META = "meta"; // key = string, value = anything
 
 function openSnap() {
   return new Promise((res, rej) => {
@@ -121,8 +133,8 @@ function openSnap() {
     r.onupgradeneeded = () => {
       const db = r.result;
       if (!db.objectStoreNames.contains(SNAP_TABLES)) db.createObjectStore(SNAP_TABLES);
-      if (!db.objectStoreNames.contains(SNAP_BLOBS))  db.createObjectStore(SNAP_BLOBS);
-      if (!db.objectStoreNames.contains(SNAP_META))   db.createObjectStore(SNAP_META);
+      if (!db.objectStoreNames.contains(SNAP_BLOBS)) db.createObjectStore(SNAP_BLOBS);
+      if (!db.objectStoreNames.contains(SNAP_META)) db.createObjectStore(SNAP_META);
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -137,7 +149,9 @@ async function snapGet(store, key) {
       r.onsuccess = () => res(r.result ?? null);
       r.onerror = () => rej(r.error);
     });
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 async function snapPut(store, key, value) {
   const db = await openSnap();
@@ -162,7 +176,10 @@ async function mergeRows(table, incoming) {
   for (const row of rows) {
     if (row?.id == null) current.push(row);
     else if (byId.has(row.id)) Object.assign(byId.get(row.id), row);
-    else { current.push(row); byId.set(row.id, row); }
+    else {
+      current.push(row);
+      byId.set(row.id, row);
+    }
   }
   await writeTable(table, current);
 }
@@ -170,7 +187,11 @@ async function getBlob(key) {
   return await snapGet(SNAP_BLOBS, key);
 }
 async function putBlob(key, blob) {
-  await snapPut(SNAP_BLOBS, key, { blob, type: blob.type || "application/octet-stream", savedAt: Date.now() });
+  await snapPut(SNAP_BLOBS, key, {
+    blob,
+    type: blob.type || "application/octet-stream",
+    savedAt: Date.now(),
+  });
 }
 async function delBlob(key) {
   const db = await openSnap();
@@ -196,7 +217,9 @@ async function broadcastQueueCount() {
   } catch {}
 }
 async function broadcastDataChanged() {
-  try { await broadcast({ type: "rhfield-data-changed" }); } catch {}
+  try {
+    await broadcast({ type: "rhfield-data-changed" });
+  } catch {}
 }
 let latestAuthHeader = null;
 function rememberAuth(req) {
@@ -208,15 +231,54 @@ function rememberAuth(req) {
 
 function sameOriginAssetUrls(html, baseUrl) {
   const out = new Set();
-  const re = /(?:src|href)=["']([^"']+)["']/g;
-  let m;
-  while ((m = re.exec(html))) {
-    try {
-      const u = new URL(m[1], baseUrl);
-      if (u.origin === self.location.origin && !u.hash) out.add(u.href);
-    } catch {}
+  const patterns = [
+    /(?:src|href)=["']([^"']+)["']/g,
+    /import\(["']([^"']+)["']\)/g,
+    /__vitePreload\(\(\)\s*=>\s*import\(["']([^"']+)["']\)/g,
+  ];
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(html))) {
+      try {
+        const u = new URL(m[1], baseUrl);
+        if (u.origin === self.location.origin && !u.hash) out.add(u.href);
+      } catch {}
+    }
   }
   return [...out];
+}
+
+async function fetchWithTimeout(input, ms = 2500, init = {}) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const req = input instanceof Request ? new Request(input, { signal: ctrl.signal }) : input;
+    return await fetch(req, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+async function cacheAssetAndImports(assetUrl, assets, seen = new Set()) {
+  if (seen.has(assetUrl)) return;
+  seen.add(assetUrl);
+  try {
+    let res = await assets.match(assetUrl);
+    if (!res) {
+      res = await fetchWithTimeout(assetUrl, 5000, { credentials: "include" });
+      if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
+    }
+    const ct = res?.headers?.get("Content-Type") || "";
+    if (res && (ct.includes("javascript") || new URL(assetUrl).pathname.endsWith(".js"))) {
+      const text = await res
+        .clone()
+        .text()
+        .catch(() => "");
+      await Promise.all(
+        sameOriginAssetUrls(text, assetUrl).map((u) => cacheAssetAndImports(u, assets, seen)),
+      );
+    }
+  } catch {}
 }
 
 async function cacheRoutesForOffline(routes, port) {
@@ -241,25 +303,20 @@ async function cacheRoutesForOffline(routes, port) {
   if (todo.length) {
     try {
       const rootRes = await fetch(new URL("/", self.location.origin).href, {
-        credentials: "include", cache: "no-store",
+        credentials: "include",
+        cache: "no-store",
       });
       if (rootRes && rootRes.ok) {
         rootShellBytes = await rootRes.clone().arrayBuffer();
         rootShellHeaders = {};
-        rootRes.headers.forEach((v, k) => { rootShellHeaders[k] = v; });
+        rootRes.headers.forEach((v, k) => {
+          rootShellHeaders[k] = v;
+        });
         // Refresh asset chunks referenced by the shell.
         try {
           const html = new TextDecoder().decode(rootShellBytes);
           const urls = sameOriginAssetUrls(html, new URL("/", self.location.origin).href);
-          await Promise.all(urls.map(async (assetUrl) => {
-            try {
-              const cached = await assets.match(assetUrl);
-              if (!cached) {
-                const ar = await fetch(assetUrl, { credentials: "include" });
-                if (ar && ar.ok && ar.type === "basic") await assets.put(assetUrl, ar.clone());
-              }
-            } catch {}
-          }));
+          await Promise.all(urls.map((assetUrl) => cacheAssetAndImports(assetUrl, assets)));
         } catch {}
       }
     } catch {}
@@ -269,12 +326,17 @@ async function cacheRoutesForOffline(routes, port) {
   // Already-cached routes count as done immediately.
   const skipped = list.length - todo.length;
   done = skipped;
-  try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
+  try {
+    port?.postMessage({ type: "progress", done, total: list.length });
+  } catch {}
 
   for (const href of todo) {
     try {
       if (rootShellBytes) {
-        const res = new Response(rootShellBytes.slice(0), { status: 200, headers: rootShellHeaders });
+        const res = new Response(rootShellBytes.slice(0), {
+          status: 200,
+          headers: rootShellHeaders,
+        });
         await shell.put(href, res);
       } else {
         const res = await fetch(href, { credentials: "include", cache: "no-store" });
@@ -282,90 +344,118 @@ async function cacheRoutesForOffline(routes, port) {
       }
     } catch {}
     done++;
-    try { port?.postMessage({ type: "progress", done, total: list.length }); } catch {}
+    try {
+      port?.postMessage({ type: "progress", done, total: list.length });
+    } catch {}
   }
-  try { port?.postMessage({ type: "done", done, total: list.length }); } catch {}
+  try {
+    port?.postMessage({ type: "done", done, total: list.length });
+  } catch {}
 }
 
 // ============================================================
 // Install / activate
 // ============================================================
 self.addEventListener("install", (e) => {
-  e.waitUntil((async () => {
-    const shell = await caches.open(CACHE_SHELL);
-    // Per-item add so one failure (missing icon, etc.) doesn't abort install.
-    await Promise.all(SHELL.map(async (u) => {
-      try {
-        const r = await fetch(u, { cache: "no-store" });
-        if (r && r.ok) await shell.put(u, r.clone());
-      } catch {}
-    }));
-    try {
-      const rootUrl = new URL("/", self.location.origin).href;
-      const root = await fetch(rootUrl, { cache: "no-store" });
-      if (root && root.ok) {
-        await shell.put(rootUrl, root.clone());
-        await shell.put("/", root.clone());
-        // Also cache /login since first-launch navigations often land there.
-        try {
-          const loginUrl = new URL("/login", self.location.origin).href;
-          const loginRes = await fetch(loginUrl, { cache: "no-store" });
-          if (loginRes && loginRes.ok) await shell.put(loginUrl, loginRes.clone());
-        } catch {}
-        const html = await root.text().catch(() => "");
-        const assets = await caches.open(CACHE_ASSETS);
-        await Promise.all(sameOriginAssetUrls(html, rootUrl).map(async (assetUrl) => {
+  e.waitUntil(
+    (async () => {
+      const shell = await caches.open(CACHE_SHELL);
+      // Per-item add so one failure (missing icon, etc.) doesn't abort install.
+      await Promise.all(
+        SHELL.map(async (u) => {
           try {
-            const res = await fetch(assetUrl, { cache: "no-store" });
-            if (res && res.ok && res.type === "basic") await assets.put(assetUrl, res.clone());
+            const r = await fetch(u, { cache: "no-store" });
+            if (r && r.ok) await shell.put(u, r.clone());
           } catch {}
-        }));
-      }
-    } catch {}
-    await self.skipWaiting();
-  })());
+        }),
+      );
+      try {
+        const rootUrl = new URL("/", self.location.origin).href;
+        const root = await fetch(rootUrl, { cache: "no-store" });
+        if (root && root.ok) {
+          await shell.put(rootUrl, root.clone());
+          await shell.put("/", root.clone());
+          // Also cache /login since first-launch navigations often land there.
+          try {
+            const loginUrl = new URL("/login", self.location.origin).href;
+            const loginRes = await fetch(loginUrl, { cache: "no-store" });
+            if (loginRes && loginRes.ok) await shell.put(loginUrl, loginRes.clone());
+          } catch {}
+          const html = await root.text().catch(() => "");
+          const assets = await caches.open(CACHE_ASSETS);
+          await Promise.all(
+            sameOriginAssetUrls(html, rootUrl).map((assetUrl) =>
+              cacheAssetAndImports(assetUrl, assets),
+            ),
+          );
+        }
+      } catch {}
+      await self.skipWaiting();
+    })(),
+  );
 });
 self.addEventListener("activate", (e) => {
-  e.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n)));
+  e.waitUntil(
+    (async () => {
+      try {
+        if (self.registration.navigationPreload)
+          await self.registration.navigationPreload.disable();
+      } catch {}
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n)));
 
-    // v11: sweep corrupted blobs persisted by earlier SW versions
-    // (multipart/form-data, application/octet-stream, zero-byte, etc.).
-    try {
-      const db = await openSnap();
-      await new Promise((res, rej) => {
-        const tx = db.transaction(SNAP_BLOBS, "readwrite");
-        const store = tx.objectStore(SNAP_BLOBS);
-        const req = store.openCursor();
-        req.onsuccess = (ev) => {
-          const cursor = ev.target.result;
-          if (!cursor) return;
-          if (!isValidStoredBlob(cursor.value)) cursor.delete();
-          cursor.continue();
-        };
-        tx.oncomplete = () => res();
-        tx.onerror = () => rej(tx.error);
-      });
-    } catch {}
+      // v11: sweep corrupted blobs persisted by earlier SW versions
+      // (multipart/form-data, application/octet-stream, zero-byte, etc.).
+      try {
+        const db = await openSnap();
+        await new Promise((res, rej) => {
+          const tx = db.transaction(SNAP_BLOBS, "readwrite");
+          const store = tx.objectStore(SNAP_BLOBS);
+          const req = store.openCursor();
+          req.onsuccess = (ev) => {
+            const cursor = ev.target.result;
+            if (!cursor) return;
+            if (!isValidStoredBlob(cursor.value)) cursor.delete();
+            cursor.continue();
+          };
+          tx.oncomplete = () => res();
+          tx.onerror = () => rej(tx.error);
+        });
+      } catch {}
 
-    // Also purge the blob HTTP cache — it may hold corrupted responses
-    // keyed by signed URLs that would never be re-matched/evicted.
-    try { await caches.delete(CACHE_BLOBS); } catch {}
+      // Also purge the blob HTTP cache — it may hold corrupted responses
+      // keyed by signed URLs that would never be re-matched/evicted.
+      try {
+        await caches.delete(CACHE_BLOBS);
+      } catch {}
 
-    await self.clients.claim();
-    broadcastQueueCount();
-  })());
+      await self.clients.claim();
+      broadcastQueueCount();
+    })(),
+  );
 });
 
 // ============================================================
 // URL classification
 // ============================================================
-function isSupabaseRest(url)    { return /\.supabase\.co\/rest\/v1\//.test(url.href); }
-function isSupabaseStorage(url) { return /\.supabase\.co\/storage\/v1\//.test(url.href); }
-function isLocalSyntheticStorage(url) { return url.origin === self.location.origin && /^\/object\/(?:sign|authenticated|public)\//.test(url.pathname); }
-function isSupabaseAuth(url)    { return /\.supabase\.co\/auth\/v1\//.test(url.href); }
-function isSupabaseRealtime(url){ return /\.supabase\.co\/realtime\/v1\//.test(url.href); }
+function isSupabaseRest(url) {
+  return /\.supabase\.co\/rest\/v1\//.test(url.href);
+}
+function isSupabaseStorage(url) {
+  return /\.supabase\.co\/storage\/v1\//.test(url.href);
+}
+function isLocalSyntheticStorage(url) {
+  return (
+    url.origin === self.location.origin &&
+    /^\/object\/(?:sign|authenticated|public)\//.test(url.pathname)
+  );
+}
+function isSupabaseAuth(url) {
+  return /\.supabase\.co\/auth\/v1\//.test(url.href);
+}
+function isSupabaseRealtime(url) {
+  return /\.supabase\.co\/realtime\/v1\//.test(url.href);
+}
 
 // ============================================================
 // PostgREST embed/relationship map (1:N children)
@@ -444,12 +534,16 @@ function parseSelect(sel) {
 }
 function splitTopLevel(s, sep) {
   const out = [];
-  let depth = 0, start = 0;
+  let depth = 0,
+    start = 0;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (c === "(") depth++;
     else if (c === ")") depth--;
-    else if (c === sep && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
+    else if (c === sep && depth === 0) {
+      out.push(s.slice(start, i));
+      start = i + 1;
+    }
   }
   out.push(s.slice(start));
   return out;
@@ -468,23 +562,29 @@ function cast(v) {
 function applyOp(row, col, op, value) {
   const v = row?.[col];
   switch (op) {
-    case "eq":  return String(v) === value;
-    case "neq": return String(v) !== value;
+    case "eq":
+      return String(v) === value;
+    case "neq":
+      return String(v) !== value;
     case "is":
-      if (value === "null")     return v == null;
+      if (value === "null") return v == null;
       if (value === "not.null") return v != null;
-      if (value === "true")     return v === true;
-      if (value === "false")    return v === false;
+      if (value === "true") return v === true;
+      if (value === "false") return v === false;
       return false;
     case "in": {
       const inner = value.replace(/^\(|\)$/g, "");
       const set = new Set(inner.split(",").map((x) => x.replace(/^"|"$/g, "")));
       return set.has(String(v));
     }
-    case "gt":  return v >  cast(value);
-    case "gte": return v >= cast(value);
-    case "lt":  return v <  cast(value);
-    case "lte": return v <= cast(value);
+    case "gt":
+      return v > cast(value);
+    case "gte":
+      return v >= cast(value);
+    case "lt":
+      return v < cast(value);
+    case "lte":
+      return v <= cast(value);
     case "like":
     case "ilike": {
       const pat = value.replace(/%/g, ".*").replace(/_/g, ".");
@@ -497,7 +597,8 @@ function applyOp(row, col, op, value) {
       if (dot < 0) return true;
       return !applyOp(row, col, value.slice(0, dot), value.slice(dot + 1));
     }
-    default: return true;
+    default:
+      return true;
   }
 }
 function applyFilter(rows, col, value) {
@@ -526,7 +627,7 @@ function parseClause(c) {
   c = c.trim();
   if (!c) return null;
   if (c.startsWith("and(")) return parseAnd(c.slice(3));
-  if (c.startsWith("or("))  return parseOr(c.slice(2));
+  if (c.startsWith("or(")) return parseOr(c.slice(2));
   // <col>.<op>.<rest>
   const firstDot = c.indexOf(".");
   if (firstDot < 0) return null;
@@ -544,7 +645,10 @@ function balancedEnd(s) {
   let depth = 0;
   for (let i = 0; i < s.length; i++) {
     if (s[i] === "(") depth++;
-    else if (s[i] === ")") { depth--; if (depth === 0) return i; }
+    else if (s[i] === ")") {
+      depth--;
+      if (depth === 0) return i;
+    }
   }
   return -1;
 }
@@ -564,7 +668,11 @@ async function expandEmbeds(table, rows, embeds) {
     // For perf, just attach matched children per parent and recurse on those.
     for (const parent of rows) {
       const matches = childRows.filter((c) => c?.[rel.fk] === parent.id);
-      const projected = await expandEmbeds(rel.table, matches.map((m) => projectRow(m, inner.columns)), inner.embeds);
+      const projected = await expandEmbeds(
+        rel.table,
+        matches.map((m) => projectRow(m, inner.columns)),
+        inner.embeds,
+      );
       parent[emb.name] = projected;
     }
   }
@@ -574,10 +682,17 @@ async function expandEmbeds(table, rows, embeds) {
     const componentSelect = typeInner.embeds.find((e) => e.name === "components")?.select;
     if (componentSelect) {
       const compInner = parseSelect(componentSelect);
-      const components = childCache.components || (childCache.components = await readTable("components"));
+      const components =
+        childCache.components || (childCache.components = await readTable("components"));
       for (const parent of rows) {
-        const direct = components.filter((c) => c?.equipment_id === parent.id && !c?.component_type_id);
-        parent.components = await expandEmbeds("components", direct.map((m) => projectRow(m, compInner.columns)), compInner.embeds);
+        const direct = components.filter(
+          (c) => c?.equipment_id === parent.id && !c?.component_type_id,
+        );
+        parent.components = await expandEmbeds(
+          "components",
+          direct.map((m) => projectRow(m, compInner.columns)),
+          compInner.embeds,
+        );
       }
     }
   }
@@ -605,17 +720,28 @@ async function snapshotResponse(url, req) {
 
   // Parse params.
   let selectStr = "*";
-  let limit = null, offset = null;
-  let rangeFrom = null, rangeTo = null;
+  let limit = null,
+    offset = null;
+  let rangeFrom = null,
+    rangeTo = null;
   const orderBy = [];
   const orPreds = [];
   const filters = []; // [{col, value}]
   let countMode = null; // "exact" | "planned" | "estimated"
 
   for (const [k, v] of url.searchParams) {
-    if (k === "select") { selectStr = v; continue; }
-    if (k === "limit")  { limit = parseInt(v, 10); continue; }
-    if (k === "offset") { offset = parseInt(v, 10); continue; }
+    if (k === "select") {
+      selectStr = v;
+      continue;
+    }
+    if (k === "limit") {
+      limit = parseInt(v, 10);
+      continue;
+    }
+    if (k === "offset") {
+      offset = parseInt(v, 10);
+      continue;
+    }
     if (k === "order") {
       for (const part of splitTopLevel(v, ",")) {
         const [col, ...mods] = part.split(".");
@@ -623,8 +749,14 @@ async function snapshotResponse(url, req) {
       }
       continue;
     }
-    if (k === "or") { orPreds.push(parseOr(v)); continue; }
-    if (k === "and") { orPreds.push(parseAnd(v)); continue; }
+    if (k === "or") {
+      orPreds.push(parseOr(v));
+      continue;
+    }
+    if (k === "and") {
+      orPreds.push(parseAnd(v));
+      continue;
+    }
     filters.push({ col: k, value: v });
   }
 
@@ -632,7 +764,10 @@ async function snapshotResponse(url, req) {
   const rangeHeader = req?.headers?.get("Range");
   if (rangeHeader) {
     const rm = /^items?=(\d+)-(\d+)$/.exec(rangeHeader);
-    if (rm) { rangeFrom = +rm[1]; rangeTo = +rm[2]; }
+    if (rm) {
+      rangeFrom = +rm[1];
+      rangeTo = +rm[2];
+    }
   }
   // Prefer: count=exact
   const prefer = req?.headers?.get("Prefer") || "";
@@ -647,10 +782,11 @@ async function snapshotResponse(url, req) {
   if (orderBy.length) {
     rows = rows.slice().sort((a, b) => {
       for (const { col, asc } of orderBy) {
-        const av = a?.[col], bv = b?.[col];
+        const av = a?.[col],
+          bv = b?.[col];
         if (av === bv) continue;
         if (av == null) return asc ? -1 : 1;
-        if (bv == null) return asc ?  1 : -1;
+        if (bv == null) return asc ? 1 : -1;
         return (av < bv ? -1 : 1) * (asc ? 1 : -1);
       }
       return 0;
@@ -677,7 +813,8 @@ async function snapshotResponse(url, req) {
   // Head/count: empty body, set Content-Range
   const headers = { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" };
   if (countMode) {
-    const upper = result.length === 0 ? -1 : (rangeFrom != null ? rangeFrom : 0) + result.length - 1;
+    const upper =
+      result.length === 0 ? -1 : (rangeFrom != null ? rangeFrom : 0) + result.length - 1;
     headers["Content-Range"] = `${rangeFrom != null ? rangeFrom : 0}-${upper}/${totalCount}`;
   }
 
@@ -688,9 +825,14 @@ async function snapshotResponse(url, req) {
   let body;
   if (wantsObject) {
     if (result.length === 0) {
-      return new Response(JSON.stringify({
-        code: "PGRST116", message: "No rows", details: "Results contain 0 rows"
-      }), { status: 406, headers });
+      return new Response(
+        JSON.stringify({
+          code: "PGRST116",
+          message: "No rows",
+          details: "Results contain 0 rows",
+        }),
+        { status: 406, headers },
+      );
     }
     body = JSON.stringify(result[0]);
   } else {
@@ -711,14 +853,26 @@ async function snapshotResponse(url, req) {
 function uuid() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
   const b = self.crypto.getRandomValues(new Uint8Array(16));
-  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
   const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 function withLocalDefaults(table, row) {
   const r = { ...row };
   if (r.id == null) r.id = uuid();
-  if (["plant_equipment", "equipment_groups", "component_types", "components", "checklist_items", "equipment_settings", "pa_folders"].includes(table) && r.template_id == null) {
+  if (
+    [
+      "plant_equipment",
+      "equipment_groups",
+      "component_types",
+      "components",
+      "checklist_items",
+      "equipment_settings",
+      "pa_folders",
+    ].includes(table) &&
+    r.template_id == null
+  ) {
     r.template_id = uuid();
   }
   const now = new Date().toISOString();
@@ -742,7 +896,8 @@ function withLocalDefaults(table, row) {
 function serverBody(originalRow, localRow) {
   const out = { ...originalRow };
   if (out.id == null && localRow?.id != null) out.id = localRow.id;
-  if (out.template_id == null && localRow?.template_id != null) out.template_id = localRow.template_id;
+  if (out.template_id == null && localRow?.template_id != null)
+    out.template_id = localRow.template_id;
   return out;
 }
 async function appendReplicas(table, rows) {
@@ -753,7 +908,12 @@ async function appendReplicas(table, rows) {
 }
 function cloneForParent(row, parentPatch) {
   const { id: _id, created_at: _created_at, updated_at: _updated_at, ...rest } = row;
-  return withLocalDefaults("", { ...rest, ...parentPatch, id: uuid(), created_at: new Date().toISOString() });
+  return withLocalDefaults("", {
+    ...rest,
+    ...parentPatch,
+    id: uuid(),
+    created_at: new Date().toISOString(),
+  });
 }
 async function replicateInsertLocally(table, inserted) {
   if (!inserted.length) return;
@@ -761,28 +921,46 @@ async function replicateInsertLocally(table, inserted) {
     const lines = await readTable("lines");
     for (const row of inserted) {
       const sourceLine = lines.find((l) => l.id === row.line_id);
-      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
-      await appendReplicas("plant_equipment", siblings.map((l) => cloneForParent(row, { line_id: l.id })));
+      const siblings = lines.filter(
+        (l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id,
+      );
+      await appendReplicas(
+        "plant_equipment",
+        siblings.map((l) => cloneForParent(row, { line_id: l.id })),
+      );
     }
   } else if (table === "equipment_groups") {
     const lines = await readTable("lines");
     const plant = await readTable("plant_equipment");
     for (const row of inserted) {
       const sourceLine = lines.find((l) => l.id === row.line_id);
-      const sourcePe = row.plant_equipment_id ? plant.find((p) => p.id === row.plant_equipment_id) : null;
-      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
-      const replicas = siblings.map((l) => {
-        const sibPe = sourcePe ? plant.find((p) => p.line_id === l.id && p.template_id === sourcePe.template_id) : null;
-        return cloneForParent(row, { line_id: l.id, plant_equipment_id: sibPe?.id ?? null });
-      }).filter((r) => !row.plant_equipment_id || r.plant_equipment_id);
+      const sourcePe = row.plant_equipment_id
+        ? plant.find((p) => p.id === row.plant_equipment_id)
+        : null;
+      const siblings = lines.filter(
+        (l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id,
+      );
+      const replicas = siblings
+        .map((l) => {
+          const sibPe = sourcePe
+            ? plant.find((p) => p.line_id === l.id && p.template_id === sourcePe.template_id)
+            : null;
+          return cloneForParent(row, { line_id: l.id, plant_equipment_id: sibPe?.id ?? null });
+        })
+        .filter((r) => !row.plant_equipment_id || r.plant_equipment_id);
       await appendReplicas("equipment_groups", replicas);
     }
   } else if (table === "component_types") {
     const groups = await readTable("equipment_groups");
     for (const row of inserted) {
       const sourceGroup = groups.find((g) => g.id === row.equipment_group_id);
-      const siblings = groups.filter((g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_group_id);
-      await appendReplicas("component_types", siblings.map((g) => cloneForParent(row, { equipment_group_id: g.id })));
+      const siblings = groups.filter(
+        (g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_group_id,
+      );
+      await appendReplicas(
+        "component_types",
+        siblings.map((g) => cloneForParent(row, { equipment_group_id: g.id })),
+      );
     }
   } else if (table === "components") {
     const groups = await readTable("equipment_groups");
@@ -790,12 +968,22 @@ async function replicateInsertLocally(table, inserted) {
     for (const row of inserted) {
       if (row.component_type_id) {
         const sourceType = types.find((t) => t.id === row.component_type_id);
-        const siblings = types.filter((t) => t.template_id === sourceType?.template_id && t.id !== row.component_type_id);
-        await appendReplicas("components", siblings.map((t) => cloneForParent(row, { component_type_id: t.id, equipment_id: null })));
+        const siblings = types.filter(
+          (t) => t.template_id === sourceType?.template_id && t.id !== row.component_type_id,
+        );
+        await appendReplicas(
+          "components",
+          siblings.map((t) => cloneForParent(row, { component_type_id: t.id, equipment_id: null })),
+        );
       } else if (row.equipment_id) {
         const sourceGroup = groups.find((g) => g.id === row.equipment_id);
-        const siblings = groups.filter((g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_id);
-        await appendReplicas("components", siblings.map((g) => cloneForParent(row, { equipment_id: g.id, component_type_id: null })));
+        const siblings = groups.filter(
+          (g) => g.template_id === sourceGroup?.template_id && g.id !== row.equipment_id,
+        );
+        await appendReplicas(
+          "components",
+          siblings.map((g) => cloneForParent(row, { equipment_id: g.id, component_type_id: null })),
+        );
       }
     }
   } else if (table === "checklist_items") {
@@ -803,30 +991,52 @@ async function replicateInsertLocally(table, inserted) {
     const items = await readTable("checklist_items");
     for (const row of inserted) {
       const sourceComp = comps.find((c) => c.id === row.component_id);
-      const siblings = comps.filter((c) => c.template_id === sourceComp?.template_id && c.id !== row.component_id);
-      const replicas = siblings.map((c) => {
-        let parent_item_id = null;
-        if (row.parent_item_id) {
-          const sourceParent = items.find((i) => i.id === row.parent_item_id);
-          const siblingParent = items.find((i) => i.component_id === c.id && i.template_id === sourceParent?.template_id);
-          if (!siblingParent) return null;
-          parent_item_id = siblingParent.id;
-        }
-        return cloneForParent(row, { component_id: c.id, parent_item_id });
-      }).filter(Boolean);
+      const siblings = comps.filter(
+        (c) => c.template_id === sourceComp?.template_id && c.id !== row.component_id,
+      );
+      const replicas = siblings
+        .map((c) => {
+          let parent_item_id = null;
+          if (row.parent_item_id) {
+            const sourceParent = items.find((i) => i.id === row.parent_item_id);
+            const siblingParent = items.find(
+              (i) => i.component_id === c.id && i.template_id === sourceParent?.template_id,
+            );
+            if (!siblingParent) return null;
+            parent_item_id = siblingParent.id;
+          }
+          return cloneForParent(row, { component_id: c.id, parent_item_id });
+        })
+        .filter(Boolean);
       await appendReplicas("checklist_items", replicas);
     }
   } else if (table === "pa_folders") {
     const lines = await readTable("lines");
     for (const row of inserted) {
       const sourceLine = lines.find((l) => l.id === row.line_id);
-      const siblings = lines.filter((l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id);
-      await appendReplicas("pa_folders", siblings.map((l) => cloneForParent(row, { line_id: l.id })));
+      const siblings = lines.filter(
+        (l) => l.project_id === sourceLine?.project_id && l.id !== row.line_id,
+      );
+      await appendReplicas(
+        "pa_folders",
+        siblings.map((l) => cloneForParent(row, { line_id: l.id })),
+      );
     }
   }
 }
 async function propagateUpdateLocally(table, matched, patch) {
-  if (!matched.length || !["plant_equipment", "equipment_groups", "component_types", "components", "checklist_items", "pa_folders"].includes(table)) return;
+  if (
+    !matched.length ||
+    ![
+      "plant_equipment",
+      "equipment_groups",
+      "component_types",
+      "components",
+      "checklist_items",
+      "pa_folders",
+    ].includes(table)
+  )
+    return;
   const current = await readTable(table);
   const templates = new Set(matched.map((r) => r.template_id).filter(Boolean));
   if (!templates.size) return;
@@ -839,15 +1049,27 @@ async function propagateUpdateLocally(table, matched, patch) {
     checklist_items: ["label", "sort_order", "deleted_at", "note", "note_shared"],
     pa_folders: ["name", "sort_order"],
   };
-  const sharePatch = Object.fromEntries(Object.entries(patch).filter(([key]) => allowedByTable[table]?.includes(key)));
-  const noteShareActive = (table === "components" || table === "checklist_items") && (patch.note_shared || matched.some((r) => r.note_shared));
+  const sharePatch = Object.fromEntries(
+    Object.entries(patch).filter(([key]) => allowedByTable[table]?.includes(key)),
+  );
+  const noteShareActive =
+    (table === "components" || table === "checklist_items") &&
+    (patch.note_shared || matched.some((r) => r.note_shared));
   if ((table === "components" || table === "checklist_items") && !noteShareActive) {
     delete sharePatch.note;
     delete sharePatch.note_shared;
   }
-  if (noteShareActive && !("note" in sharePatch) && matched[0] && "note" in matched[0]) sharePatch.note = matched[0].note;
+  if (noteShareActive && !("note" in sharePatch) && matched[0] && "note" in matched[0])
+    sharePatch.note = matched[0].note;
   if (Object.keys(sharePatch).length === 0) return;
-  await writeTable(table, current.map((r) => templates.has(r.template_id) && !sourceIds.has(r.id) ? { ...r, ...sharePatch, updated_at: new Date().toISOString() } : r));
+  await writeTable(
+    table,
+    current.map((r) =>
+      templates.has(r.template_id) && !sourceIds.has(r.id)
+        ? { ...r, ...sharePatch, updated_at: new Date().toISOString() }
+        : r,
+    ),
+  );
 }
 async function applyInsert(table, body) {
   const rows = Array.isArray(body) ? body : [body];
@@ -860,7 +1082,15 @@ async function applyInsert(table, body) {
 function getFiltersFromUrl(url) {
   const out = [];
   for (const [k, v] of url.searchParams) {
-    if (k === "select" || k === "limit" || k === "offset" || k === "order" || k === "or" || k === "and") continue;
+    if (
+      k === "select" ||
+      k === "limit" ||
+      k === "offset" ||
+      k === "order" ||
+      k === "or" ||
+      k === "and"
+    )
+      continue;
     out.push({ col: k, value: v });
   }
   return out;
@@ -874,7 +1104,10 @@ async function applyUpdate(table, url, patch) {
     for (const { col, value } of filters) {
       const dot = value.indexOf(".");
       if (dot < 0) continue;
-      if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) { keep = false; break; }
+      if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) {
+        keep = false;
+        break;
+      }
     }
     if (!keep) return r;
     const merged = { ...r, ...patch, updated_at: new Date().toISOString() };
@@ -896,9 +1129,13 @@ async function applyDelete(table, url) {
     for (const { col, value } of filters) {
       const dot = value.indexOf(".");
       if (dot < 0) continue;
-      if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) { allMatch = false; break; }
+      if (!applyOp(r, col, value.slice(0, dot), value.slice(dot + 1))) {
+        allMatch = false;
+        break;
+      }
     }
-    if (allMatch) removed.push(r); else remaining.push(r);
+    if (allMatch) removed.push(r);
+    else remaining.push(r);
   }
   await writeTable(table, remaining);
   return removed;
@@ -915,8 +1152,13 @@ function storagePathFromUrl(url) {
   //   /storage/v1/object/public/<bucket>/<path>
   //   /storage/v1/render/image/sign/<bucket>/<path> (image transform signed URL)
   //   /object/sign/<bucket>/<path>                  (local synthetic signed URL)
-  let m = url.pathname.match(/\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
-  if (!m) m = url.pathname.match(/\/storage\/v1\/render\/image\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
+  let m = url.pathname.match(
+    /\/storage\/v1\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/,
+  );
+  if (!m)
+    m = url.pathname.match(
+      /\/storage\/v1\/render\/image\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/,
+    );
   if (!m) m = url.pathname.match(/\/object\/(?:sign\/|authenticated\/|public\/)?([^/]+)\/(.+)$/);
   if (!m) return null;
   return { bucket: decodeURIComponent(m[1]), path: decodeURIComponent(m[2]) };
@@ -948,7 +1190,11 @@ async function flushQueue() {
         headers,
         body: item.body || undefined,
       });
-      if (res.ok) { await outboxDelete(item.id); progressed = true; continue; }
+      if (res.ok) {
+        await outboxDelete(item.id);
+        progressed = true;
+        continue;
+      }
 
       // 401 → likely JWT expired. Ask the client to refresh the session and
       // bail out of this flush; the client will re-trigger flush once it has
@@ -956,7 +1202,9 @@ async function flushQueue() {
       // to the failed path so we don't loop forever.
       if (res.status === 401 && !item.authRetried) {
         let body401 = "";
-        try { body401 = (await res.clone().text()).slice(0, 300); } catch {}
+        try {
+          body401 = (await res.clone().text()).slice(0, 300);
+        } catch {}
         await outboxUpdate(item.id, { authRetried: true, lastStatus: 401, lastError: body401 });
         authExpired = true;
         stalled = true;
@@ -970,9 +1218,16 @@ async function flushQueue() {
       if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
         failures++;
         let snippet = "";
-        try { snippet = (await res.clone().text()).slice(0, 500); } catch {}
+        try {
+          snippet = (await res.clone().text()).slice(0, 500);
+        } catch {}
         if (failureSamples.length < 5) {
-          failureSamples.push({ url: item.url, method: item.method, status: res.status, body: snippet });
+          failureSamples.push({
+            url: item.url,
+            method: item.method,
+            status: res.status,
+            body: snippet,
+          });
         }
         await outboxUpdate(item.id, {
           failed: true,
@@ -984,12 +1239,17 @@ async function flushQueue() {
       }
       stalled = true;
       break;
-    } catch { stalled = true; break; } // still offline
+    } catch {
+      stalled = true;
+      break;
+    } // still offline
   }
   broadcastQueueCount();
   if (progressed) broadcastDataChanged();
   if (authExpired) {
-    try { await broadcast({ type: "rhfield-auth-expired" }); } catch {}
+    try {
+      await broadcast({ type: "rhfield-auth-expired" });
+    } catch {}
   }
   try {
     const s = await outboxStats();
@@ -1008,7 +1268,13 @@ async function retryFailedOutbox() {
   const items = await outboxAll();
   for (const it of items) {
     if (it?.failed) {
-      await outboxUpdate(it.id, { failed: false, authRetried: false, lastStatus: null, lastError: null, failedAt: null });
+      await outboxUpdate(it.id, {
+        failed: false,
+        authRetried: false,
+        lastStatus: null,
+        lastError: null,
+        failedAt: null,
+      });
     }
   }
   await flushQueue();
@@ -1037,8 +1303,12 @@ async function queueRequest(req, bodyOverride = null) {
     }
   } catch {}
   await outboxAdd({
-    url: req.url, method: req.method, headers, body,
-    createdAt: Date.now(), attempts: 0,
+    url: req.url,
+    method: req.method,
+    headers,
+    body,
+    createdAt: Date.now(),
+    attempts: 0,
   });
   broadcastQueueCount();
 }
@@ -1051,22 +1321,27 @@ self.addEventListener("sync", (e) => {
 });
 self.addEventListener("message", (e) => {
   const d = e.data || {};
-  if (d.type === "rhfield-flush")     e.waitUntil(flushQueue());
-  if (d.type === "rhfield-queue?")    e.waitUntil(broadcastQueueCount());
-  if (d.type === "rhfield-cache-routes") e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
+  if (d.type === "rhfield-flush") e.waitUntil(flushQueue());
+  if (d.type === "rhfield-queue?") e.waitUntil(broadcastQueueCount());
+  if (d.type === "rhfield-cache-routes")
+    e.waitUntil(cacheRoutesForOffline(d.routes || [], e.ports?.[0]));
   if (d.type === "rhfield-skip-waiting") self.skipWaiting();
   if (d.type === "rhfield-outbox-retry-failed") e.waitUntil(retryFailedOutbox());
   if (d.type === "rhfield-outbox-discard-failed") e.waitUntil(discardFailedOutbox());
   if (d.type === "rhfield-get-blob") {
     const port = e.ports?.[0];
-    e.waitUntil((async () => {
-      let blob = null;
-      try {
-        const stored = await getBlob(`${d.bucket}/${d.path}`);
-        if (isValidStoredBlob(stored)) blob = stored.blob;
-      } catch {}
-      try { port?.postMessage({ blob }); } catch {}
-    })());
+    e.waitUntil(
+      (async () => {
+        let blob = null;
+        try {
+          const stored = await getBlob(`${d.bucket}/${d.path}`);
+          if (isValidStoredBlob(stored)) blob = stored.blob;
+        } catch {}
+        try {
+          port?.postMessage({ blob });
+        } catch {}
+      })(),
+    );
   }
 });
 
@@ -1090,126 +1365,153 @@ self.addEventListener("fetch", (event) => {
     if (req.method === "POST" || req.method === "PATCH" || req.method === "DELETE") {
       // Skip RPC calls (we can't simulate them locally).
       const isRpc = url.pathname.includes("/rest/v1/rpc/");
-      event.respondWith((async () => {
-        // Read body once; we may need it for both network and snapshot.
-        let bodyText = "";
-        let bodyJson = null;
-        try {
-          if (req.method !== "DELETE") {
-            bodyText = await req.clone().text();
-            if (bodyText) { try { bodyJson = JSON.parse(bodyText); } catch {} }
-          }
-        } catch {}
-
-        // Try network first.
-        let netRes = null;
-        try { netRes = await fetch(req.clone()); } catch {}
-
-        if (netRes && netRes.ok) {
-          // Online success → mirror change into snapshot (best-effort).
-          if (table && !isRpc) {
-            try {
-              if (req.method === "POST" && bodyJson) {
-                // Use the server response when available (it has real IDs/timestamps).
-                let serverRows = null;
-                try {
-                  const cloneRes = netRes.clone();
-                  const ct = cloneRes.headers.get("Content-Type") || "";
-                  if (ct.includes("application/json")) {
-                    const txt = await cloneRes.text();
-                    if (txt) {
-                      const parsed = JSON.parse(txt);
-                      serverRows = Array.isArray(parsed) ? parsed : [parsed];
-                    }
-                  }
-                } catch {}
-                const originalRows = Array.isArray(bodyJson) ? bodyJson : [bodyJson];
-                const inserted = serverRows && serverRows.length
-                  ? serverRows.map((row, i) => withLocalDefaults(table, { ...(originalRows[i] || {}), ...row }))
-                  : originalRows.map((r) => withLocalDefaults(table, r));
-                await mergeRows(table, inserted);
-              } else if (req.method === "PATCH" && bodyJson) {
-                await applyUpdate(table, url, bodyJson);
-              } else if (req.method === "DELETE") {
-                await applyDelete(table, url);
-              }
-              broadcastDataChanged();
-            } catch {}
-          }
-          return netRes;
-        }
-
-        // Offline (or server failure): apply optimistically + queue.
-        if (table && !isRpc) {
-          let resultRows = [];
+      event.respondWith(
+        (async () => {
+          // Read body once; we may need it for both network and snapshot.
+          let bodyText = "";
+          let bodyJson = null;
           try {
-            if (req.method === "POST" && bodyJson)  resultRows = await applyInsert(table, bodyJson);
-            if (req.method === "PATCH" && bodyJson) resultRows = await applyUpdate(table, url, bodyJson);
-            if (req.method === "DELETE")            resultRows = await applyDelete(table, url);
-            broadcastDataChanged();
+            if (req.method !== "DELETE") {
+              bodyText = await req.clone().text();
+              if (bodyText) {
+                try {
+                  bodyJson = JSON.parse(bodyText);
+                } catch {}
+              }
+            }
           } catch {}
 
-          // For POST replay, send the ORIGINAL client payload + the locally-
-          // generated id (so children can FK to it). Do NOT send the synthetic
-          // created_at/updated_at/etc. from withLocalDefaults — many tables
-          // don't have those columns and PostgREST would 400 the whole row.
-          let queuedBody = null;
-          if (req.method === "POST" && bodyJson) {
-            if (Array.isArray(bodyJson)) {
-              queuedBody = JSON.stringify(bodyJson.map((orig, i) => serverBody(orig, resultRows[i])));
-            } else {
-              queuedBody = JSON.stringify(serverBody(bodyJson, resultRows[0]));
-            }
-          }
-          await queueRequest(req, queuedBody);
+          // Try network first.
+          let netRes = null;
+          try {
+            netRes = await fetch(req.clone());
+          } catch {}
 
-          // Build a Supabase-compatible response.
-          const accept = req.headers.get("Accept") || "";
-          const prefer = req.headers.get("Prefer") || "";
-          const wantsObject = accept.includes("application/vnd.pgrst.object+json");
-          const returnsRep = prefer.includes("return=representation");
-          let body = "";
-          if (returnsRep || wantsObject) {
-            body = wantsObject
-              ? JSON.stringify(resultRows[0] ?? null)
-              : JSON.stringify(resultRows);
+          if (netRes && netRes.ok) {
+            // Online success → mirror change into snapshot (best-effort).
+            if (table && !isRpc) {
+              try {
+                if (req.method === "POST" && bodyJson) {
+                  // Use the server response when available (it has real IDs/timestamps).
+                  let serverRows = null;
+                  try {
+                    const cloneRes = netRes.clone();
+                    const ct = cloneRes.headers.get("Content-Type") || "";
+                    if (ct.includes("application/json")) {
+                      const txt = await cloneRes.text();
+                      if (txt) {
+                        const parsed = JSON.parse(txt);
+                        serverRows = Array.isArray(parsed) ? parsed : [parsed];
+                      }
+                    }
+                  } catch {}
+                  const originalRows = Array.isArray(bodyJson) ? bodyJson : [bodyJson];
+                  const inserted =
+                    serverRows && serverRows.length
+                      ? serverRows.map((row, i) =>
+                          withLocalDefaults(table, { ...(originalRows[i] || {}), ...row }),
+                        )
+                      : originalRows.map((r) => withLocalDefaults(table, r));
+                  await mergeRows(table, inserted);
+                } else if (req.method === "PATCH" && bodyJson) {
+                  await applyUpdate(table, url, bodyJson);
+                } else if (req.method === "DELETE") {
+                  await applyDelete(table, url);
+                }
+                broadcastDataChanged();
+              } catch {}
+            }
+            return netRes;
           }
-          return new Response(body, {
-            status: returnsRep || wantsObject ? 200 : 201,
+
+          // Offline (or server failure): apply optimistically + queue.
+          if (table && !isRpc) {
+            let resultRows = [];
+            try {
+              if (req.method === "POST" && bodyJson)
+                resultRows = await applyInsert(table, bodyJson);
+              if (req.method === "PATCH" && bodyJson)
+                resultRows = await applyUpdate(table, url, bodyJson);
+              if (req.method === "DELETE") resultRows = await applyDelete(table, url);
+              broadcastDataChanged();
+            } catch {}
+
+            // For POST replay, send the ORIGINAL client payload + the locally-
+            // generated id (so children can FK to it). Do NOT send the synthetic
+            // created_at/updated_at/etc. from withLocalDefaults — many tables
+            // don't have those columns and PostgREST would 400 the whole row.
+            let queuedBody = null;
+            if (req.method === "POST" && bodyJson) {
+              if (Array.isArray(bodyJson)) {
+                queuedBody = JSON.stringify(
+                  bodyJson.map((orig, i) => serverBody(orig, resultRows[i])),
+                );
+              } else {
+                queuedBody = JSON.stringify(serverBody(bodyJson, resultRows[0]));
+              }
+            }
+            await queueRequest(req, queuedBody);
+
+            // Build a Supabase-compatible response.
+            const accept = req.headers.get("Accept") || "";
+            const prefer = req.headers.get("Prefer") || "";
+            const wantsObject = accept.includes("application/vnd.pgrst.object+json");
+            const returnsRep = prefer.includes("return=representation");
+            let body = "";
+            if (returnsRep || wantsObject) {
+              body = wantsObject
+                ? JSON.stringify(resultRows[0] ?? null)
+                : JSON.stringify(resultRows);
+            }
+            return new Response(body, {
+              status: returnsRep || wantsObject ? 200 : 201,
+              headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
+            });
+          }
+
+          // Unknown route: queue & 202.
+          await queueRequest(req);
+          return new Response(JSON.stringify({ queued: true }), {
+            status: 202,
             headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
           });
-        }
-
-        // Unknown route: queue & 202.
-        await queueRequest(req);
-        return new Response(JSON.stringify({ queued: true }), {
-          status: 202, headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
-        });
-      })());
+        })(),
+      );
       return;
     }
 
-    // GET/HEAD reads: stale-while-revalidate + snapshot fallback.
+    // GET/HEAD reads: local snapshot/cache first + fast background revalidate.
     if (req.method === "GET" || req.method === "HEAD") {
-      event.respondWith((async () => {
-        const cache = await caches.open(CACHE_DATA);
-        const cached = req.method === "GET" ? await cache.match(req) : null;
-        const network = fetch(req).then(async (res) => {
-          if (res && res.ok && req.method === "GET") {
-            cache.put(req, res.clone()).catch(() => {});
-          }
-          return res;
-        }).catch(() => null);
+      event.respondWith(
+        (async () => {
+          const cache = await caches.open(CACHE_DATA);
+          const cached = req.method === "GET" ? await cache.match(req) : null;
+          const hasSnapshot = !!(await snapGet(SNAP_META, "lastSync"));
+          const network = fetchWithTimeout(req, 2500)
+            .then(async (res) => {
+              if (res && res.ok && req.method === "GET") {
+                cache.put(req, res.clone()).catch(() => {});
+              }
+              return res;
+            })
+            .catch(() => null);
 
-        const fresh = await network;
-        if (fresh) return fresh;
-        // Offline → reconstruct from snapshot first so locally queued edits are visible,
-        // even when an older exact response is already in the HTTP cache.
-        const snap = await snapshotResponse(url, req);
-        if (snap) return snap;
-        if (cached) return cached;
-        return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
-      })());
+          if (hasSnapshot || cached || (self.navigator && self.navigator.onLine === false)) {
+            const snap = await snapshotResponse(url, req);
+            if (snap) return snap;
+            if (cached) return cached;
+          }
+          const fresh = await network;
+          if (fresh) return fresh;
+          const snap = await snapshotResponse(url, req);
+          if (snap) return snap;
+          if (cached) return cached;
+          return new Response("[]", {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        })(),
+      );
       return;
     }
     return;
@@ -1218,182 +1520,237 @@ self.addEventListener("fetch", (event) => {
   // ---------------- Supabase Storage ----------------
   if (isSupabaseStorage(url) || isLocalSyntheticStorage(url)) {
     // createSignedUrl(s) — POST /storage/v1/object/sign/<bucket>[/<path>]
-    if (isSupabaseStorage(url) && req.method === "POST" && /\/storage\/v1\/object\/sign\//.test(url.pathname)) {
-      event.respondWith((async () => {
-        let netRes = null;
-        try { netRes = await fetch(req.clone()); } catch {}
-        if (netRes && netRes.ok) return netRes;
-        // Offline: synthesize.
-        // Single-path: /storage/v1/object/sign/<bucket>/<path>  body={expiresIn}
-        // Multi-path:  /storage/v1/object/sign/<bucket>          body={expiresIn,paths:[...]}
-        const m = url.pathname.match(/\/storage\/v1\/object\/sign\/([^/]+)(?:\/(.+))?$/);
-        if (!m) return new Response("offline", { status: 503 });
-        const bucket = m[1];
-        const singlePath = m[2] ? decodeURIComponent(m[2].split("?")[0]) : null;
-        let parsed = null;
-        try { parsed = JSON.parse(await req.clone().text() || "{}"); } catch {}
-        if (singlePath) {
-          return new Response(JSON.stringify({
-            signedURL: `/object/sign/${bucket}/${singlePath}?token=local`,
-          }), { status: 200, headers: { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" } });
-        }
-        const paths = Array.isArray(parsed?.paths) ? parsed.paths : [];
-        const out = paths.map((p) => ({
-          path: p, signedURL: `/object/sign/${bucket}/${p}?token=local`, error: null,
-        }));
-        return new Response(JSON.stringify(out), {
-          status: 200, headers: { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" },
-        });
-      })());
+    if (
+      isSupabaseStorage(url) &&
+      req.method === "POST" &&
+      /\/storage\/v1\/object\/sign\//.test(url.pathname)
+    ) {
+      event.respondWith(
+        (async () => {
+          let netRes = null;
+          try {
+            netRes = await fetch(req.clone());
+          } catch {}
+          if (netRes && netRes.ok) return netRes;
+          // Offline: synthesize.
+          // Single-path: /storage/v1/object/sign/<bucket>/<path>  body={expiresIn}
+          // Multi-path:  /storage/v1/object/sign/<bucket>          body={expiresIn,paths:[...]}
+          const m = url.pathname.match(/\/storage\/v1\/object\/sign\/([^/]+)(?:\/(.+))?$/);
+          if (!m) return new Response("offline", { status: 503 });
+          const bucket = m[1];
+          const singlePath = m[2] ? decodeURIComponent(m[2].split("?")[0]) : null;
+          let parsed = null;
+          try {
+            parsed = JSON.parse((await req.clone().text()) || "{}");
+          } catch {}
+          if (singlePath) {
+            return new Response(
+              JSON.stringify({
+                signedURL: `/object/sign/${bucket}/${singlePath}?token=local`,
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" },
+              },
+            );
+          }
+          const paths = Array.isArray(parsed?.paths) ? parsed.paths : [];
+          const out = paths.map((p) => ({
+            path: p,
+            signedURL: `/object/sign/${bucket}/${p}?token=local`,
+            error: null,
+          }));
+          return new Response(JSON.stringify(out), {
+            status: 200,
+            headers: { "Content-Type": "application/json", "X-RHfield-Snapshot": "1" },
+          });
+        })(),
+      );
       return;
     }
 
     // Storage uploads: POST/PUT /storage/v1/object/<bucket>/<path>
-    if (isSupabaseStorage(url) && (req.method === "POST" || req.method === "PUT") && /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname)
-        && !/\/storage\/v1\/object\/sign\//.test(url.pathname)) {
-      event.respondWith((async () => {
-        const info = storagePathFromUrl(url);
-        // Capture the upload body as a Blob so we can store it locally
-        // and (if needed) re-send it later from the queue.
-        const cloneForBlob = req.clone();
-        const cloneForQueue = req.clone();
-        let blob = null;
-        try { blob = await cloneForBlob.blob(); } catch {}
+    if (
+      isSupabaseStorage(url) &&
+      (req.method === "POST" || req.method === "PUT") &&
+      /\/storage\/v1\/object\/[^/]+\/.+/.test(url.pathname) &&
+      !/\/storage\/v1\/object\/sign\//.test(url.pathname)
+    ) {
+      event.respondWith(
+        (async () => {
+          const info = storagePathFromUrl(url);
+          // Capture the upload body as a Blob so we can store it locally
+          // and (if needed) re-send it later from the queue.
+          const cloneForBlob = req.clone();
+          const cloneForQueue = req.clone();
+          let blob = null;
+          try {
+            blob = await cloneForBlob.blob();
+          } catch {}
 
-        // Attempt network.
-        let netRes = null;
-        try { netRes = await fetch(req); } catch {}
+          // Attempt network.
+          let netRes = null;
+          try {
+            netRes = await fetch(req);
+          } catch {}
 
-        // Only persist locally when the network upload succeeded AND the body
-        // is a real media blob. Avoids storing multipart/form-data or
-        // application/octet-stream bytes as if they were the image itself.
-        if (info && blob && netRes && netRes.ok && isServableMediaType(blob.type)) {
-          try { await putBlob(`${info.bucket}/${info.path}`, blob); } catch {}
-        }
+          // Only persist locally when the network upload succeeded AND the body
+          // is a real media blob. Avoids storing multipart/form-data or
+          // application/octet-stream bytes as if they were the image itself.
+          if (info && blob && netRes && netRes.ok && isServableMediaType(blob.type)) {
+            try {
+              await putBlob(`${info.bucket}/${info.path}`, blob);
+            } catch {}
+          }
 
-        if (netRes && netRes.ok) return netRes;
+          if (netRes && netRes.ok) return netRes;
 
-        // Offline / failed → queue and synthesize success.
-        await queueRequest(cloneForQueue);
-        const synthetic = info
-          ? { Key: `${info.bucket}/${info.path}`, Id: `local-${Date.now()}` }
-          : { queued: true };
-        return new Response(JSON.stringify(synthetic), {
-          status: 200, headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
-        });
-      })());
+          // Offline / failed → queue and synthesize success.
+          await queueRequest(cloneForQueue);
+          const synthetic = info
+            ? { Key: `${info.bucket}/${info.path}`, Id: `local-${Date.now()}` }
+            : { queued: true };
+          return new Response(JSON.stringify(synthetic), {
+            status: 200,
+            headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
+          });
+        })(),
+      );
       return;
     }
 
     // Storage REMOVE: DELETE /storage/v1/object/<bucket>  body={prefixes:[...]}
     if (isSupabaseStorage(url) && req.method === "DELETE") {
-      event.respondWith((async () => {
-        let body = null;
-        try { body = JSON.parse(await req.clone().text() || "null"); } catch {}
-        const m = url.pathname.match(/\/storage\/v1\/object\/([^/]+)\/?$/);
-        const bucket = m ? m[1] : null;
-        if (bucket && body?.prefixes) {
-          for (const p of body.prefixes) {
-            try { await delBlob(`${bucket}/${p}`); } catch {}
+      event.respondWith(
+        (async () => {
+          let body = null;
+          try {
+            body = JSON.parse((await req.clone().text()) || "null");
+          } catch {}
+          const m = url.pathname.match(/\/storage\/v1\/object\/([^/]+)\/?$/);
+          const bucket = m ? m[1] : null;
+          if (bucket && body?.prefixes) {
+            for (const p of body.prefixes) {
+              try {
+                await delBlob(`${bucket}/${p}`);
+              } catch {}
+            }
           }
-        }
-        let netRes = null;
-        try { netRes = await fetch(req.clone()); } catch {}
-        if (netRes && netRes.ok) return netRes;
-        await queueRequest(req);
-        return new Response(JSON.stringify({ message: "queued" }), {
-          status: 200, headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
-        });
-      })());
+          let netRes = null;
+          try {
+            netRes = await fetch(req.clone());
+          } catch {}
+          if (netRes && netRes.ok) return netRes;
+          await queueRequest(req);
+          return new Response(JSON.stringify({ message: "queued" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", "X-RHfield-Queued": "1" },
+          });
+        })(),
+      );
       return;
     }
 
     // Storage GET (signed URL or otherwise): network-first when online,
     // fall back to local blob/cache when offline or network fails.
     if (req.method === "GET") {
-      event.respondWith((async () => {
-        const info = storagePathFromUrl(url);
+      event.respondWith(
+        (async () => {
+          const info = storagePathFromUrl(url);
 
-        const serveStored = async () => {
-          if (!info) return null;
-          const stored = await getBlob(`${info.bucket}/${info.path}`);
-          if (!isValidStoredBlob(stored)) return null;
-          return new Response(stored.blob, {
-            status: 200,
-            headers: {
-              "Content-Type": stored.type || stored.blob.type || "application/octet-stream",
-              "X-RHfield-LocalBlob": "1",
-              "Cache-Control": "no-cache",
-            },
-          });
-        };
+          const serveStored = async () => {
+            if (!info) return null;
+            const stored = await getBlob(`${info.bucket}/${info.path}`);
+            if (!isValidStoredBlob(stored)) return null;
+            return new Response(stored.blob, {
+              status: 200,
+              headers: {
+                "Content-Type": stored.type || stored.blob.type || "application/octet-stream",
+                "X-RHfield-LocalBlob": "1",
+                "Cache-Control": "no-cache",
+              },
+            });
+          };
 
-        // When online, try the network first so a fresh/correct image
-        // replaces any stale or corrupted local copy.
-        if (self.navigator && self.navigator.onLine !== false) {
-          try {
-            const res = await fetch(req);
-            if (res && res.ok) {
+          // When online, try the network first so a fresh/correct image
+          // replaces any stale or corrupted local copy.
+          if (self.navigator && self.navigator.onLine !== false) {
+            try {
+              const res = await fetch(req);
+              if (res && res.ok) {
+                const cache = await caches.open(CACHE_BLOBS);
+                cache.put(req, res.clone()).catch(() => {});
+                if (info) {
+                  try {
+                    const b = await res.clone().blob();
+                    if (isServableMediaType(b.type) && b.size > 0) {
+                      await putBlob(`${info.bucket}/${info.path}`, b);
+                    }
+                  } catch {}
+                }
+                return res;
+              }
+              // Non-OK network response: try local fallbacks before returning it.
+              const local = await serveStored();
+              if (local) return local;
               const cache = await caches.open(CACHE_BLOBS);
-              cache.put(req, res.clone()).catch(() => {});
-              if (info) {
-                try {
-                  const b = await res.clone().blob();
-                  if (isServableMediaType(b.type) && b.size > 0) {
-                    await putBlob(`${info.bucket}/${info.path}`, b);
-                  }
-                } catch {}
+              const cached = await cache.match(req);
+              if (cached) {
+                const ct = cached.headers.get("Content-Type") || "";
+                if (!isServableMediaType(ct)) {
+                  cache.delete(req).catch(() => {});
+                } else {
+                  return cached;
+                }
               }
               return res;
+            } catch {
+              // fall through to offline path
             }
-            // Non-OK network response: try local fallbacks before returning it.
-            const local = await serveStored();
-            if (local) return local;
-            const cache = await caches.open(CACHE_BLOBS);
-            const cached = await cache.match(req);
-            if (cached) {
-              const ct = cached.headers.get("Content-Type") || "";
-              if (!isServableMediaType(ct)) {
-                cache.delete(req).catch(() => {});
-              } else {
-                return cached;
-              }
-            }
-            return res;
-          } catch {
-            // fall through to offline path
           }
-        }
 
-        // Offline (or network threw): prefer local blob, then HTTP cache,
-        // then a last-ditch authenticated direct fetch.
-        const local = await serveStored();
-        if (local) return local;
-        const cache = await caches.open(CACHE_BLOBS);
-        const cached = await cache.match(req);
-        if (cached) {
-          const ct = cached.headers.get("Content-Type") || "";
-          if (!isServableMediaType(ct)) {
-            cache.delete(req).catch(() => {});
-          } else {
-            return cached;
-          }
-        }
-        if (info && latestAuthHeader && isSupabaseStorage(url)) {
-          try {
-            const direct = new URL(`/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`, url.origin);
-            const res = await fetch(direct.href, { headers: { authorization: latestAuthHeader }, cache: "no-store" });
-            if (res && res.ok) {
-              const b = await res.clone().blob();
-              if (isServableMediaType(b.type) && b.size > 0) {
-                await putBlob(`${info.bucket}/${info.path}`, b);
-              }
-              return new Response(b, { status: 200, headers: { "Content-Type": b.type || "application/octet-stream", "X-RHfield-LocalBlob": "1" } });
+          // Offline (or network threw): prefer local blob, then HTTP cache,
+          // then a last-ditch authenticated direct fetch.
+          const local = await serveStored();
+          if (local) return local;
+          const cache = await caches.open(CACHE_BLOBS);
+          const cached = await cache.match(req);
+          if (cached) {
+            const ct = cached.headers.get("Content-Type") || "";
+            if (!isServableMediaType(ct)) {
+              cache.delete(req).catch(() => {});
+            } else {
+              return cached;
             }
-          } catch {}
-        }
-        return new Response("", { status: 504 });
-      })());
+          }
+          if (info && latestAuthHeader && isSupabaseStorage(url)) {
+            try {
+              const direct = new URL(
+                `/storage/v1/object/authenticated/${encodeURIComponent(info.bucket)}/${info.path.split("/").map(encodeURIComponent).join("/")}`,
+                url.origin,
+              );
+              const res = await fetch(direct.href, {
+                headers: { authorization: latestAuthHeader },
+                cache: "no-store",
+              });
+              if (res && res.ok) {
+                const b = await res.clone().blob();
+                if (isServableMediaType(b.type) && b.size > 0) {
+                  await putBlob(`${info.bucket}/${info.path}`, b);
+                }
+                return new Response(b, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": b.type || "application/octet-stream",
+                    "X-RHfield-LocalBlob": "1",
+                  },
+                });
+              }
+            } catch {}
+          }
+          return new Response("", { status: 504 });
+        })(),
+      );
       return;
     }
 
@@ -1405,40 +1762,53 @@ self.addEventListener("fetch", (event) => {
   const sameOrigin = url.origin === self.location.origin;
 
   if (req.mode === "navigate") {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_SHELL);
-      const cachedShell = async () =>
-        (await cache.match(req, { ignoreSearch: true })) ||
-        (await cache.match("/")) ||
-        (await cache.match(new URL("/", self.location.origin).href));
-      // Offline → serve cached shell immediately, don't wait for fetch to time out.
-      if (self.navigator && self.navigator.onLine === false) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_SHELL);
+        const cachedShell = async () =>
+          (await cache.match(req, { ignoreSearch: true })) ||
+          (await cache.match("/")) ||
+          (await cache.match(new URL("/", self.location.origin).href));
         const hit = await cachedShell();
-        if (hit) return hit;
-      }
-      try {
-        const fresh = await fetch(req);
-        if (fresh && fresh.ok) {
-          cache.put("/", fresh.clone()).catch(() => {});
+        // If this route was deliberately warmed, serve it instantly. This avoids
+        // iOS standalone launches waiting on a doomed network navigation.
+        if (
+          hit &&
+          ((await cache.match(req, { ignoreSearch: true })) ||
+            (self.navigator && self.navigator.onLine === false))
+        )
+          return hit;
+        try {
+          const fresh = await fetchWithTimeout(req, 2500);
+          if (fresh && fresh.ok) {
+            cache.put("/", fresh.clone()).catch(() => {});
+            cache.put(req, fresh.clone()).catch(() => {});
+          }
+          return fresh;
+        } catch {
+          return (
+            hit ||
+            new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } })
+          );
         }
-        return fresh;
-      } catch {
-        const hit = await cachedShell();
-        return hit || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
-      }
-    })());
+      })(),
+    );
     return;
   }
 
   if (!sameOrigin) return;
 
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_ASSETS);
-    const cached = await cache.match(req);
-    const network = fetch(req).then((res) => {
-      if (res && res.ok && res.type === "basic") cache.put(req, res.clone()).catch(() => {});
-      return res;
-    }).catch(() => cached);
-    return cached || network;
-  })());
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_ASSETS);
+      const cached = await cache.match(req);
+      const network = fetchWithTimeout(req, cached ? 1500 : 5000)
+        .then((res) => {
+          if (res && res.ok && res.type === "basic") cache.put(req, res.clone()).catch(() => {});
+          return res;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })(),
+  );
 });
