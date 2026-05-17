@@ -159,6 +159,7 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   return (
     <div className="relative inline-block">
       <button
+        ref={triggerRef}
         type="button"
         onTouchStart={(e) => {
           e.preventDefault();
