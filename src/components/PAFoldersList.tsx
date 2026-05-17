@@ -356,13 +356,16 @@ function FolderContents({ folder, canEdit, userId }: any) {
         />
         {photosOpen && (photos.length === 0 ? (
           <p className="text-xs text-muted-foreground">No photos.</p>
-        ) : (
+        ) : (() => {
+          const photoGallery = photos.map((p) => ({ bucket: "photos", path: p.storage_path }));
+          return (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {photos.map((p) => (
-              <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} />
+              <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} gallery={photoGallery} />
             ))}
           </div>
-        ))}
+          );
+        })())}
       </section>
 
       {/* Files */}
