@@ -77,10 +77,9 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
     <nav
       aria-label="breadcrumb"
       className={cn(
-        "flex w-full min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap font-mono text-[11px] uppercase tracking-widest",
+        "flex w-full min-w-0 items-center gap-1.5 whitespace-nowrap font-mono text-[11px] uppercase tracking-widest",
         className ?? "text-muted-foreground",
       )}
-      style={{ textOverflow: "ellipsis" }}
     >
       {linePill}
       {first != null && (
