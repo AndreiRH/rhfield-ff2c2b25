@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
