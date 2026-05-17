@@ -285,6 +285,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [swipeDx, setSwipeDx] = useState(0);
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
+  // Accumulated signed step target of the in-flight animation (0 when idle/dragging from rest).
+  // Lets fast consecutive swipes stack instead of cancelling the pending commit.
+  const animTargetStepsRef = useRef(0);
 
   const siblings: { id: string; name: string }[] = data.siblings ?? [];
   const curEqIdx = siblings.findIndex((s) => s.id === data.pe.id);
@@ -302,9 +305,15 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [tapSteps, setTapSteps] = useState(0);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
-  const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
-  const targetSection: Section | null = dir !== 0 ? (SECTION_ORDER[sectionIdx + dir] ?? null) : null;
-  const progress = targetSection ? Math.min(1, Math.abs(swipeDx) / widthRef.current) : 0;
+  // While animating, derive direction/target from tapSteps (== animTargetStepsRef snapshot),
+  // so the tint and tab indicator track the final accumulated target — not the
+  // intermediate section the wrapper is gliding through.
+  const dir = tapSteps !== 0 ? (tapSteps > 0 ? 1 : -1) : (swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1);
+  const targetIdxOffset = tapSteps !== 0 ? tapSteps : dir;
+  const targetSection: Section | null = targetIdxOffset !== 0 ? (SECTION_ORDER[sectionIdx + targetIdxOffset] ?? null) : null;
+  // Progress toward the *next single step* in the swipe direction (for tint cross-fade).
+  const w0 = widthRef.current || 1;
+  const progress = tapSteps !== 0 ? 1 : (dir !== 0 ? Math.min(1, Math.abs(swipeDx) / w0) : 0);
 
   const weights: Record<Section, number> = { assembly: 0, wiring: 0, cold_comm: 0 };
   weights[section] = 1 - progress;
@@ -358,12 +367,46 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curEqIdx, siblings.length]);
 
+  // Commit / extend a section transition. Accepts the absolute signed step target
+  // relative to the currently committed section. Clamps to valid bounds. If a
+  // commit is already pending, replaces it so the animation glides on to the
+  // new accumulated target instead of restarting from the intermediate section.
+  const commitSectionSteps = (targetSteps: number) => {
+    const curIdx = SECTION_ORDER.indexOf(sectionRef.current);
+    const minSteps = -curIdx;
+    const maxSteps = SECTION_ORDER.length - 1 - curIdx;
+    const clamped = Math.max(minSteps, Math.min(maxSteps, targetSteps));
+    animTargetStepsRef.current = clamped;
+    const w = widthRef.current;
+    setTapSteps(clamped);
+    setSwipeState("animating");
+    setSwipeDx(-clamped * w);
+    if (commitTimeoutRef.current) {
+      window.clearTimeout(commitTimeoutRef.current);
+      commitTimeoutRef.current = null;
+    }
+    commitTimeoutRef.current = window.setTimeout(() => {
+      commitTimeoutRef.current = null;
+      if (!isMounted.current) return;
+      const finalSteps = animTargetStepsRef.current;
+      animTargetStepsRef.current = 0;
+      setSwipeState("idle");
+      if (finalSteps !== 0) {
+        const target = SECTION_ORDER[SECTION_ORDER.indexOf(sectionRef.current) + finalSteps];
+        if (target) setSection(target);
+      }
+      setSwipeDx(0);
+      setTapSteps(0);
+    }, 340);
+  };
+  const commitSectionStepsRef = useRef(commitSectionSteps);
+  useEffect(() => { commitSectionStepsRef.current = commitSectionSteps; });
+
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
-      if (commitTimeoutRef.current) {
-        window.clearTimeout(commitTimeoutRef.current);
-        commitTimeoutRef.current = null;
-      }
+      // NOTE: do NOT clear commitTimeoutRef here — we want pending section
+      // animations to keep their accumulated target so a second fast swipe
+      // stacks on top instead of resetting to the current intermediate.
       if (eqCommitRef.current) {
         window.clearTimeout(eqCommitRef.current);
         eqCommitRef.current = null;
@@ -402,10 +445,15 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         if ((dx < 0 && !nextEqRef.current) || (dx > 0 && !prevEqRef.current)) val = dx * 0.25;
         setEqDxSync(val);
       } else {
+        const w = widthRef.current;
+        const base = animTargetStepsRef.current; // signed: +n means already animating toward n-next
+        const baseDx = -base * w;
         const cur = SECTION_ORDER.indexOf(sectionRef.current);
-        let val = dx;
-        if ((dx < 0 && cur === SECTION_ORDER.length - 1) || (dx > 0 && cur === 0)) {
-          val = dx * 0.25;
+        const effectiveIdx = cur + base; // section that would be visible if commit fired now
+        let val = baseDx + dx;
+        // Edge resistance based on the post-base position.
+        if ((dx < 0 && effectiveIdx === SECTION_ORDER.length - 1) || (dx > 0 && effectiveIdx === 0)) {
+          val = baseDx + dx * 0.25;
         }
         setSwipeDx(val);
       }
@@ -416,8 +464,8 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       const mode = start?.mode ?? "section";
       startRef.current = null;
       if (decided !== "h") {
-        setSwipeState("idle"); setSwipeDx(0);
-        setEqState("idle"); setEqDxSync(0);
+        if (mode === "equipment") { setEqState("idle"); setEqDxSync(0); }
+        // section: do not nuke an in-flight animation just because user tapped.
         return;
       }
       if (mode === "equipment") {
@@ -457,31 +505,17 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         }, 340);
         return;
       }
-      setSwipeDx((dx) => {
-        const w = widthRef.current;
-        const ratio = dx / w;
-        const localDir = dx < 0 ? 1 : -1;
-        const curSection = sectionRef.current;
-        const localTarget = SECTION_ORDER[SECTION_ORDER.indexOf(curSection) + localDir];
-        if (Math.abs(ratio) > 0.22 && localTarget) {
-          setSwipeState("animating");
-          commitTimeoutRef.current = window.setTimeout(() => {
-            commitTimeoutRef.current = null;
-            if (!isMounted.current) return;
-            setSwipeState("idle");
-            setSection(localTarget);
-            setSwipeDx(0);
-          }, 340);
-          return localDir === 1 ? -w : w;
-        }
-        setSwipeState("animating");
-        commitTimeoutRef.current = window.setTimeout(() => {
-          commitTimeoutRef.current = null;
-          if (!isMounted.current) return;
-          setSwipeState("idle");
-        }, 340);
-        return 0;
-      });
+      // Section swipe end: compute live offset relative to the current animation base.
+      const w = widthRef.current;
+      const base = animTargetStepsRef.current;
+      const baseDx = -base * w;
+      // Use functional setSwipeDx purely as a sync read of latest swipeDx.
+      let liveDx = 0;
+      setSwipeDx((v) => { liveDx = v - baseDx; return v; });
+      const ratio = liveDx / w;
+      let added = 0;
+      if (Math.abs(ratio) > 0.22) added = liveDx < 0 ? 1 : -1;
+      commitSectionStepsRef.current(base + added);
     };
     window.addEventListener("touchstart", onStart, { passive: true });
     window.addEventListener("touchmove", onMove, { passive: false });
@@ -512,26 +546,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const w = widthRef.current;
   const PANE_GAP = 32;
   const tapNav = (s: Section) => {
-    if (s === sectionRef.current) return;
-    if (commitTimeoutRef.current) {
-      window.clearTimeout(commitTimeoutRef.current);
-      commitTimeoutRef.current = null;
-    }
     const cur = SECTION_ORDER.indexOf(sectionRef.current);
     const next = SECTION_ORDER.indexOf(s);
-    const steps = next - cur; // signed (±1 or ±2)
-    const w = widthRef.current;
-    setTapSteps(steps);
-    setSwipeDx(-steps * w);
-    setSwipeState("animating");
-    commitTimeoutRef.current = window.setTimeout(() => {
-      commitTimeoutRef.current = null;
-      if (!isMounted.current) return;
-      setSwipeState("idle");
-      setSection(s);
-      setSwipeDx(0);
-      setTapSteps(0);
-    }, 340);
+    if (next < 0 || next === cur) return;
+    commitSectionSteps(next - cur);
   };
 
   const eqTransformTransition = eqState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
