@@ -190,8 +190,10 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             minWidth: "200px",
             maxWidth: "80vw",
             fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+            left: dropAlign === "left" ? 0 : "auto",
+            right: dropAlign === "right" ? 0 : "auto",
           }}
-          className="absolute left-0 top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
+          className="absolute top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
           {items.map((item) => {
             const active = item.key === currentKey;
