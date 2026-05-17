@@ -903,7 +903,9 @@ function SettingRow({
             <div className="space-y-1">
               <div className="grid grid-cols-3 gap-1">
                 {photos.map((p) => (
-                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit} onRemove={() => removePhoto(p)} />
+                  <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit}
+                    onRemove={() => removePhoto(p)}
+                    isShared={!!p.is_shared} onToggleShared={() => togglePhotoShared(p)} />
                 ))}
               </div>
               {canEdit && (
@@ -919,7 +921,9 @@ function SettingRow({
           {showFiles && files.length > 0 && (
             <div className="space-y-1">
               {files.map((f) => (
-                <FileChip key={f.id} f={f} canEdit={canEdit} onRemove={() => removeFile(f)} />
+                <FileChip key={f.id} f={f} canEdit={canEdit}
+                  onRemove={() => removeFile(f)}
+                  onToggleShared={() => toggleFileShared(f)} />
               ))}
               {canEdit && (
                 <label title="Add file"
