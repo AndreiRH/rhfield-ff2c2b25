@@ -1216,9 +1216,7 @@ async function flushQueue() {
     try {
       // If we've seen a fresher auth header since this item was queued, use it.
       const headers = { ...(item.headers || {}) };
-      if (latestAuthHeader && headers.authorization && headers.authorization !== latestAuthHeader) {
-        headers.authorization = latestAuthHeader;
-      }
+      if (latestAuthHeader) headers.authorization = latestAuthHeader;
       const res = await fetchWithTimeout(item.url, 12000, {
         method: item.method,
         headers,
