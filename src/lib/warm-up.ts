@@ -69,7 +69,7 @@ const PATH_COLUMNS: Record<string, PathSpec[]> = {
   ],
 };
 
-export type WarmPhase = "idle" | "tables" | "routes" | "blobs" | "done";
+export type WarmPhase = "idle" | "edits" | "tables" | "routes" | "blobs" | "done";
 export type Progress = {
   phase: WarmPhase;
   done: number;
