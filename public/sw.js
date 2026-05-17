@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v15";
+const VER = "v16";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -1833,14 +1833,10 @@ self.addEventListener("fetch", (event) => {
           (await cache.match("/")) ||
           (await cache.match(new URL("/", self.location.origin).href));
         const hit = await cachedShell();
-        // If this route was deliberately warmed, serve it instantly. This avoids
-        // iOS standalone launches waiting on a doomed network navigation.
-        if (
-          hit &&
-          ((await cache.match(req, { ignoreSearch: true })) ||
-            (self.navigator && self.navigator.onLine === false))
-        )
-          return hit;
+        const isOffline = self.navigator && self.navigator.onLine === false;
+        // Offline: serve cached shell immediately. Online: try network first
+        // so published updates take effect without waiting for next launch.
+        if (hit && isOffline) return hit;
         try {
           const fresh = await fetchWithTimeout(req, 2500);
           if (fresh && fresh.ok) {
