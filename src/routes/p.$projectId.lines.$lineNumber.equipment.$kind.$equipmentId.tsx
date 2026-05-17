@@ -546,26 +546,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const w = widthRef.current;
   const PANE_GAP = 32;
   const tapNav = (s: Section) => {
-    if (s === sectionRef.current) return;
-    if (commitTimeoutRef.current) {
-      window.clearTimeout(commitTimeoutRef.current);
-      commitTimeoutRef.current = null;
-    }
     const cur = SECTION_ORDER.indexOf(sectionRef.current);
     const next = SECTION_ORDER.indexOf(s);
-    const steps = next - cur; // signed (±1 or ±2)
-    const w = widthRef.current;
-    setTapSteps(steps);
-    setSwipeDx(-steps * w);
-    setSwipeState("animating");
-    commitTimeoutRef.current = window.setTimeout(() => {
-      commitTimeoutRef.current = null;
-      if (!isMounted.current) return;
-      setSwipeState("idle");
-      setSection(s);
-      setSwipeDx(0);
-      setTapSteps(0);
-    }, 340);
+    if (next < 0 || next === cur) return;
+    commitSectionSteps(next - cur);
   };
 
   const eqTransformTransition = eqState === "animating" ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none";
