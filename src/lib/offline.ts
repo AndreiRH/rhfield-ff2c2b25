@@ -84,10 +84,11 @@ async function probeOnline(): Promise<boolean> {
     });
     clearTimeout(to);
     // Any HTTP response means the network reached Supabase — we're online.
-    // Don't require res.ok (health endpoint may return 401 without apikey).
     return res.status > 0;
   } catch {
-    return false;
+    // Probe failed (CORS, DNS hiccup, transient). Trust the browser's signal
+    // rather than incorrectly flipping the cloud icon to offline.
+    return navigator.onLine;
   }
 }
 
