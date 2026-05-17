@@ -46,6 +46,7 @@ function EquipmentSettingsPage() {
         .select("id, name, sort_order")
         .eq("line_id", pe.line_id)
         .eq("kind", kind)
+        .is("deleted_at", null)
         .order("sort_order");
       return { pe, lineId: lineRow?.id ?? null, lineCount: lineCount ?? 10, siblings: siblings ?? [] };
     },

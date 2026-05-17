@@ -73,7 +73,29 @@ function PlantEquipmentList() {
           .is("deleted_at", null)
           .order("sort_order", { ascending: true });
         if (pErr) throw pErr;
-        return { line, plantEquipment: pe ?? [], extraGroup: null };
+        const cleanItems = (items: any[] | null | undefined) =>
+          (items ?? []).filter((i: any) => !i.deleted_at);
+        const cleanComponents = (comps: any[] | null | undefined) =>
+          (comps ?? [])
+            .filter((c: any) => !c.deleted_at)
+            .map((c: any) => ({ ...c, checklist_items: cleanItems(c.checklist_items) }));
+        const cleanedPE = (pe ?? []).map((p: any) => ({
+          ...p,
+          equipment_groups: (p.equipment_groups ?? [])
+            .filter((g: any) => !g.deleted_at)
+            .map((g: any) => ({
+              ...g,
+              components: cleanComponents(g.components),
+              component_types: (g.component_types ?? [])
+                .filter((t: any) => !t.deleted_at)
+                .map((t: any) => ({
+                  ...t,
+                  checklist_items: cleanItems(t.checklist_items),
+                  components: cleanComponents(t.components),
+                })),
+            })),
+        }));
+        return { line, plantEquipment: cleanedPE, extraGroup: null };
       } else {
         const { data: eg, error: eErr } = await supabase
           .from("equipment_groups")
@@ -91,7 +113,18 @@ function PlantEquipmentList() {
           .is("deleted_at", null)
           .single();
         if (eErr) throw eErr;
-        return { line, plantEquipment: [], extraGroup: eg };
+        const cleanedEg = eg
+          ? {
+              ...eg,
+              components: (eg.components ?? [])
+                .filter((c: any) => !c.deleted_at)
+                .map((c: any) => ({
+                  ...c,
+                  checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+                })),
+            }
+          : eg;
+        return { line, plantEquipment: [], extraGroup: cleanedEg };
       }
     },
   });

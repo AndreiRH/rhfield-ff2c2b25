@@ -127,6 +127,31 @@ function EquipmentDetail() {
         .is("deleted_at", null);
       if (gErr) throw gErr;
 
+      // Strip soft-deleted nested rows (PostgREST doesn't filter embedded resources by default).
+      const stripDeleted = (gs: any[] | null | undefined): any[] =>
+        (gs ?? []).map((g) => ({
+          ...g,
+          components: (g.components ?? [])
+            .filter((c: any) => !c.deleted_at)
+            .map((c: any) => ({
+              ...c,
+              checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+            })),
+          component_types: (g.component_types ?? [])
+            .filter((t: any) => !t.deleted_at)
+            .map((t: any) => ({
+              ...t,
+              checklist_items: (t.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+              components: (t.components ?? [])
+                .filter((c: any) => !c.deleted_at)
+                .map((c: any) => ({
+                  ...c,
+                  checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+                })),
+            })),
+        }));
+      groups = stripDeleted(groups);
+
       // Backfill any missing default chapters (assembly/wiring/cold_comm)
       const chapters = ["assembly", "wiring", "cold_comm"] as const;
       const missing = chapters.filter((ch) => !(groups ?? []).some((g: any) => g.chapter === ch));
@@ -149,7 +174,7 @@ function EquipmentDetail() {
           .eq("plant_equipment_id", equipmentId)
           .is("deleted_at", null);
         if (refetched.error) throw refetched.error;
-        groups = refetched.data;
+        groups = stripDeleted(refetched.data);
       }
 
       const { data: photos, error: phErr } = await supabase
