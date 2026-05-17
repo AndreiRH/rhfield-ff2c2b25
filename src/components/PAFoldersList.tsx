@@ -526,7 +526,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) 
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
+          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} gallery={gallery} />}
           {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
           {canEdit && (
             <div className="flex gap-2">
