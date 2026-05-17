@@ -75,9 +75,17 @@ async function probeOnline(): Promise<boolean> {
     const url = new URL("/auth/v1/health", import.meta.env.VITE_SUPABASE_URL as string);
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch(url.href, { method: "GET", cache: "no-store", signal: ctrl.signal });
+    const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    const res = await fetch(url.href, {
+      method: "GET",
+      cache: "no-store",
+      signal: ctrl.signal,
+      headers: apikey ? { apikey } : undefined,
+    });
     clearTimeout(to);
-    return res.ok;
+    // Any HTTP response means the network reached Supabase — we're online.
+    // Don't require res.ok (health endpoint may return 401 without apikey).
+    return res.status > 0;
   } catch {
     return false;
   }
