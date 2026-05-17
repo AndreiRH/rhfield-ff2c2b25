@@ -97,7 +97,9 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
 function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(currentKey);
+  const [dropAlign, setDropAlign] = useState<"left" | "right">("left");
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
 
   const keyAtPoint = (x: number, y: number): string | null => {
@@ -146,9 +148,18 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const spaceRight = window.innerWidth - rect.left;
+      setDropAlign(spaceRight < 220 ? "right" : "left");
+    }
+  }, [open]);
+
   return (
     <div className="relative inline-block">
       <button
+        ref={triggerRef}
         type="button"
         onTouchStart={(e) => {
           e.preventDefault();
@@ -179,8 +190,10 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             minWidth: "200px",
             maxWidth: "80vw",
             fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+            left: dropAlign === "left" ? 0 : "auto",
+            right: dropAlign === "right" ? 0 : "auto",
           }}
-          className="absolute left-0 top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
+          className="absolute top-[calc(100%+6px)] z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
           {items.map((item) => {
             const active = item.key === currentKey;
