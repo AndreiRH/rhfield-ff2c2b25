@@ -398,6 +398,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
   };
 
   const removeAttachment = async (a: Attachment) => {
+    if (!confirmSharedDelete(true)) return;
     const bucket = a.kind === "photo" ? "photos" : "files";
     await supabase.storage.from(bucket).remove([a.storage_path]);
     await supabase.from("common_folder_attachments").delete().eq("id", a.id);
