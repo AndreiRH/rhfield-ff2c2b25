@@ -474,48 +474,48 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* HEADER ZONE — never translates. Equipment-swipe gesture starts here. */}
-      <div className="relative" data-equipment-header>
-        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-          <HeaderInner
-            data={data}
-            plantLabel={plantLabel}
-            overall={overall}
-            accent={meta.accent}
-          />
-        </div>
-        {targetMeta && (
-          <div
-            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-            style={{ opacity: progress, transition: colorTransition }}
-            aria-hidden
-          >
-            <HeaderInner
-              data={data}
-              plantLabel={plantLabel}
-              overall={overall}
-              accent={targetMeta.accent}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
-      <div className="mt-3 flex items-stretch gap-2">
-        <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
-        <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
-        <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
-      </div>
-
-      {/* CONTENT WRAPPER — translates for equipment-swipe; overflow hidden keeps it clean. */}
+      {/* EVERYTHING BELOW slides with equipment swipe (header + tabs + content). */}
       <div
         style={{
           transform: `translateX(${eqDx}px)`,
           transition: eqTransformTransition,
-          overflow: "hidden",
           ...(eqState === "dragging" ? { willChange: "transform" } : {}),
         }}
       >
+        {/* HEADER ZONE — equipment-swipe gesture starts here. */}
+        <div className="relative" data-equipment-header>
+          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+            <HeaderInner
+              data={data}
+              plantLabel={plantLabel}
+              overall={overall}
+              accent={meta.accent}
+            />
+          </div>
+          {targetMeta && (
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+              style={{ opacity: progress, transition: colorTransition }}
+              aria-hidden
+            >
+              <HeaderInner
+                data={data}
+                plantLabel={plantLabel}
+                overall={overall}
+                accent={targetMeta.accent}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
+        <div className="mt-3 flex items-stretch gap-2">
+          <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+          <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+          <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
+        </div>
+
+        {/* SECTION CONTENT — section swipe lives inside. */}
         <div className="relative mt-6 overflow-hidden">
           <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
             {renderSection(section, data, canEdit, userId, onChange)}
