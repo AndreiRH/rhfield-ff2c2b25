@@ -32,7 +32,9 @@ async function requestBackgroundSync() {
       // @ts-expect-error - SyncManager isn't in lib.dom yet
       await reg.sync.register("rhfield-flush");
     }
-  } catch {}
+  } catch {
+    // Background sync is optional; direct flush messages still run.
+  }
 }
 
 export function triggerFlush() {
