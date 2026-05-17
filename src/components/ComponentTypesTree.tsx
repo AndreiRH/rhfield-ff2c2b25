@@ -10,7 +10,7 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check, X,
+  Camera, Paperclip, Check,
 } from "lucide-react";
 import {
   useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
