@@ -84,6 +84,7 @@ function ProjectDashboard() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <ProjectHotCalendarButton projectId={projectId} />
+                {/* AI Search hidden until the feature is ready.
                 <Link
                   to="/p/$projectId/search"
                   params={{ projectId }}
@@ -91,6 +92,7 @@ function ProjectDashboard() {
                 >
                   ✨ AI Search
                 </Link>
+                */}
               </div>
             </CardContent>
           </Card>
