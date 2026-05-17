@@ -158,15 +158,50 @@ function RootComponent() {
       return;
     }
 
+    const promptSkipWaiting = (sw: ServiceWorker | null) => {
+      if (sw) sw.postMessage({ type: "rhfield-skip-waiting" });
+    };
     const register = () => {
       navigator.serviceWorker
         .register("/sw.js", { updateViaCache: "none" })
-        .then((reg) => reg.update().catch(() => {}))
+        .then((reg) => {
+          reg.update().catch(() => {});
+          if (reg.waiting && navigator.serviceWorker.controller) promptSkipWaiting(reg.waiting);
+          reg.addEventListener("updatefound", () => {
+            const installing = reg.installing;
+            if (!installing) return;
+            installing.addEventListener("statechange", () => {
+              if (installing.state === "installed" && navigator.serviceWorker.controller) {
+                promptSkipWaiting(installing);
+              }
+            });
+          });
+        })
         .catch(() => {});
     };
+    let reloaded = false;
+    const onControllerChange = () => {
+      if (reloaded) return;
+      if (sessionStorage.getItem("rhfield-sw-reloaded") === "1") return;
+      reloaded = true;
+      sessionStorage.setItem("rhfield-sw-reloaded", "1");
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     if (document.readyState === "loading") window.addEventListener("load", register, { once: true });
     else register();
-    return () => window.removeEventListener("load", register);
+    // Re-check for updates when user returns to the app.
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update().catch(() => {})).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("load", register);
+      document.removeEventListener("visibilitychange", onVis);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+    };
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
