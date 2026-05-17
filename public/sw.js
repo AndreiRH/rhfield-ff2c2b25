@@ -1382,7 +1382,20 @@ self.addEventListener("fetch", (event) => {
   rememberAuth(req);
 
   // Pass-through auth/realtime — must hit network always.
-  if (isSupabaseAuth(url) || isSupabaseRealtime(url)) return;
+  // Pass-through auth/realtime — must hit network always. But if we're
+  // detectably offline, short-circuit with a fast 503 so the Supabase SDK
+  // doesn't hang for ~30s on a TCP timeout (which freezes app launch).
+  if (isSupabaseAuth(url) || isSupabaseRealtime(url)) {
+    if (self.navigator && self.navigator.onLine === false) {
+      event.respondWith(
+        new Response(JSON.stringify({ error: "offline" }), {
+          status: 503,
+          headers: { "Content-Type": "application/json", "X-RHfield-Offline": "1" },
+        }),
+      );
+    }
+    return;
+  }
 
   // ---------------- Supabase REST ----------------
   if (isSupabaseRest(url)) {
