@@ -292,6 +292,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   };
   const [eqState, setEqState] = useState<"idle" | "dragging" | "animating">("idle");
   const eqCommitRef = useRef<number | null>(null);
+  const sectionWrapRef = useRef<HTMLDivElement>(null);
 
   const sectionIdx = SECTION_ORDER.indexOf(section);
   const dir = swipeDx === 0 ? 0 : swipeDx < 0 ? 1 : -1;
