@@ -161,6 +161,14 @@ function RootComponent() {
     const promptSkipWaiting = (sw: ServiceWorker | null) => {
       if (sw) sw.postMessage({ type: "rhfield-skip-waiting" });
     };
+    const scrubUpdateParam = () => {
+      try {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has("rhfield-sw")) return;
+        url.searchParams.delete("rhfield-sw");
+        window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+      } catch {}
+    };
     const register = () => {
       navigator.serviceWorker
         .register("/sw.js", { updateViaCache: "none" })
@@ -188,6 +196,7 @@ function RootComponent() {
       window.location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    scrubUpdateParam();
     if (document.readyState === "loading") window.addEventListener("load", register, { once: true });
     else register();
     // Re-check for updates when user returns to the app.
