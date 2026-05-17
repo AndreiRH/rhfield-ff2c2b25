@@ -551,38 +551,28 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           <div>
             {/* HEADER ZONE — equipment-swipe gesture starts here. */}
             <div className="relative" data-equipment-header>
-              <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
-                <HeaderInner
-                  data={data}
-                  plantLabel={plantLabel}
-                  overall={overall}
-                  accent={meta.accent}
-                />
-                <div className="mt-3 flex items-stretch gap-2">
-                  <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
-                  <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
-                  <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
-                </div>
-              </div>
-              {targetMeta && (
-                <div
-                  className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-                  style={{ opacity: progress, transition: colorTransition }}
-                  aria-hidden
-                >
+              <div className={`relative rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+                {targetMeta && (
+                  <div
+                    className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header}`}
+                    style={{ opacity: progress, transition: colorTransition }}
+                    aria-hidden
+                  />
+                )}
+                <div className="relative z-10">
                   <HeaderInner
                     data={data}
                     plantLabel={plantLabel}
                     overall={overall}
-                    accent={targetMeta.accent}
+                    accent={meta.accent}
                   />
                   <div className="mt-3 flex items-stretch gap-2">
-                    <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => {}} />
-                    <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => {}} />
-                    <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => {}} />
+                    <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+                    <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+                    <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* SECTION CONTENT */}
