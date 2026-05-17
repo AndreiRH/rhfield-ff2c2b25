@@ -206,7 +206,7 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) 
   );
 }
 
-function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
+function NotePhoto({ path, canEdit, onRemove, gallery }: { path: string; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
   return (
     <StoragePhoto
       bucket="photos"
@@ -214,6 +214,7 @@ function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean
       imgClassName="max-h-40 w-full rounded border object-cover"
       canEdit={canEdit}
       onRemove={onRemove}
+      gallery={gallery}
     />
   );
 }
