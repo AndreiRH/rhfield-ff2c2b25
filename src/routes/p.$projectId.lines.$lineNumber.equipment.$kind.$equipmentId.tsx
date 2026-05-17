@@ -591,7 +591,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           </div>
 
           {/* ── NEIGHBOUR EQUIPMENT PANE ── */}
-          {eqDx !== 0 && (() => {
+          {(eqState === "dragging" || eqState === "animating") && eqDx !== 0 && (() => {
             const goingNext = eqDx < 0;
             const neighbour = goingNext ? nextEq : prevEq;
             if (!neighbour) return null;
