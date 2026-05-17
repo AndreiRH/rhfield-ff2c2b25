@@ -374,6 +374,21 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curEqIdx, siblings.length]);
 
+  const neighbourQueryOptions = (sibling: { id: string; name: string } | null) => {
+    const key = ["equipment-detail", data.line.project_id, String(data.line.number), data.pe.kind, sibling?.id ?? ""] as const;
+    return {
+      enabled: !!sibling,
+      queryKey: key,
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
+      queryFn: () => fetchEquipmentDetail(data.line.project_id, String(data.line.number), data.pe.kind, sibling!.id),
+      initialData: () => sibling ? qc.getQueryData<any>(key) : undefined,
+      initialDataUpdatedAt: () => sibling ? qc.getQueryState(key)?.dataUpdatedAt : undefined,
+    };
+  };
+  const { data: prevEqData } = useQuery(neighbourQueryOptions(prevEq));
+  const { data: nextEqData } = useQuery(neighbourQueryOptions(nextEq));
+
   // Commit / extend a section transition. Accepts the absolute signed step target
   // relative to the currently committed section. Clamps to valid bounds. If a
   // commit is already pending, replaces it so the animation glides on to the
