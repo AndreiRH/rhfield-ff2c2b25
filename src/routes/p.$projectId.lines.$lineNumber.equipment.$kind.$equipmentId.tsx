@@ -722,7 +722,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                 <div className="mt-6">
                   {neighbourData ? (
                     <div style={{ pointerEvents: "none" }}>
-                      {renderSection(section, neighbourData, false, undefined, () => {})}
+                      {renderSection(section, neighbourData, canEdit, userId, () => {})}
                     </div>
                   ) : (
                     <div className="space-y-3">
