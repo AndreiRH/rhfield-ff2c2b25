@@ -20,7 +20,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy, rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
@@ -167,8 +167,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     .filter((i: any) => i.parent_item_id === item.id)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
-  const photos = item.item_photos ?? [];
-  const files = item.item_files ?? [];
+  const photos = ((item.item_photos ?? []) as any[])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const files = ((item.item_files ?? []) as any[])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const ownNote = (item.note ?? "").trim() !== "";
   const hasContent = !!item.note || subs.length > 0 || photos.length > 0 || files.length > 0;
   const [open, setOpen] = useState<boolean>(!!defaultOpen);
@@ -348,6 +352,33 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
     if (error) toast.error(error.message); else onChange();
   };
+
+  const attachSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+  );
+  const reorderPhotos = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = photos.findIndex((p: any) => p.id === active.id);
+    const newIdx = photos.findIndex((p: any) => p.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(photos, oldIdx, newIdx);
+    await Promise.all(next.map((p: any, i: number) =>
+      supabase.from("item_photos").update({ sort_order: i }).eq("id", p.id)));
+    onChange();
+  };
+  const reorderFiles = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = files.findIndex((f: any) => f.id === active.id);
+    const newIdx = files.findIndex((f: any) => f.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(files, oldIdx, newIdx);
+    await Promise.all(next.map((f: any, i: number) =>
+      supabase.from("item_files").update({ sort_order: i }).eq("id", f.id)));
+    onChange();
+  };
   const toggleShareFile = async (f: any) => {
     if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
     const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
@@ -424,28 +455,26 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       )}
       {!editingLabel && <span className="flex-1 min-w-0 self-stretch" />}
       {/* Always-visible content indicators */}
-      {!inMode && (
-        <span className="flex items-center gap-2">
-          {subsTotal > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
-          )}
-          {notesCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
-              <StickyNote className="h-3 w-3" /> {notesCount}
-            </span>
-          )}
-          {photosCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
-              <Camera className="h-3 w-3" /> {photosCount}
-            </span>
-          )}
-          {filesCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
-              <Paperclip className="h-3 w-3" /> {filesCount}
-            </span>
-          )}
-        </span>
-      )}
+      <span className="flex items-center gap-2">
+        {subsTotal > 0 && (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
+        )}
+        {!inMode && notesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
+            <StickyNote className="h-3 w-3" /> {notesCount}
+          </span>
+        )}
+        {!inMode && photosCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Photos">
+            <Camera className="h-3 w-3" /> {photosCount}
+          </span>
+        )}
+        {!inMode && filesCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
+            <Paperclip className="h-3 w-3" /> {filesCount}
+          </span>
+        )}
+      </span>
     </div>
   );
 
@@ -535,11 +564,25 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
           {showPhotos && photos.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
-              <div className="grid grid-cols-3 gap-1">
-                {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
-                  canEdit={canEdit} onRemove={() => removePhoto(p)}
-                  isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
-              </div>
+              {photos.length > 1 && canEdit ? (
+                <DndContext id={`photos-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderPhotos}>
+                  <SortableContext items={photos.map((p: any) => p.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-3 gap-1">
+                      {photos.map((p: any) => (
+                        <SortablePhotoTile key={p.id} id={p.id} path={p.storage_path}
+                          canEdit={canEdit} onRemove={() => removePhoto(p)}
+                          isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="grid grid-cols-3 gap-1">
+                  {photos.map((p: any) => <PhotoTile key={p.id} path={p.storage_path}
+                    canEdit={canEdit} onRemove={() => removePhoto(p)}
+                    isShared={!!p.is_shared} onToggleShared={() => toggleSharePhoto(p)} />)}
+                </div>
+              )}
               {canEdit && (
                 <PhotoPicker onPick={uploadPhoto}>
                   <button title="Add another photo"
@@ -553,8 +596,19 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
 
           {showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
-              {files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit}
-                onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />)}
+              {files.length > 1 && canEdit ? (
+                <DndContext id={`files-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderFiles}>
+                  <SortableContext items={files.map((f: any) => f.id)} strategy={verticalListSortingStrategy}>
+                    {files.map((f: any) => (
+                      <SortableFileChip key={f.id} id={f.id} f={f} canEdit={canEdit}
+                        onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                files.map((f: any) => <FileChip key={f.id} f={f} canEdit={canEdit}
+                  onRemove={() => removeFile(f)} onToggleShared={() => toggleShareFile(f)} />)
+              )}
               {canEdit && (
                 <label title="Add file"
                   className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
@@ -656,6 +710,96 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
 }) {
   return (
     <div className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+      <button
+        onClick={() => openStorageFile("files", f.storage_path, f.file_name)}
+        className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline"
+      >
+        <Paperclip className="h-3 w-3 shrink-0" /> <span className="truncate">{f.file_name}</span>
+      </button>
+      {canEdit && onToggleShared && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
+          title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          className={`shrink-0 ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          {f.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+        </button>
+      )}
+      {canEdit && (
+        <button onClick={onRemove} className="shrink-0 text-destructive hover:opacity-80">
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShared }: {
+  id: string; path: string; canEdit: boolean; onRemove: () => void;
+  isShared?: boolean; onToggleShared?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      <StoragePhoto
+        bucket="photos"
+        path={path}
+        imgClassName="h-16 w-full rounded border object-cover"
+        canEdit={canEdit}
+        onRemove={onRemove}
+      />
+      {canEdit && onToggleShared && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
+          title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          {isShared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+        </button>
+      )}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+        className="absolute right-1 top-1 cursor-grab touch-none rounded bg-background/80 p-0.5 text-muted-foreground backdrop-blur active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
+  id: string; f: any; canEdit: boolean; onRemove: () => void;
+  onToggleShared?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+        className="shrink-0 cursor-grab touch-none p-0.5 text-muted-foreground active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
       <button
         onClick={() => openStorageFile("files", f.storage_path, f.file_name)}
         className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline"
