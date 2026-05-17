@@ -270,7 +270,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           undone = true;
           const { error: e } = await supabase.from("component_photos")
             .insert({ id: p.id, component_id: component.id, storage_path: p.storage_path });
-          if (e) toast.error(e.message); else onChange();
+          if (e) toast.error(toUserMessage(e)); else onChange();
         },
       },
     });
@@ -291,7 +291,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
           undone = true;
           const { error: e } = await supabase.from("component_files")
             .insert({ id: f.id, component_id: component.id, storage_path: f.storage_path, file_name: f.file_name });
-          if (e) toast.error(e.message); else onChange();
+          if (e) toast.error(toUserMessage(e)); else onChange();
         },
       },
     });

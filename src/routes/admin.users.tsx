@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { toUserMessage } from "@/lib/errors";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -63,7 +64,7 @@ function UsersPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
-    onError: (e: any) => toast.error(e.message ?? "Failed to update role"),
+    onError: (e: any) => toast.error(toUserMessage(e, "Failed to update role")),
   });
 
   const deleteMutation = useMutation({
@@ -76,7 +77,7 @@ function UsersPage() {
       setConfirmDelete(null);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to delete user"),
+    onError: (e: any) => toast.error(toUserMessage(e, "Failed to delete user")),
   });
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; email: string } | null>(null);

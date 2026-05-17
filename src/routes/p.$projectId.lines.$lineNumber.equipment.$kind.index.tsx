@@ -414,7 +414,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
         onClick: async () => {
           const { error: undoErr } = await supabase
             .from("plant_equipment").update({ deleted_at: null }).eq("id", pe.id);
-          if (undoErr) toast.error(undoErr.message);
+          if (undoErr) toast.error(toUserMessage(undoErr));
           else { toast.success("Restored"); onChange(); }
         },
       },

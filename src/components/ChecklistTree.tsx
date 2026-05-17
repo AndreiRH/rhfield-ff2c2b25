@@ -237,7 +237,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         if (!allDone) break;
         const { error: pErr } = await supabase.from("checklist_items")
           .update({ done: true, completed_at: nowIso }).eq("id", parentId);
-        if (pErr) { toast.error(pErr.message); break; }
+        if (pErr) { toast.error(toUserMessage(pErr)); break; }
         doneSet.add(parentId);
         parentId = parent.parent_item_id ?? null;
       }
@@ -253,7 +253,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       if (ancestors.length) {
         const { error: pErr } = await supabase.from("checklist_items")
           .update({ done: false, completed_at: null }).in("id", ancestors);
-        if (pErr) toast.error(pErr.message);
+        if (pErr) toast.error(toUserMessage(pErr));
       }
     }
     onChange();
@@ -314,7 +314,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           undone = true;
           const { error: e } = await supabase.from("item_photos")
             .insert({ id: p.id, item_id: item.id, storage_path: p.storage_path, is_shared: p.is_shared ?? false });
-          if (e) toast.error(e.message); else onChange();
+          if (e) toast.error(toUserMessage(e)); else onChange();
         },
       },
     });
@@ -336,7 +336,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           undone = true;
           const { error: e } = await supabase.from("item_files")
             .insert({ id: f.id, item_id: item.id, storage_path: f.storage_path, file_name: f.file_name, is_shared: f.is_shared ?? false });
-          if (e) toast.error(e.message); else onChange();
+          if (e) toast.error(toUserMessage(e)); else onChange();
         },
       },
     });

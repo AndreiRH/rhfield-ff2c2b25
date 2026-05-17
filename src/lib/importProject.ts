@@ -427,7 +427,8 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
 
   const { error: rpcErr } = await supabase.rpc("import_project_bulk", { payload: payload as any });
   if (rpcErr) {
-    throw new Error(`Database insert failed: ${rpcErr.message}`);
+    console.error("import_project_bulk failed:", rpcErr);
+    throw new Error("Database insert failed. Please try again or contact support.");
   }
 
   // ---- Upload media ----------------------------------------------------

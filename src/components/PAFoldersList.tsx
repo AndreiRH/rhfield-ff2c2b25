@@ -290,7 +290,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
       folder_id: folder.id, kind, storage_path: path, file_name: file.name,
       sort_order: atts.length, uploaded_by: userId,
     });
-    if (dbErr) toast.error(dbErr.message);
+    if (dbErr) toast.error(toUserMessage(dbErr));
     load();
   };
 
