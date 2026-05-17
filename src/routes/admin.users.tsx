@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { toUserMessage } from "@/lib/errors";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 
