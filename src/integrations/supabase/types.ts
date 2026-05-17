@@ -687,6 +687,8 @@ export type Database = {
           id: string
           is_shared: boolean
           item_id: string
+          origin_id: string | null
+          origin_line_id: string | null
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -697,6 +699,8 @@ export type Database = {
           id?: string
           is_shared?: boolean
           item_id: string
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -707,6 +711,8 @@ export type Database = {
           id?: string
           is_shared?: boolean
           item_id?: string
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
@@ -727,6 +733,8 @@ export type Database = {
           id: string
           is_shared: boolean
           item_id: string
+          origin_id: string | null
+          origin_line_id: string | null
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -736,6 +744,8 @@ export type Database = {
           id?: string
           is_shared?: boolean
           item_id: string
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -745,6 +755,8 @@ export type Database = {
           id?: string
           is_shared?: boolean
           item_id?: string
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
@@ -1070,6 +1082,8 @@ export type Database = {
           file_name: string
           id: string
           is_shared: boolean
+          origin_id: string | null
+          origin_line_id: string | null
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -1080,6 +1094,8 @@ export type Database = {
           file_name: string
           id?: string
           is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -1090,6 +1106,8 @@ export type Database = {
           file_name?: string
           id?: string
           is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
@@ -1146,6 +1164,8 @@ export type Database = {
           equipment_setting_id: string
           id: string
           is_shared: boolean
+          origin_id: string | null
+          origin_line_id: string | null
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -1155,6 +1175,8 @@ export type Database = {
           equipment_setting_id: string
           id?: string
           is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -1164,6 +1186,8 @@ export type Database = {
           equipment_setting_id?: string
           id?: string
           is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
@@ -1221,9 +1245,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      checklist_item_line_id: { Args: { _item_id: string }; Returns: string }
       delete_project_cascade: {
         Args: { p_project_id: string }
         Returns: undefined
+      }
+      equipment_setting_line_id: {
+        Args: { _setting_id: string }
+        Returns: string
       }
       has_any_role: {
         Args: {
