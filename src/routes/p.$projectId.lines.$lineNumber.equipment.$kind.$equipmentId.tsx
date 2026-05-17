@@ -599,7 +599,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
                   const span = tapSteps !== 0 ? tapSteps : (targetSection ? dir : 0);
                   if (span === 0) return null;
                   const stepSign = span > 0 ? 1 : -1;
-                  const panes: JSX.Element[] = [];
+                  const panes: React.ReactNode[] = [];
                   for (let i = 1; i <= Math.abs(span); i++) {
                     const idx = sectionIdx + i * stepSign;
                     const tgt = SECTION_ORDER[idx];
