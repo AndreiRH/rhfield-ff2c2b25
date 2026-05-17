@@ -96,12 +96,32 @@ async function fetchEquipmentDetail(
         )
       )
     `;
-  let { data: groups, error: gErr } = await supabase
-    .from("equipment_groups")
-    .select(groupsSelect)
-    .eq("plant_equipment_id", equipmentId)
-    .is("deleted_at", null);
-  if (gErr) throw gErr;
+  // Run the independent queries in parallel.
+  const [groupsRes, photosRes, lineCountRes, siblingsRes] = await Promise.all([
+    supabase
+      .from("equipment_groups")
+      .select(groupsSelect)
+      .eq("plant_equipment_id", equipmentId)
+      .is("deleted_at", null),
+    supabase
+      .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at"),
+    supabase
+      .from("lines").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    supabase
+      .from("plant_equipment")
+      .select("id, name, sort_order")
+      .eq("line_id", line.id)
+      .eq("kind", pe.kind)
+      .is("deleted_at", null)
+      .order("sort_order").order("name"),
+  ]);
+  if (groupsRes.error) throw groupsRes.error;
+  if (photosRes.error) throw photosRes.error;
+  let groups = groupsRes.data;
+  const photos = photosRes.data;
+  const lineCount = lineCountRes.count;
+  const siblings = siblingsRes.data;
 
   const stripDeleted = (gs: any[] | null | undefined): any[] =>
     (gs ?? []).map((g) => ({
@@ -150,22 +170,6 @@ async function fetchEquipmentDetail(
     if (refetched.error) throw refetched.error;
     groups = stripDeleted(refetched.data);
   }
-
-  const { data: photos, error: phErr } = await supabase
-    .from("equipment_photos").select("*").eq("equipment_id", equipmentId).order("uploaded_at");
-  if (phErr) throw phErr;
-
-  const { count: lineCount } = await supabase
-    .from("lines").select("id", { count: "exact", head: true })
-    .eq("project_id", projectId);
-
-  const { data: siblings } = await supabase
-    .from("plant_equipment")
-    .select("id, name, sort_order")
-    .eq("line_id", line.id)
-    .eq("kind", pe.kind)
-    .is("deleted_at", null)
-    .order("sort_order").order("name");
 
   const byChapter = (ch: string) => {
     const matches = (groups ?? []).filter((g: any) => g.chapter === ch);
