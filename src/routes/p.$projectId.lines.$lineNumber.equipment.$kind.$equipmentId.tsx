@@ -174,7 +174,7 @@ function EquipmentDetail() {
           .eq("plant_equipment_id", equipmentId)
           .is("deleted_at", null);
         if (refetched.error) throw refetched.error;
-        groups = refetched.data;
+        groups = stripDeleted(refetched.data);
       }
 
       const { data: photos, error: phErr } = await supabase
