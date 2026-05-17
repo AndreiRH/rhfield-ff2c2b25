@@ -507,9 +507,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
     }
     const cur = SECTION_ORDER.indexOf(sectionRef.current);
     const next = SECTION_ORDER.indexOf(s);
-    const direction = next > cur ? 1 : -1;
+    const steps = next - cur; // signed (±1 or ±2)
     const w = widthRef.current;
-    setSwipeDx(direction === 1 ? -w : w);
+    setTapSteps(steps);
+    setSwipeDx(-steps * w);
     setSwipeState("animating");
     commitTimeoutRef.current = window.setTimeout(() => {
       commitTimeoutRef.current = null;
@@ -517,6 +518,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       setSwipeState("idle");
       setSection(s);
       setSwipeDx(0);
+      setTapSteps(0);
     }, 340);
   };
 
