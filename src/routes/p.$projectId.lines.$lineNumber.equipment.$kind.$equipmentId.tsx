@@ -266,7 +266,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const [swipeState, setSwipeState] = useState<"idle" | "dragging" | "animating">("idle");
   const commitTimeoutRef = useRef<number | null>(null);
 
-  // Equipment swipe (top header zone): navigates to prev/next equipment on same line+kind.
   const siblings: { id: string; name: string }[] = data.siblings ?? [];
   const curEqIdx = siblings.findIndex((s) => s.id === data.pe.id);
   const prevEq = curEqIdx > 0 ? siblings[curEqIdx - 1] : null;
@@ -280,13 +279,18 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const targetSection: Section | null = dir !== 0 ? (SECTION_ORDER[sectionIdx + dir] ?? null) : null;
   const progress = targetSection ? Math.min(1, Math.abs(swipeDx) / widthRef.current) : 0;
 
-  // Per-tab weight 0..1 — follows the finger directly so the bottom tabs grow/shrink with swipe speed.
   const weights: Record<Section, number> = { assembly: 0, wiring: 0, cold_comm: 0 };
   weights[section] = 1 - progress;
   if (targetSection) weights[targetSection] = progress;
 
-  // Refs mirror mutable values so the gesture effect can register listeners
-  // exactly once and never tear down mid-swipe (which would cancel gestures).
+  // Mounted guard — prevents state updates after navigation unmounts the component.
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  // Refs mirror mutable values so the gesture effect can register listeners once.
   const sectionRef = useRef(section);
   const prevEqRef = useRef(prevEq);
   const nextEqRef = useRef(nextEq);
@@ -298,9 +302,6 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Listen on the window so swipes anywhere on the page (including the tinted background outside content) are caught.
-  // Touches that start inside the top equipment header switch the gesture into
-  // "equipment" mode and navigate to the prev/next equipment instead of switching tabs.
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (commitTimeoutRef.current) {
@@ -325,13 +326,16 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       const dy = t.clientY - start.y;
       if (start.decided === null) {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-        start.decided = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+        // Require dx clearly dominant — diagonal/vertical resolves as scroll.
+        start.decided = Math.abs(dx) >= Math.abs(dy) * 1.5 ? "h" : "v";
         if (start.decided === "h") {
           if (start.mode === "equipment") setEqState("dragging");
           else setSwipeState("dragging");
         }
       }
       if (start.decided !== "h") return;
+      // Block native vertical scroll once we own the gesture.
+      if (e.cancelable) e.preventDefault();
       if (start.mode === "equipment") {
         let val = dx;
         if ((dx < 0 && !nextEqRef.current) || (dx > 0 && !prevEqRef.current)) val = dx * 0.25;
@@ -359,14 +363,14 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         setEqDx((dx) => {
           const w = widthRef.current;
           const ratio = dx / w;
-          // Negative dx → swipe left → go to next; positive dx → previous.
           const goingNext = dx < 0;
           const target = goingNext ? nextEqRef.current : prevEqRef.current;
-          if (Math.abs(ratio) > 0.3 && target) {
+          if (Math.abs(ratio) > 0.38 && target) {
             setEqState("animating");
             const end = goingNext ? -w : w;
             eqCommitRef.current = window.setTimeout(() => {
               eqCommitRef.current = null;
+              if (!isMounted.current) return;
               const d = dataRef.current;
               navigateRef.current({
                 to: "/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId",
@@ -382,8 +386,9 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
           }
           setEqState("animating");
           eqCommitRef.current = window.setTimeout(() => {
-            setEqState("idle");
             eqCommitRef.current = null;
+            if (!isMounted.current) return;
+            setEqState("idle");
           }, 230);
           return 0;
         });
@@ -398,23 +403,25 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         if (Math.abs(ratio) > 0.3 && localTarget) {
           setSwipeState("animating");
           commitTimeoutRef.current = window.setTimeout(() => {
+            commitTimeoutRef.current = null;
+            if (!isMounted.current) return;
             setSwipeState("idle");
             setSection(localTarget);
             setSwipeDx(0);
-            commitTimeoutRef.current = null;
           }, 260);
           return localDir === 1 ? -w : w;
         }
         setSwipeState("animating");
         commitTimeoutRef.current = window.setTimeout(() => {
-          setSwipeState("idle");
           commitTimeoutRef.current = null;
+          if (!isMounted.current) return;
+          setSwipeState("idle");
         }, 260);
         return 0;
       });
     };
     window.addEventListener("touchstart", onStart, { passive: true });
-    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd);
     window.addEventListener("touchcancel", onEnd);
     return () => {
@@ -422,20 +429,25 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
-      if (commitTimeoutRef.current) { window.clearTimeout(commitTimeoutRef.current); commitTimeoutRef.current = null; }
-      if (eqCommitRef.current) { window.clearTimeout(eqCommitRef.current); eqCommitRef.current = null; }
+      if (commitTimeoutRef.current) {
+        window.clearTimeout(commitTimeoutRef.current);
+        commitTimeoutRef.current = null;
+      }
+      if (eqCommitRef.current) {
+        window.clearTimeout(eqCommitRef.current);
+        eqCommitRef.current = null;
+      }
     };
   }, []);
 
   const dragging = swipeState === "dragging";
   const transformTransition = swipeState === "animating" ? "transform 250ms ease-out" : "none";
-  // Always-on color transition smooths fast finger motion so colors don't flash.
   const colorTransition = "opacity 180ms linear";
 
   const meta = PHASE_META[section];
   const targetMeta = targetSection ? PHASE_META[targetSection] : null;
   const w = widthRef.current;
-  const PANE_GAP = 32; // visible gap between current pane and the incoming pane during swipe
+  const PANE_GAP = 32;
   const tapNav = (s: Section) => {
     if (commitTimeoutRef.current) { window.clearTimeout(commitTimeoutRef.current); commitTimeoutRef.current = null; }
     setSwipeState("idle");
@@ -444,13 +456,10 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   };
 
   const eqTransformTransition = eqState === "animating" ? "transform 230ms ease-out" : "none";
-  const eqProgress = widthRef.current > 0 ? Math.min(1, Math.abs(eqDx) / widthRef.current) : 0;
-  const eqDir = eqDx < 0 ? 1 : eqDx > 0 ? -1 : 0;
-  const eqTarget = eqDir === 1 ? nextEq : eqDir === -1 ? prevEq : null;
 
   return (
     <div>
-      {/* Background tint: current layer + target layer fading in with progress (rate-limited) */}
+      {/* Background tint: current layer + target layer fading in with progress */}
       <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
         <div className={`absolute inset-0 ${meta.tint}`} />
         {targetMeta && (
@@ -461,60 +470,48 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         )}
       </div>
 
-      {/* Equipment-swipe wrapper: translates the whole page (header + content) horizontally. */}
-      <div
-        className="relative"
-        style={{ transform: `translateX(${eqDx}px)`, transition: eqTransformTransition, willChange: "transform" }}
-      >
-        {/* Peek of incoming equipment name on the side the user is swiping toward. */}
-        {eqTarget && (
+      {/* HEADER ZONE — never translates. Equipment-swipe gesture starts here. */}
+      <div className="relative" data-equipment-header>
+        <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
+          <HeaderInner
+            data={data}
+            plantLabel={plantLabel}
+            overall={overall}
+            accent={meta.accent}
+          />
+        </div>
+        {targetMeta && (
           <div
+            className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
+            style={{ opacity: progress, transition: colorTransition }}
             aria-hidden
-            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg border ${meta.header} px-4 py-3 text-base font-semibold shadow-lg`}
-            style={{
-              [eqDir === 1 ? "left" : "right"]: "100%",
-              [eqDir === 1 ? "marginLeft" : "marginRight"]: "32px",
-              opacity: 0.4 + eqProgress * 0.6,
-              whiteSpace: "nowrap",
-            }}
           >
-            {eqTarget.name}
-          </div>
-        )}
-
-        {/* Header stack: current header + target header overlay fading in */}
-        <div className="relative" data-equipment-header>
-          <div className={`rounded-lg border ${meta.header} px-3 pb-4 pt-3`}>
             <HeaderInner
               data={data}
               plantLabel={plantLabel}
               overall={overall}
-              accent={meta.accent}
-              mech={mech} wiring={wiring} cold={cold}
-              weights={weights} dragging={dragging}
-              onTap={tapNav}
+              accent={targetMeta.accent}
             />
           </div>
-          {targetMeta && (
-            <div
-              className={`pointer-events-none absolute inset-0 rounded-lg border ${targetMeta.header} px-3 pb-4 pt-3`}
-              style={{ opacity: progress, transition: colorTransition }}
-              aria-hidden
-            >
-              <HeaderInner
-                data={data}
-                plantLabel={plantLabel}
-                overall={overall}
-                accent={targetMeta.accent}
-                mech={mech} wiring={wiring} cold={cold}
-                weights={weights} dragging={dragging}
-                onTap={() => {}}
-              />
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
-        {/* Content track: current pane + adjacent pane following the finger */}
+      {/* TABS — outside header zone, so taps switch sections instead of triggering eq-swipe. */}
+      <div className="mt-3 flex items-stretch gap-2">
+        <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => tapNav("assembly")} />
+        <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => tapNav("wiring")} />
+        <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => tapNav("cold_comm")} />
+      </div>
+
+      {/* CONTENT WRAPPER — translates for equipment-swipe; overflow hidden keeps it clean. */}
+      <div
+        style={{
+          transform: `translateX(${eqDx}px)`,
+          transition: eqTransformTransition,
+          willChange: "transform",
+          overflow: "hidden",
+        }}
+      >
         <div className="relative mt-6 overflow-hidden">
           <div style={{ transform: `translateX(${swipeDx}px)`, transition: transformTransition }}>
             {renderSection(section, data, canEdit, userId, onChange)}
