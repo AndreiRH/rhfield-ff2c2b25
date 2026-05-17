@@ -689,6 +689,7 @@ export type Database = {
           item_id: string
           origin_id: string | null
           origin_line_id: string | null
+          sort_order: number
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -701,6 +702,7 @@ export type Database = {
           item_id: string
           origin_id?: string | null
           origin_line_id?: string | null
+          sort_order?: number
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -713,6 +715,7 @@ export type Database = {
           item_id?: string
           origin_id?: string | null
           origin_line_id?: string | null
+          sort_order?: number
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
@@ -735,6 +738,7 @@ export type Database = {
           item_id: string
           origin_id: string | null
           origin_line_id: string | null
+          sort_order: number
           storage_path: string
           template_id: string | null
           uploaded_at: string
@@ -746,6 +750,7 @@ export type Database = {
           item_id: string
           origin_id?: string | null
           origin_line_id?: string | null
+          sort_order?: number
           storage_path: string
           template_id?: string | null
           uploaded_at?: string
@@ -757,6 +762,7 @@ export type Database = {
           item_id?: string
           origin_id?: string | null
           origin_line_id?: string | null
+          sort_order?: number
           storage_path?: string
           template_id?: string | null
           uploaded_at?: string
