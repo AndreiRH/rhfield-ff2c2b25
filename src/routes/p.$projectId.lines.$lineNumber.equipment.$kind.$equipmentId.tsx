@@ -508,8 +508,8 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
         style={{
           transform: `translateX(${eqDx}px)`,
           transition: eqTransformTransition,
-          willChange: "transform",
           overflow: "hidden",
+          ...(eqState === "dragging" ? { willChange: "transform" } : {}),
         }}
       >
         <div className="relative mt-6 overflow-hidden">
