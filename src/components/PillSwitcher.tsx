@@ -97,7 +97,9 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
 function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(currentKey);
+  const [dropAlign, setDropAlign] = useState<"left" | "right">("left");
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
 
   const keyAtPoint = (x: number, y: number): string | null => {
