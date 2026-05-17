@@ -214,6 +214,7 @@ function EquipmentDetail() {
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     queryFn: () => fetchEquipmentDetail(projectId, lineNumber, kind, equipmentId),
+    placeholderData: undefined,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
@@ -239,7 +240,7 @@ function EquipmentDetail() {
           <Skeleton className="h-40" />
         ) : (
           <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number, equipmentId: data.pe.id }}>
-            <EquipmentBody data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
+            <EquipmentBody key={data.pe.id} data={data} canEdit={canEdit} userId={user?.id} plantLabel={plantLabel} onChange={invalidate} />
           </CurrentLineProvider>
         )}
       </main>
