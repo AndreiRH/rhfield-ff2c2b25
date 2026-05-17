@@ -259,6 +259,7 @@ function readLastTab(): Section {
 
 function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [section, setSectionState] = useState<Section>(() => readLastTab());
   const setSection = (s: Section) => {
     setSectionState(s);
