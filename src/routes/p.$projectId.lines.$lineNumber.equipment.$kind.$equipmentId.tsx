@@ -546,42 +546,35 @@ function renderSection(s: Section, data: any, canEdit: boolean, userId: string |
     emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />;
 }
 
-function HeaderInner({ data, plantLabel, overall, accent, mech, wiring, cold, weights, dragging, onTap }: any) {
+function HeaderInner({ data, plantLabel, overall, accent }: any) {
   return (
-    <>
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <LineBreadcrumb
-            projectId={data.line.project_id}
-            lineNumber={data.line.number}
-            segments={[plantLabel, data.pe.name]}
-            currentTitle={data.pe.name}
-            className="text-white/80"
-          />
-          <h1 className="text-3xl font-semibold">
-            {data.pe.name}
-            <span className={`ml-3 text-base font-normal ${accent}`}>{overall}%</span>
-          </h1>
-        </div>
-        <Link
-          to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings"
-          params={{
-            projectId: data.line.project_id,
-            lineNumber: String(data.line.number),
-            kind: data.pe.kind,
-            equipmentId: data.pe.id,
-          }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
-        >
-          <SettingsIcon className="h-3.5 w-3.5" /> Settings
-        </Link>
+    <div className="flex flex-wrap items-baseline justify-between gap-3">
+      <div>
+        <LineBreadcrumb
+          projectId={data.line.project_id}
+          lineNumber={data.line.number}
+          segments={[plantLabel, data.pe.name]}
+          currentTitle={data.pe.name}
+          className="text-white/80"
+        />
+        <h1 className="text-3xl font-semibold">
+          {data.pe.name}
+          <span className={`ml-3 text-base font-normal ${accent}`}>{overall}%</span>
+        </h1>
       </div>
-      <div className="mt-3 flex items-stretch gap-2">
-        <SectionTab phase="assembly" pct={mech} weight={weights.assembly} dragging={dragging} onClick={() => onTap("assembly")} />
-        <SectionTab phase="wiring" pct={wiring} weight={weights.wiring} dragging={dragging} onClick={() => onTap("wiring")} />
-        <SectionTab phase="cold_comm" pct={cold} weight={weights.cold_comm} dragging={dragging} onClick={() => onTap("cold_comm")} />
-      </div>
-    </>
+      <Link
+        to="/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId/settings"
+        params={{
+          projectId: data.line.project_id,
+          lineNumber: String(data.line.number),
+          kind: data.pe.kind,
+          equipmentId: data.pe.id,
+        }}
+        className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-sky-900 hover:bg-white"
+      >
+        <SettingsIcon className="h-3.5 w-3.5" /> Settings
+      </Link>
+    </div>
   );
 }
 
