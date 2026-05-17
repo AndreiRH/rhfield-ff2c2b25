@@ -57,7 +57,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
   component: EquipmentDetail,
 });
 
-async function fetchEquipmentDetail(
+export async function fetchEquipmentDetail(
   projectId: string,
   lineNumber: string,
   kind: string,
