@@ -77,30 +77,24 @@ export function LineBreadcrumb({ projectId, lineNumber, segments = [], currentTi
     <nav
       aria-label="breadcrumb"
       className={cn(
-        "flex flex-col gap-1 font-mono text-xs uppercase tracking-widest",
-        "sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5",
+        "flex w-full min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap font-mono text-[11px] uppercase tracking-widest",
         className ?? "text-muted-foreground",
       )}
+      style={{ textOverflow: "ellipsis" }}
     >
-      <div className="flex items-center gap-1.5">
-        {linePill}
-        {first != null && (
-          <>
-            <span aria-hidden>·</span>
-            <span>{first}</span>
-          </>
-        )}
-      </div>
-      {rest.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {rest.map((s, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5">
-              <span aria-hidden className={i === 0 ? "hidden sm:inline" : ""}>·</span>
-              <span>{s}</span>
-            </span>
-          ))}
-        </div>
+      {linePill}
+      {first != null && (
+        <>
+          <span aria-hidden className="shrink-0">·</span>
+          <span className="shrink-0">{first}</span>
+        </>
       )}
+      {rest.map((s, i) => (
+        <span key={i} className="inline-flex min-w-0 items-center gap-1.5">
+          <span aria-hidden className="shrink-0">·</span>
+          <span className="min-w-0 truncate">{s}</span>
+        </span>
+      ))}
     </nav>
   );
 }
