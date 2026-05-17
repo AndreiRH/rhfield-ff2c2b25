@@ -10,7 +10,7 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check, X,
+  Camera, Paperclip, Check,
 } from "lucide-react";
 import {
   useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
@@ -217,7 +217,6 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 size="sm"
                 variant={action.mode === "copy" ? "default" : "outline"}
                 onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
-                disabled={action.mode === "copy" && !action.hasSelection}
                 title="Copy"
                 aria-label="Copy"
               >
@@ -229,7 +228,6 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                   size="sm"
                   variant={action.mode === "delete" ? "destructive" : "outline"}
                   onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
-                  disabled={action.mode === "delete" && !action.hasSelection}
                   title="Delete"
                   aria-label="Delete"
                 >
@@ -238,12 +236,6 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                 </Button>
               )}
             </>
-          )}
-          {inMode && (
-            <Button size="sm" variant="ghost" onClick={() => action.setMode("none")}
-              title="Cancel" aria-label="Cancel">
-              <X className="h-4 w-4" />
-            </Button>
           )}
           {canEdit && !adding && !inMode && (
             <Button size="sm" onClick={() => setAdding(true)} title="Add type" aria-label="Add type">

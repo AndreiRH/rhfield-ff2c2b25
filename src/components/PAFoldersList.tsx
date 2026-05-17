@@ -130,16 +130,12 @@ export function PAFoldersList({
               size="sm"
               variant={deleteMode ? "destructive" : "outline"}
               onClick={deleteMode ? commitDelete : () => setDeleteMode(true)}
-              disabled={deleteMode && selected.size === 0}
               title="Delete"
               aria-label="Delete"
             >
               <Trash2 className="h-4 w-4" />
               {deleteMode && <span className="ml-1">Done{selected.size ? ` ${selected.size}` : ""}</span>}
             </Button>
-          )}
-          {deleteMode && (
-            <Button size="sm" variant="ghost" onClick={cancelDelete}>Cancel</Button>
           )}
           {canEdit && !deleteMode && (
             <Button size="sm" onClick={addFolder}>
