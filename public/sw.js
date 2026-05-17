@@ -1486,6 +1486,7 @@ self.addEventListener("fetch", (event) => {
         (async () => {
           const cache = await caches.open(CACHE_DATA);
           const cached = req.method === "GET" ? await cache.match(req) : null;
+          const hasSnapshot = !!(await snapGet(SNAP_META, "lastSync"));
           const network = fetchWithTimeout(req, 2500)
             .then(async (res) => {
               if (res && res.ok && req.method === "GET") {
@@ -1495,11 +1496,16 @@ self.addEventListener("fetch", (event) => {
             })
             .catch(() => null);
 
+          if (hasSnapshot || cached || (self.navigator && self.navigator.onLine === false)) {
+            const snap = await snapshotResponse(url, req);
+            if (snap) return snap;
+            if (cached) return cached;
+          }
+          const fresh = await network;
+          if (fresh) return fresh;
           const snap = await snapshotResponse(url, req);
           if (snap) return snap;
           if (cached) return cached;
-          const fresh = await network;
-          if (fresh) return fresh;
           return new Response("[]", {
             status: 200,
             headers: { "Content-Type": "application/json" },
