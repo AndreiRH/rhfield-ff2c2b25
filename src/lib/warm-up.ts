@@ -58,9 +58,23 @@ export function getWarmUpState() { return current; }
 
 const THROTTLE_MS = 30 * 1000;
 const PAGE_SIZE = 1000;
-const ROUTE_BATCH = 8;
 let lastRunAt = 0;
 let inflight: Promise<void> | null = null;
+
+async function waitForServiceWorkerControl(timeoutMs = 5000) {
+  if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+  if (navigator.serviceWorker.controller) return;
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      const onChange = () => {
+        navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+        resolve();
+      };
+      navigator.serviceWorker.addEventListener("controllerchange", onChange);
+    }),
+    new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ]);
+}
 
 async function pageTable(table: string): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = [];
@@ -174,6 +188,7 @@ export function warmUp(force = false): Promise<void> {
 
       const routes = buildOfflineRoutes(results);
       emit({ phase: "routes", done: 0, total: routes.length });
+      await waitForServiceWorkerControl();
       await cacheOfflineRoutes(routes);
 
       // Eagerly fetch every route JS chunk so the SW asset cache has them
@@ -182,9 +197,13 @@ export function warmUp(force = false): Promise<void> {
       // throws "Failed to fetch dynamically imported module".
       try {
         const routeModules = import.meta.glob("/src/routes/**/*.{tsx,ts}");
-        await Promise.all(
-          Object.values(routeModules).map((load) => load().catch(() => {})),
-        );
+        const loads = Object.values(routeModules);
+        let loaded = 0;
+        emit({ phase: "routes", done: 0, total: routes.length + loads.length });
+        await Promise.all(loads.map((load) => load().catch(() => {}).finally(() => {
+          loaded++;
+          emit({ done: routes.length + loaded });
+        })));
       } catch {}
 
       // 2) Collect every storage path, skipping anything already cached locally.
