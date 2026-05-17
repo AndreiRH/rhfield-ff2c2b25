@@ -271,20 +271,9 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const [notes, setNotes] = useState<Note[]>([]);
 
   const load = async () => {
-    // Find sibling folders (same template_id across all production lines of the project)
-    let siblingIds: string[] = [];
-    if (folder.template_id) {
-      const { data: sibs } = await supabase
-        .from("pa_folders").select("id")
-        .eq("template_id", folder.template_id).neq("id", folder.id);
-      siblingIds = (sibs ?? []).map((s: any) => s.id);
-    }
-    const noteOr = siblingIds.length > 0
-      ? `folder_id.eq.${folder.id},and(is_shared.eq.true,folder_id.in.(${siblingIds.join(",")}))`
-      : `folder_id.eq.${folder.id}`;
     const [a, n] = await Promise.all([
       supabase.from("pa_attachments").select("*").eq("folder_id", folder.id).order("sort_order").order("uploaded_at"),
-      supabase.from("pa_notes").select("*").or(noteOr).order("sort_order").order("created_at"),
+      supabase.from("pa_notes").select("*").eq("folder_id", folder.id).order("sort_order").order("created_at"),
     ]);
     setAtts((a.data ?? []) as Attachment[]);
     setNotes((n.data ?? []) as Note[]);
