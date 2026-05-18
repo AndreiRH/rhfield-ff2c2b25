@@ -778,6 +778,63 @@ export type Database = {
           },
         ]
       }
+      line_activities: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          is_shared: boolean
+          line_id: string
+          name: string
+          origin_line_id: string | null
+          shared_group_id: string | null
+          start_date: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          is_shared?: boolean
+          line_id: string
+          name: string
+          origin_line_id?: string | null
+          shared_group_id?: string | null
+          start_date: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          is_shared?: boolean
+          line_id?: string
+          name?: string
+          origin_line_id?: string | null
+          shared_group_id?: string | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_activities_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_activities_origin_line_id_fkey"
+            columns: ["origin_line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lines: {
         Row: {
           created_at: string
@@ -812,44 +869,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      milestones: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          date: string
-          id: string
-          label: string
-          line_id: string
-          notes: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          date: string
-          id?: string
-          label: string
-          line_id: string
-          notes?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          id?: string
-          label?: string
-          line_id?: string
-          notes?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "milestones_line_id_fkey"
-            columns: ["line_id"]
-            isOneToOne: false
-            referencedRelation: "lines"
             referencedColumns: ["id"]
           },
         ]
