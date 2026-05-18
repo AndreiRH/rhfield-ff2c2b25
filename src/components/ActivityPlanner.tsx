@@ -147,7 +147,7 @@ export function ActivityPlanner({
     const c = color ?? nextColor();
     const { error } = await supabase.from("line_activities").insert({
       line_id: line.id, name, start_date: start, end_date: end, color: c,
-      is_shared: false, created_by: user?.id ?? null,
+      is_shared: false, created_by: user?.id ?? null, show_on_global: false,
     });
     if (error) toast.error(toUserMessage(error));
     else { toast.success("Activity added"); onChange(); }
