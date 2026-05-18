@@ -374,43 +374,52 @@ export function ActivityPlanner({
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {sorted.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2 cursor-pointer hover:border-primary/40"
+                className="flex flex-wrap items-center gap-2 rounded-md border-2 bg-card px-2 py-1 text-xs cursor-pointer transition hover:brightness-105"
+                style={{ borderColor: a.color }}
                 onClick={() => scrollToActivity(a)}
               >
-                <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: a.color }} />
-                <span className="font-medium flex-1 min-w-[120px]">{a.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {format(parseISO(a.start_date), "d MMM yyyy")} → {format(parseISO(a.end_date), "d MMM yyyy")}
+                <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
                 </span>
-                {a.is_shared && (
-                  <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    shared
-                  </span>
-                )}
                 {canEdit && (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(a)} title="Edit">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => doDuplicate(a)} title="Duplicate">
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    {a.is_shared ? (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmUnshare(a)} title="Make local">
-                        <Link2Off className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmShare(a)} title="Share across all lines">
-                        <Share2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmDelete(a)} title="Delete">
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(a)}
+                      title="Edit"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => doDuplicate(a)}
+                      title="Duplicate"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
+                      title={a.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded ${a.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(a)}
+                      title="Delete"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
                 )}
               </li>
