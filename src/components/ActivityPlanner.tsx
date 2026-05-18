@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, isSameDay } from "date-fns";
-import { CalendarDays, Pencil, Copy, Share2, Link2Off, Trash2, Plus, CalendarIcon } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, addDays, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
+import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { toUserMessage } from "@/lib/errors";
@@ -23,7 +23,11 @@ const ROW_HEIGHT = 40;
 const PALETTE = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
+  "#a855f7", "#22c55e", "#eab308", "#dc2626", "#0ea5e9",
+  "#d946ef", "#f43f5e", "#65a30d", "#0891b2", "#7c3aed",
 ];
+const RANGE_START = new Date(2026, 0, 1);
+const RANGE_END = new Date(2049, 11, 31);
 
 export interface LineActivity {
   id: string;
