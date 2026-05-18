@@ -149,16 +149,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => {
-    // Release any programmatic orientation lock so the installed PWA
-    // respects the device rotation setting instead of staying portrait.
-    try {
-      const orientation = (screen as any)?.orientation;
-      if (orientation && typeof orientation.unlock === "function") {
-        orientation.unlock();
-      }
-    } catch {}
-  }, []);
-  useEffect(() => {
 
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
