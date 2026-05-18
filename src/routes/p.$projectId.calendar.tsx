@@ -47,14 +47,14 @@ function ProjectCalendarPage() {
           <h1 className="text-3xl font-semibold">Global hot commissioning calendar</h1>
           <p className="mt-1 text-sm text-muted-foreground">All activities across every production line.</p>
         </div>
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+        <CombinedGantt projectId={projectId} />
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
           <span>
             This view is read-only. Activities can be added, edited, or removed only inside each
             <span className="font-medium text-foreground"> Line hot commissioning planner</span>.
           </span>
         </div>
-        <CombinedGantt projectId={projectId} />
       </main>
     </div>
   );
