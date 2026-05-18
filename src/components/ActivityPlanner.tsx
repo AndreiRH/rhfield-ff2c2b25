@@ -257,17 +257,22 @@ export function ActivityPlanner({
       {/* Gantt timeline */}
       <Card>
         <CardContent className="p-0">
+          {/* Fixed (non-scrolling) month + year header, sits OUTSIDE the
+              horizontally scrollable timeline. Width matches the scroll
+              container's viewport. */}
+          <div className="border-b">
+            <TimelineMonthYearHeader
+              scrollLeft={scrollLeft}
+              viewportW={viewportW}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              dayWidth={DAY_WIDTH}
+            />
+          </div>
           <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
-              {/* Header */}
-              <div className="sticky top-0 z-10 bg-card border-b">
-                <TimelineMonthYearHeader
-                  scrollLeft={scrollLeft}
-                  viewportW={viewportW}
-                  rangeStart={rangeStart}
-                  rangeEnd={rangeEnd}
-                  dayWidth={DAY_WIDTH}
-                />
+              {/* Day-grid header (weekday letters + day numbers) — scrolls with body */}
+              <div className="border-b bg-card">
                 {/* Weekday letters */}
                 <div className="relative border-b" style={{ height: 16 }}>
                   {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {

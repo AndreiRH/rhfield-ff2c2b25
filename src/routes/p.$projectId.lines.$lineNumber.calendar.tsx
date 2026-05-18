@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { ActivityPlanner, type LineActivity, type LineInfo, type LineLite } from "@/components/ActivityPlanner";
+import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
   component: LineCalendarPage,
@@ -63,7 +64,10 @@ function LineCalendarPage() {
                 </Link>
               </Button>
               <LineBreadcrumb projectId={projectId} lineNumber={lineNumber} segments={[title]} currentTitle={title} />
-              <h1 className="text-3xl font-semibold">{title}</h1>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h1 className="text-3xl font-semibold">{title}</h1>
+                <ProjectHotCalendarButton projectId={projectId} />
+              </div>
             </div>
             <ActivityPlanner
               line={data.line}
