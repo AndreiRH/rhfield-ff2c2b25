@@ -217,15 +217,8 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         {/* Scrollable timeline */}
         <div ref={scrollRef} className="overflow-x-auto flex-1">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-card border-b">
-              <TimelineMonthYearHeader
-                scrollLeft={scrollLeft}
-                viewportW={viewportW}
-                rangeStart={RANGE_START}
-                rangeEnd={RANGE_END}
-                dayWidth={DAY_WIDTH}
-              />
+            {/* Day-grid header (weekday + days) — scrolls with body */}
+            <div className="bg-card border-b">
               {/* Weekday letters */}
               <div className="relative border-b" style={{ height: 16 }}>
                 {days.map((d) => {
