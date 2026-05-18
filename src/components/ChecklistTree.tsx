@@ -715,7 +715,7 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
   onToggleShared?: () => void;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+    <div className="flex min-w-0 items-center gap-3 rounded border bg-muted/30 pl-2 pr-1 py-1 text-xs">
       <button
         onClick={() => openStorageFile("files", f.storage_path, f.file_name)}
         className="flex min-w-0 flex-1 items-center gap-1 text-left hover:underline"
@@ -727,14 +727,14 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
           title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
-          className={`shrink-0 ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {f.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {f.is_shared ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         </button>
       )}
       {canEdit && (
-        <button onClick={onRemove} className="shrink-0 text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
+        <button onClick={onRemove} className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded text-destructive hover:opacity-80">
+          <X className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
@@ -798,7 +798,7 @@ function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
     opacity: isDragging ? 0.5 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} className="flex min-w-0 items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
+    <div ref={setNodeRef} style={style} className="flex min-w-0 items-center gap-3 rounded border bg-muted/30 pl-1 pr-1 py-1 text-xs">
       <button
         type="button"
         data-no-swipe
@@ -821,14 +821,14 @@ function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
           title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
-          className={`shrink-0 ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {f.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {f.is_shared ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         </button>
       )}
       {canEdit && (
-        <button onClick={onRemove} className="shrink-0 text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
+        <button onClick={onRemove} className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded text-destructive hover:opacity-80">
+          <X className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
