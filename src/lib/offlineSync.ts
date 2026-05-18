@@ -26,7 +26,11 @@ async function fetchAll<T>(
     let q = (supabase as any).from(table).select(select).range(from, from + PAGE - 1);
     q = filter(q);
     const { data, error } = await q;
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error("offlineSync fetch error:", table, error);
+      throw new Error("Sync failed. Please try again.");
+    }
     const rows = (data ?? []) as T[];
     out.push(...rows);
     if (rows.length < PAGE) break;
