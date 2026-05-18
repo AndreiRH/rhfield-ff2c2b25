@@ -22,13 +22,13 @@ export function ProjectHotCalendarButton({ projectId }: { projectId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <CalendarDays className="h-4 w-4" /> Hot commissioning calendar
+        <Button variant="outline" className="gap-2 w-full sm:w-auto">
+          <CalendarDays className="h-4 w-4" /> Global hot commissioning calendar
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Combined hot commissioning schedule</DialogTitle>
+          <DialogTitle>Global hot commissioning calendar</DialogTitle>
         </DialogHeader>
         <div className="max-h-[75vh] overflow-y-auto">
           {open && <CombinedCalendar projectId={projectId} />}

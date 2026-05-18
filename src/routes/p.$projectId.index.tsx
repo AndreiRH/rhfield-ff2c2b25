@@ -82,7 +82,7 @@ function ProjectDashboard() {
                 <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
                 <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
                 <ProjectHotCalendarButton projectId={projectId} />
                 {/* AI Search hidden until the feature is ready.
                 <Link
