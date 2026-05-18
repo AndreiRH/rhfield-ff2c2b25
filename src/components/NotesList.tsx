@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import { confirmUnshareFromEquipment } from "@/lib/confirm-unshare";
 
 interface Note {
   id: string;
@@ -239,12 +240,9 @@ function NoteRow({ note, canEdit, currentEquipmentId, onUpdate, onDelete, onRelo
         )}
         {canEdit && (
           <button
-            onClick={() => {
+            onClick={async () => {
               if (note.is_shared && note.equipment_id && note.equipment_id !== currentEquipmentId) {
-                // The note's home is another line; double-check before yanking it from there.
-                const ok = window.confirm(
-                  "This note is shared from another production line. Making it local will remove it from this line and keep it only on its original line. Continue?",
-                );
+                const ok = await confirmUnshareFromEquipment(note.equipment_id, currentEquipmentId);
                 if (!ok) return;
               }
               onUpdate({ is_shared: !note.is_shared });

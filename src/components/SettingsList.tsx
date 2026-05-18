@@ -32,6 +32,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmUnshareToOriginLine } from "@/lib/confirm-unshare";
 
 interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean; origin_line_id?: string | null }
 interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean; origin_line_id?: string | null }
@@ -776,19 +777,13 @@ function SettingRow({
     }, 3500);
   };
   const currentLine = useCurrentLine();
-  const confirmUnshare = (origin?: string | null) => {
-    if (!origin || !currentLine?.lineId || origin === currentLine.lineId) return true;
-    return window.confirm(
-      "This attachment was shared from another production line. Making it local will remove it from this line and keep it only on the original line. Continue?",
-    );
-  };
   const togglePhotoShared = async (p: SettingPhoto) => {
-    if (p.is_shared && !confirmUnshare(p.origin_line_id)) return;
+    if (p.is_shared && !(await confirmUnshareToOriginLine(p.origin_line_id, currentLine?.lineId))) return;
     const { error } = await supabase.from("setting_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
     if (error) toast.error(toUserMessage(error)); else onReload();
   };
   const toggleFileShared = async (f: SettingFile) => {
-    if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
+    if (f.is_shared && !(await confirmUnshareToOriginLine(f.origin_line_id, currentLine?.lineId))) return;
     const { error } = await supabase.from("setting_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
     if (error) toast.error(toUserMessage(error)); else onReload();
   };
