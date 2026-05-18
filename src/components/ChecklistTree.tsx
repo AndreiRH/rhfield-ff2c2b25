@@ -378,7 +378,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     onChange();
   };
   const toggleShareFile = async (f: any) => {
-    if (f.is_shared && !confirmUnshare(f.origin_line_id)) return;
+    if (f.is_shared && !(await confirmUnshareToOriginLine(f.origin_line_id, currentLine?.lineId))) return;
     const { error } = await supabase.from("item_files").update({ is_shared: !f.is_shared }).eq("id", f.id);
     if (error) toast.error(toUserMessage(error)); else onChange();
   };
