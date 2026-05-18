@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -139,23 +139,21 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
   const bodyHeight = Math.max(lineRowInfo.reduce((acc, l) => acc + l.height, 0), 60);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
+    setViewportW(el.clientWidth);
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollLeft = target;
     setScrollLeft(target);
-    setViewportW(el.clientWidth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines.length]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let raf = 0;
     const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => { raf = 0; setScrollLeft(el.scrollLeft); });
+      setScrollLeft(el.scrollLeft);
     };
     const onResize = () => setViewportW(el.clientWidth);
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -164,7 +162,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     return () => {
       el.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
