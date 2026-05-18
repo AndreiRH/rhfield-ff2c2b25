@@ -212,6 +212,7 @@ export function ActivityPlanner({
         line_id: l.id, name: a.name, start_date: a.start_date, end_date: a.end_date,
         color: a.color, is_shared: true, shared_group_id: groupId, origin_line_id: line.id,
         created_by: user?.id ?? null,
+        show_on_global: false,
       }));
       const { error } = await supabase.from("line_activities").insert(rows);
       if (error) { toast.error(toUserMessage(error)); return; }
