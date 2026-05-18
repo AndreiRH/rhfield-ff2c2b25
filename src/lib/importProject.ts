@@ -374,7 +374,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     start_date: r.start_date || r.date,
     end_date: r.end_date || r.date,
     color: r.color || "#3b82f6",
-    is_shared: r.is_shared === "true" || r.is_shared === true,
+    is_shared: String(r.is_shared) === "true",
     shared_group_id: null,
     origin_line_id: r.origin_line_id && lineMap.has(r.origin_line_id) ? lineMap.get(r.origin_line_id) : null,
     created_by: importerId,
@@ -415,7 +415,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     item_photos, item_files,
     equipment_notes, equipment_photos,
     pa_folders, pa_attachments, pa_notes,
-    milestones, common_notes, common_files,
+    line_activities, common_notes, common_files,
   };
 
   counts.lines = lines.length;
@@ -427,7 +427,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   counts.equipment_notes = equipment_notes.length;
   counts.pa_folders = pa_folders.length;
   counts.pa_notes = pa_notes.length;
-  counts.milestones = milestones.length;
+  counts.line_activities = line_activities.length;
 
   const { error: rpcErr } = await supabase.rpc("import_project_bulk", { payload: payload as any });
   if (rpcErr) {
