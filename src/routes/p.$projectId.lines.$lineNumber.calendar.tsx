@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { ActivityPlanner, type LineActivity, type LineInfo, type LineLite } from "@/components/ActivityPlanner";
+import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
   component: LineCalendarPage,
