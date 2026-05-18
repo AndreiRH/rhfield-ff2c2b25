@@ -445,26 +445,22 @@ export function ActivityPlanner({
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {sorted.map((a) => (
               <li
                 key={a.id}
-                className="rounded-md border-2 bg-card px-2 py-1.5 text-xs cursor-pointer transition hover:brightness-105"
+                className="rounded-md border-2 bg-card px-2 py-0.5 text-xs cursor-pointer transition hover:brightness-105"
                 style={{ borderColor: a.color }}
                 onClick={() => scrollToActivity(a)}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
-                  </span>
+                <div className="flex items-center gap-2">
                   {canEdit && (
-                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setEditing(a)}
                         title="Edit"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -473,17 +469,17 @@ export function ActivityPlanner({
                         onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
                         title={a.is_shared ? "Shared across all lines — click to make local" : "Share across all lines"}
                         className={cn(
-                          "inline-flex h-6 w-6 items-center justify-center rounded hover:text-foreground",
+                          "inline-flex h-5 w-5 items-center justify-center rounded hover:text-foreground",
                           a.is_shared ? "text-primary" : "text-muted-foreground",
                         )}
                       >
-                        {a.is_shared ? <Share2 className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {a.is_shared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => doDuplicate(a)}
                         title="Duplicate on this line"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
                       >
                         <Copy className="h-3 w-3" />
                       </button>
@@ -491,18 +487,21 @@ export function ActivityPlanner({
                         type="button"
                         onClick={() => setConfirmDelete(a)}
                         title="Delete"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-destructive hover:opacity-80"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
                   )}
-                </div>
-                {canEdit && (
-                  <div className="mt-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                  <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>{a.name}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
+                    {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+                  </span>
+                  {canEdit && (
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         const { error } = await supabase
                           .from("line_activities")
                           .update({ show_on_global: !a.show_on_global })
@@ -512,17 +511,17 @@ export function ActivityPlanner({
                       }}
                       title={a.show_on_global ? "Visible on global calendar — click to hide" : "Hidden from global calendar — click to show"}
                       className={cn(
-                        "inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] font-medium uppercase tracking-wide border transition",
+                        "shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border transition",
                         a.show_on_global
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
                       {a.show_on_global ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                      <span>{a.show_on_global ? "On global" : "Hidden"}</span>
+                      <span>{a.show_on_global ? "Global" : "Hidden"}</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </li>
             ))}
           </ul>
