@@ -6,6 +6,7 @@ import {
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { exportProject, type ExportProgress } from "@/lib/exportProject";
+import { toUserMessage } from "@/lib/errors";
 
 export function ExportProjectButton({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
@@ -27,7 +28,7 @@ export function ExportProjectButton({ projectId }: { projectId: string }) {
       toast.success("Export downloaded");
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.message ?? "Export failed");
+      toast.error(toUserMessage(e, "Export failed"));
     } finally {
       setRunning(false);
       setProgress(null);

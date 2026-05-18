@@ -80,7 +80,7 @@ function LoginPage() {
                 <div><Label>Email</Label><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
                 <div><Label>Password</Label><Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={busy}>Create account</Button>
-                <p className="text-xs text-muted-foreground">New accounts get the engineer role by default. An admin can change roles later.</p>
+                <p className="text-xs text-muted-foreground">Access is granted by an admin. Contact your project lead after registering.</p>
               </form>
             </TabsContent>
           </Tabs>
