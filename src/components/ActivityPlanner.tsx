@@ -116,13 +116,8 @@ export function ActivityPlanner({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let raf = 0;
     const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        setScrollLeft(el.scrollLeft);
-      });
+      setScrollLeft(el.scrollLeft);
     };
     const onResize = () => setViewportW(el.clientWidth);
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -131,7 +126,6 @@ export function ActivityPlanner({
     return () => {
       el.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
