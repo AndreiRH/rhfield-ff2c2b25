@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, isSameDay } from "date-fns";
-import { CalendarDays, Pencil, Copy, Share2, Link2Off, Trash2, Plus, CalendarIcon } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
+import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { toUserMessage } from "@/lib/errors";
@@ -23,7 +23,11 @@ const ROW_HEIGHT = 40;
 const PALETTE = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
+  "#a855f7", "#22c55e", "#eab308", "#dc2626", "#0ea5e9",
+  "#d946ef", "#f43f5e", "#65a30d", "#0891b2", "#7c3aed",
 ];
+const RANGE_START = new Date(2026, 0, 1);
+const RANGE_END = new Date(2049, 11, 31);
 
 export interface LineActivity {
   id: string;
@@ -64,28 +68,10 @@ export function ActivityPlanner({
     [activities],
   );
 
-  // Timeline range
-  const { rangeStart, rangeEnd, totalDays } = useMemo(() => {
-    const dates: Date[] = [];
-    if (line.hot_planned_start) dates.push(parseISO(line.hot_planned_start));
-    if (line.hot_planned_end) dates.push(parseISO(line.hot_planned_end));
-    for (const a of sorted) {
-      dates.push(parseISO(a.start_date));
-      dates.push(parseISO(a.end_date));
-    }
-    let start: Date, end: Date;
-    if (dates.length === 0) {
-      const now = new Date();
-      start = addDays(now, -90);
-      end = addDays(now, 90);
-    } else {
-      const min = new Date(Math.min(...dates.map((d) => d.getTime())));
-      const max = new Date(Math.max(...dates.map((d) => d.getTime())));
-      start = addDays(startOfMonth(min), -14);
-      end = addDays(endOfMonth(max), 14);
-    }
-    return { rangeStart: start, rangeEnd: end, totalDays: differenceInCalendarDays(end, start) + 1 };
-  }, [sorted, line.hot_planned_start, line.hot_planned_end]);
+  // Fixed timeline range: 01/01/2026 → 31/12/2049
+  const rangeStart = RANGE_START;
+  const rangeEnd = RANGE_END;
+  const totalDays = differenceInCalendarDays(rangeEnd, rangeStart) + 1;
 
   const dayToX = (d: Date) => differenceInCalendarDays(d, rangeStart) * DAY_WIDTH;
   const todayX = dayToX(new Date());
@@ -105,13 +91,14 @@ export function ActivityPlanner({
       start: start < rangeStart ? rangeStart : start,
       end: end > rangeEnd ? rangeEnd : end,
     }));
-  }, [months, rangeStart, rangeEnd]);
+  }, [months]);
 
-  // Auto-scroll today into view on mount / activity changes
+  // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const target = Math.max(0, todayX - el.clientWidth / 2);
+    const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
+    const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,8 +111,10 @@ export function ActivityPlanner({
     el.scrollTo({ left: Math.max(0, x + w / 2 - el.clientWidth / 2), behavior: "smooth" });
   };
 
-  const usedLocalColors = new Set(activities.filter((a) => !a.is_shared).map((a) => a.color));
-  const nextColor = () => PALETTE.find((c) => !usedLocalColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
+  // Avoid color repeats on the same line — include shared + local activities.
+  const usedColors = new Set(activities.map((a) => a.color));
+  const nextColor = () => PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
+
 
   // ---------- handlers ----------
   const insertLocal = async (name: string, start: string, end: string, color?: string) => {
@@ -254,7 +243,7 @@ export function ActivityPlanner({
                   <div style={{ height: 24 }} />
                 </div>
                 {/* Months */}
-                <div className="relative" style={{ height: 28 }}>
+                <div className="relative border-b" style={{ height: 24 }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
@@ -263,10 +252,30 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={m.toISOString()}
-                        className="text-xs text-muted-foreground py-1 px-2 border-r absolute top-0"
+                        className="text-[11px] text-muted-foreground py-0.5 px-2 border-r absolute top-0 truncate"
                         style={{ width, left }}
                       >
-                        {format(m, "MMM")}
+                        {format(m, "MMM yyyy")}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Days */}
+                <div className="relative" style={{ height: 22 }}>
+                  {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
+                    const isToday = format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                    const isFirst = d.getDate() === 1;
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        className={cn(
+                          "absolute top-0 text-center text-[10px] tabular-nums border-r",
+                          isFirst ? "border-border" : "border-border/30",
+                          isToday ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
+                        )}
+                        style={{ left: dayToX(d), width: DAY_WIDTH, height: 22, lineHeight: "22px" }}
+                      >
+                        {d.getDate()}
                       </div>
                     );
                   })}
@@ -365,43 +374,52 @@ export function ActivityPlanner({
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {sorted.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2 cursor-pointer hover:border-primary/40"
+                className="flex flex-wrap items-center gap-2 rounded-md border-2 bg-card px-2 py-1 text-xs cursor-pointer transition hover:brightness-105"
+                style={{ borderColor: a.color }}
                 onClick={() => scrollToActivity(a)}
               >
-                <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: a.color }} />
-                <span className="font-medium flex-1 min-w-[120px]">{a.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {format(parseISO(a.start_date), "d MMM yyyy")} → {format(parseISO(a.end_date), "d MMM yyyy")}
+                <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
                 </span>
-                {a.is_shared && (
-                  <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    shared
-                  </span>
-                )}
                 {canEdit && (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(a)} title="Edit">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => doDuplicate(a)} title="Duplicate">
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    {a.is_shared ? (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmUnshare(a)} title="Make local">
-                        <Link2Off className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmShare(a)} title="Share across all lines">
-                        <Share2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setConfirmDelete(a)} title="Delete">
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(a)}
+                      title="Edit"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => doDuplicate(a)}
+                      title="Duplicate"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
+                      title={a.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded ${a.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(a)}
+                      title="Delete"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
                 )}
               </li>
