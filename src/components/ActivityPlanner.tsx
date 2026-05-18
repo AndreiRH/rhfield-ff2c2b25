@@ -243,7 +243,7 @@ export function ActivityPlanner({
                   <div style={{ height: 24 }} />
                 </div>
                 {/* Months */}
-                <div className="relative" style={{ height: 28 }}>
+                <div className="relative border-b" style={{ height: 24 }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
@@ -252,10 +252,30 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={m.toISOString()}
-                        className="text-xs text-muted-foreground py-1 px-2 border-r absolute top-0"
+                        className="text-[11px] text-muted-foreground py-0.5 px-2 border-r absolute top-0 truncate"
                         style={{ width, left }}
                       >
-                        {format(m, "MMM")}
+                        {format(m, "MMM yyyy")}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Days */}
+                <div className="relative" style={{ height: 22 }}>
+                  {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
+                    const isToday = format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                    const isFirst = d.getDate() === 1;
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        className={cn(
+                          "absolute top-0 text-center text-[10px] tabular-nums border-r",
+                          isFirst ? "border-border" : "border-border/30",
+                          isToday ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
+                        )}
+                        style={{ left: dayToX(d), width: DAY_WIDTH, height: 22, lineHeight: "22px" }}
+                      >
+                        {d.getDate()}
                       </div>
                     );
                   })}
