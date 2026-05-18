@@ -60,6 +60,8 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportW, setViewportW] = useState(0);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{ name: string; existingLineNumbers: number[]; existingColor: string; start: string; end: string } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
