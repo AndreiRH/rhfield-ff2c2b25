@@ -1698,7 +1698,9 @@ self.addEventListener("fetch", (event) => {
 
           if (netRes && netRes.ok) return netRes;
 
-          // Offline / failed → queue and synthesize success.
+          if (netRes) return netRes;
+
+          // Offline / unreachable → queue and synthesize success.
           await queueRequest(cloneForQueue);
           const synthetic = info
             ? { Key: `${info.bucket}/${info.path}`, Id: `local-${Date.now()}` }
@@ -1734,6 +1736,7 @@ self.addEventListener("fetch", (event) => {
             netRes = await fetch(req.clone());
           } catch {}
           if (netRes && netRes.ok) return netRes;
+          if (netRes) return netRes;
           await queueRequest(req);
           return new Response(JSON.stringify({ message: "queued" }), {
             status: 200,
