@@ -75,8 +75,9 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       setLines(list);
       if (list.length === 0) { setActivities([]); return; }
       const { data: acts } = await supabase
-        .from("line_activities").select("id, line_id, start_date, end_date, name, color")
+        .from("line_activities").select("id, line_id, start_date, end_date, name, color, show_on_global")
         .in("line_id", list.map((l) => l.id))
+        .eq("show_on_global", true)
         .order("start_date");
       setActivities((acts ?? []) as Activity[]);
     })();
