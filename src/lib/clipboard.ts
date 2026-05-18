@@ -148,7 +148,7 @@ async function insertItemTree(node: ItemNode, ctx: ItemParentCols & { parent_ite
     label: node.label,
     sort_order,
   }).select("id").single();
-  if (error || !data) throw error ?? new Error("insert failed");
+  if (error || !data) if (error) { console.error("clipboard insert error:", error); } throw new Error("Paste failed. Please try again.");
   for (let i = 0; i < node.subs.length; i++) {
     await insertItemTree(node.subs[i], { ...parentCols, parent_item_id: data.id, sort_order: i } as ItemParentCols & { parent_item_id: string | null; sort_order: number });
   }
@@ -161,7 +161,7 @@ async function insertComponent(node: ComponentClipNode, parent: { equipment_id?:
     name: node.name,
     sort_order,
   }).select("id").single();
-  if (error || !data) throw error ?? new Error("insert failed");
+  if (error || !data) if (error) { console.error("clipboard insert error:", error); } throw new Error("Paste failed. Please try again.");
   for (let i = 0; i < node.items.length; i++) {
     await insertItemTree(node.items[i], { component_id: data.id, parent_item_id: null, sort_order: i });
   }
@@ -171,7 +171,7 @@ async function insertType(node: TypeClipNode, equipment_group_id: string, sort_o
   const { data, error } = await supabase.from("component_types").insert({
     id, equipment_group_id, name: node.name, sort_order,
   }).select("id").single();
-  if (error || !data) throw error ?? new Error("insert failed");
+  if (error || !data) if (error) { console.error("clipboard insert error:", error); } throw new Error("Paste failed. Please try again.");
   // New shape: items directly under the type.
   for (let i = 0; i < (node.items ?? []).length; i++) {
     await insertItemTree(node.items![i], { component_type_id: data.id, parent_item_id: null, sort_order: i });
@@ -243,7 +243,7 @@ export async function pasteSetting(
       })
       .select("id")
       .single();
-    if (error || !data) throw error ?? new Error("insert failed");
+    if (error || !data) if (error) { console.error("clipboard insert error:", error); } throw new Error("Paste failed. Please try again.");
     for (const p of node.photos) {
       const np = await copyStorage("photos", p.storage_path);
       if (np) await supabase.from("setting_photos").insert({ equipment_setting_id: data.id, storage_path: np });
