@@ -42,6 +42,7 @@ export interface LineActivity {
   is_shared: boolean;
   shared_group_id: string | null;
   origin_line_id: string | null;
+  show_on_global: boolean;
   created_by: string | null;
   created_at: string;
 }
