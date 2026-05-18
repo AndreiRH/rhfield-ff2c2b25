@@ -33,7 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoles([]);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.warn("Auth session could not be restored; clearing local session.", error);
+        supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        setSession(null);
+        setRoles([]);
+        setLoading(false);
+        return;
+      }
       setSession(data.session);
       if (data.session?.user) {
         loadRoles(data.session.user.id);
