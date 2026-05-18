@@ -260,50 +260,13 @@ export function ActivityPlanner({
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {/* Header */}
               <div className="sticky top-0 z-10 bg-card border-b">
-                {/* Years */}
-                <div className="relative border-b" style={{ height: 22 }}>
-                  {years.map((y) => {
-                    const left = dayToX(y.start);
-                    const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
-                    const labelW = Math.min(YEAR_LABEL_W, width);
-                    const center = scrollLeft + viewportW / 2;
-                    const ideal = center - labelW / 2;
-                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
-                    return (
-                      <div key={y.year} className="absolute top-0 border-r h-full" style={{ left, width }}>
-                        <div
-                          className="absolute top-0 h-full text-xs font-semibold py-0.5 text-center"
-                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
-                        >
-                          {y.year}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Months */}
-                <div className="relative border-b" style={{ height: 22 }}>
-                  {months.map((m) => {
-                    const mStart = m < rangeStart ? rangeStart : m;
-                    const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
-                    const left = dayToX(mStart);
-                    const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
-                    const labelW = Math.min(MONTH_LABEL_W, width);
-                    const center = scrollLeft + viewportW / 2;
-                    const ideal = center - labelW / 2;
-                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
-                    return (
-                      <div key={m.toISOString()} className="absolute top-0 border-r h-full" style={{ left, width }}>
-                        <div
-                          className="absolute top-0 h-full text-[11px] text-muted-foreground text-center truncate"
-                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
-                        >
-                          {format(m, "MMM")}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <TimelineMonthYearHeader
+                  scrollLeft={scrollLeft}
+                  viewportW={viewportW}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  dayWidth={DAY_WIDTH}
+                />
                 {/* Weekday letters */}
                 <div className="relative border-b" style={{ height: 16 }}>
                   {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
