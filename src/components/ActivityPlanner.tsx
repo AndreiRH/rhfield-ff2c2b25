@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO, differenceInCalendarDays, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
-import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon } from "lucide-react";
+import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon, Share2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { toUserMessage } from "@/lib/errors";
@@ -42,6 +42,7 @@ export interface LineActivity {
   is_shared: boolean;
   shared_group_id: string | null;
   origin_line_id: string | null;
+  show_on_global: boolean;
   created_by: string | null;
   created_at: string;
 }
@@ -469,8 +470,19 @@ export function ActivityPlanner({
                       </button>
                       <button
                         type="button"
+                        onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
+                        title={a.is_shared ? "Shared across all lines — click to make local" : "Share across all lines"}
+                        className={cn(
+                          "inline-flex h-6 w-6 items-center justify-center rounded hover:text-foreground",
+                          a.is_shared ? "text-primary" : "text-muted-foreground",
+                        )}
+                      >
+                        {a.is_shared ? <Share2 className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => doDuplicate(a)}
-                        title="Duplicate"
+                        title="Duplicate on this line"
                         className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
                       >
                         <Copy className="h-3 w-3" />
@@ -490,17 +502,24 @@ export function ActivityPlanner({
                   <div className="mt-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "Showing on global calendar — click to hide" : "Show on global calendar"}
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from("line_activities")
+                          .update({ show_on_global: !a.show_on_global })
+                          .eq("id", a.id);
+                        if (error) toast.error(toUserMessage(error));
+                        else { toast.success(a.show_on_global ? "Hidden from global calendar" : "Shown on global calendar"); onChange(); }
+                      }}
+                      title={a.show_on_global ? "Visible on global calendar — click to hide" : "Hidden from global calendar — click to show"}
                       className={cn(
                         "inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] font-medium uppercase tracking-wide border transition",
-                        a.is_shared
+                        a.show_on_global
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
-                      {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                      <span>{a.is_shared ? "On global" : "Line only"}</span>
+                      {a.show_on_global ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                      <span>{a.show_on_global ? "On global" : "Hidden"}</span>
                     </button>
                   </div>
                 )}

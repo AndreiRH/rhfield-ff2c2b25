@@ -790,6 +790,7 @@ export type Database = {
           name: string
           origin_line_id: string | null
           shared_group_id: string | null
+          show_on_global: boolean
           start_date: string
         }
         Insert: {
@@ -803,6 +804,7 @@ export type Database = {
           name: string
           origin_line_id?: string | null
           shared_group_id?: string | null
+          show_on_global?: boolean
           start_date: string
         }
         Update: {
@@ -816,6 +818,7 @@ export type Database = {
           name?: string
           origin_line_id?: string | null
           shared_group_id?: string | null
+          show_on_global?: boolean
           start_date?: string
         }
         Relationships: [
