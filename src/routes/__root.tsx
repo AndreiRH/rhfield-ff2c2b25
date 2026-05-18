@@ -149,67 +149,37 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => {
-
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
-    const host = window.location.hostname;
-    const isPreview = host.includes("id-preview--") || host.includes("lovableproject.com") || host.includes("lovable.dev");
-    if (inIframe || isPreview) {
-      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
-      return;
-    }
-
-    const promptSkipWaiting = (sw: ServiceWorker | null) => {
-      if (sw) sw.postMessage({ type: "rhfield-skip-waiting" });
-    };
-    const scrubUpdateParam = () => {
+    // PWA / service worker support is disabled. Aggressively clean up any
+    // service workers and Cache Storage left over from previous deploys so
+    // published URLs always serve the latest build from the network.
+    if (typeof window === "undefined") return;
+    const BUILD_ID = (import.meta.env.VITE_BUILD_ID as string | undefined) ?? new Date().toISOString();
+    // eslint-disable-next-line no-console
+    console.info(`[RHfield] build ${BUILD_ID}`);
+    (async () => {
       try {
-        const url = new URL(window.location.href);
-        if (!url.searchParams.has("rhfield-sw")) return;
-        url.searchParams.delete("rhfield-sw");
-        window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
+        }
       } catch {}
-    };
-    const register = () => {
-      navigator.serviceWorker
-        .register("/sw.js", { updateViaCache: "none" })
-        .then((reg) => {
-          reg.update().catch(() => {});
-          if (reg.waiting && navigator.serviceWorker.controller) promptSkipWaiting(reg.waiting);
-          reg.addEventListener("updatefound", () => {
-            const installing = reg.installing;
-            if (!installing) return;
-            installing.addEventListener("statechange", () => {
-              if (installing.state === "installed" && navigator.serviceWorker.controller) {
-                promptSkipWaiting(installing);
-              }
-            });
-          });
-        })
-        .catch(() => {});
-    };
-    let reloaded = false;
-    const onControllerChange = () => {
-      if (reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    scrubUpdateParam();
-    if (document.readyState === "loading") window.addEventListener("load", register, { once: true });
-    else register();
-    // Re-check for updates when user returns to the app.
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        navigator.serviceWorker.getRegistration().then((reg) => reg?.update().catch(() => {})).catch(() => {});
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("load", register);
-      document.removeEventListener("visibilitychange", onVis);
-      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
-    };
+      try {
+        if ("caches" in window) {
+          const names = await caches.keys();
+          await Promise.all(names.map((n) => caches.delete(n).catch(() => false)));
+        }
+      } catch {}
+      // If a SW was controlling this page when it loaded, reload once so the
+      // user is no longer served from the (now-deleted) cache. Guard against
+      // reload loops with a session flag.
+      try {
+        const controlled = !!navigator.serviceWorker?.controller;
+        if (controlled && !sessionStorage.getItem("rhfield-sw-cleanup-reloaded")) {
+          sessionStorage.setItem("rhfield-sw-cleanup-reloaded", "1");
+          window.location.reload();
+        }
+      } catch {}
+    })();
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
