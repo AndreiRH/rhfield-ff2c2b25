@@ -472,7 +472,7 @@ export function ActivityPlanner({
       </div>
 
       {/* Add form */}
-      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} />}
+      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} canShareGlobal={allLines.length > 1} />}
 
       {/* Duplicate conflict dialog */}
       {duplicateConflict && (
