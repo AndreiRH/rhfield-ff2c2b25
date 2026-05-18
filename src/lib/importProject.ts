@@ -108,7 +108,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     readCsv(zip, "pa_folders"),
     readCsv(zip, "pa_attachments"),
     readCsv(zip, "pa_notes"),
-    readCsv(zip, "milestones"),
+    readCsv(zip, "line_activities"),
     readCsv(zip, "common_notes"),
     readCsv(zip, "common_files"),
   ]);
