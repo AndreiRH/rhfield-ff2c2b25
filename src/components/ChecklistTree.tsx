@@ -26,6 +26,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmUnshareToOriginLine } from "@/lib/confirm-unshare";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 
 export function ChecklistTree({
