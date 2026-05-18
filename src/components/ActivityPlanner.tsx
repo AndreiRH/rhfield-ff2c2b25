@@ -18,16 +18,19 @@ import {
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const DAY_WIDTH = 28;
-const ROW_HEIGHT = 40;
-const PALETTE = [
+export const DAY_WIDTH = 28;
+const ROW_HEIGHT = 22;
+const BAR_HEIGHT = 14;
+const MONTH_LABEL_W = 78;
+const YEAR_LABEL_W = 48;
+export const PALETTE = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
   "#a855f7", "#22c55e", "#eab308", "#dc2626", "#0ea5e9",
   "#d946ef", "#f43f5e", "#65a30d", "#0891b2", "#7c3aed",
 ];
-const RANGE_START = new Date(2026, 0, 1);
-const RANGE_END = new Date(2049, 11, 31);
+export const RANGE_START = new Date(2026, 0, 1);
+export const RANGE_END = new Date(2049, 11, 31);
 
 export interface LineActivity {
   id: string;
