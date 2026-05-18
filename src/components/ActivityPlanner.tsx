@@ -382,20 +382,23 @@ export function ActivityPlanner({
                   />
                 )}
 
+                {/* Week separators (before each Monday) */}
+                {eachDayOfInterval({ start: rangeStart, end: rangeEnd })
+                  .filter((d) => d.getDay() === 1)
+                  .map((d) => (
+                    <div
+                      key={`wk-${d.toISOString()}`}
+                      className="absolute top-0 bottom-0 pointer-events-none"
+                      style={{ left: dayToX(d), width: 1, background: "hsl(var(--border) / 0.7)" }}
+                    />
+                  ))}
+
                 {/* Today line */}
                 {todayX >= 0 && todayX <= timelineWidth && (
-                  <>
-                    <div
-                      className="absolute top-0 bottom-0 pointer-events-none"
-                      style={{ left: todayX, width: 2, background: "hsl(var(--primary) / 0.6)" }}
-                    />
-                    <div
-                      className="absolute top-0 text-[10px] px-1 rounded-sm bg-primary text-primary-foreground"
-                      style={{ left: todayX + 4 }}
-                    >
-                      Today
-                    </div>
-                  </>
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none"
+                    style={{ left: todayX, width: 2, background: "hsl(var(--primary) / 0.6)" }}
+                  />
                 )}
 
                 {/* Activity bars */}
@@ -445,53 +448,59 @@ export function ActivityPlanner({
             {sorted.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border-2 bg-card px-2 py-1 text-xs cursor-pointer transition hover:brightness-105"
+                className="rounded-md border-2 bg-card px-2 py-1.5 text-xs cursor-pointer transition hover:brightness-105"
                 style={{ borderColor: a.color }}
                 onClick={() => scrollToActivity(a)}
               >
-                <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+                  </span>
+                  {canEdit && (
+                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(a)}
+                        title="Edit"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => doDuplicate(a)}
+                        title="Duplicate"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(a)}
+                        title="Delete"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {canEdit && (
-                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing(a)}
-                      title="Edit"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => doDuplicate(a)}
-                      title="Duplicate"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </button>
+                  <div className="mt-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "On global calendar — click to remove" : "Add to global calendar"}
+                      title={a.is_shared ? "Showing on global calendar — click to hide" : "Show on global calendar"}
                       className={cn(
-                        "inline-flex h-6 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border",
+                        "inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] font-medium uppercase tracking-wide border transition",
                         a.is_shared
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
                       {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                      <span className="hidden sm:inline">{a.is_shared ? "Global" : "Line"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(a)}
-                      title="Delete"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
-                    >
-                      <Trash2 className="h-3 w-3" />
+                      <span>{a.is_shared ? "On global" : "Line only"}</span>
                     </button>
                   </div>
                 )}
@@ -502,7 +511,7 @@ export function ActivityPlanner({
       </div>
 
       {/* Add form */}
-      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} canShareGlobal={allLines.length > 1} />}
+      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} />}
 
       {/* Duplicate conflict dialog */}
       {duplicateConflict && (
@@ -628,23 +637,20 @@ export function ActivityPlanner({
 
 function AddActivityForm({
   onSubmit,
-  canShareGlobal,
 }: {
   onSubmit: (name: string, start: string, end: string, shareGlobal: boolean) => Promise<void>;
-  canShareGlobal: boolean;
 }) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
   const [end, setEnd] = useState<Date | undefined>();
-  const [shareGlobal, setShareGlobal] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
     setBusy(true);
     try {
-      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), shareGlobal);
-      setName(""); setStart(undefined); setEnd(undefined); setShareGlobal(false);
+      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), false);
+      setName(""); setStart(undefined); setEnd(undefined);
     } finally { setBusy(false); }
   };
 
@@ -656,18 +662,6 @@ function AddActivityForm({
           <DateField label="Start" date={start} onChange={setStart} />
           <DateField label="End" date={end} onChange={setEnd} />
         </div>
-        {canShareGlobal && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-primary"
-              checked={shareGlobal}
-              onChange={(e) => setShareGlobal(e.target.checked)}
-            />
-            <Globe className="h-3 w-3" />
-            <span>Also add to global calendar (share across all lines)</span>
-          </label>
-        )}
         <Button onClick={submit} disabled={busy} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add activity
         </Button>
