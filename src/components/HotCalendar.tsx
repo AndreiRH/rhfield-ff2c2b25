@@ -86,7 +86,7 @@ export function HotCalendar({
     <Card>
       <CardContent className="p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Hot commissioning schedule</h3>
+          <h3 className="text-lg font-semibold">Line hot commissioning calendar</h3>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
