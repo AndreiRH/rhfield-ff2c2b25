@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v17";
+const VER = "v18";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -1563,14 +1563,23 @@ self.addEventListener("fetch", (event) => {
       return;
     }
 
-    // GET/HEAD reads: local snapshot/cache first + fast background revalidate.
+    // GET/HEAD reads: online must be network-first. The snapshot/cache is only
+    // a fallback for true offline/network failure; otherwise published clients
+    // can keep showing old local data while preview shows the live server.
     if (req.method === "GET" || req.method === "HEAD") {
       event.respondWith(
         (async () => {
           const cache = await caches.open(CACHE_DATA);
           const cached = req.method === "GET" ? await cache.match(req) : null;
-          const hasSnapshot = !!(await snapGet(SNAP_META, "lastSync"));
-          const network = fetchWithTimeout(req, 2500)
+          const isOffline = self.navigator && self.navigator.onLine === false;
+
+          if (isOffline) {
+            const snap = await snapshotResponse(url, req);
+            if (snap) return snap;
+            if (cached) return cached;
+          }
+
+          const fresh = await fetchWithTimeout(req, 5000)
             .then(async (res) => {
               if (res && res.ok && req.method === "GET") {
                 cache.put(req, res.clone()).catch(() => {});
@@ -1578,14 +1587,8 @@ self.addEventListener("fetch", (event) => {
               return res;
             })
             .catch(() => null);
-
-          if (hasSnapshot || cached || (self.navigator && self.navigator.onLine === false)) {
-            const snap = await snapshotResponse(url, req);
-            if (snap) return snap;
-            if (cached) return cached;
-          }
-          const fresh = await network;
           if (fresh) return fresh;
+
           const snap = await snapshotResponse(url, req);
           if (snap) return snap;
           if (cached) return cached;
