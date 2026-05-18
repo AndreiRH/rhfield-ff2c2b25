@@ -272,7 +272,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
   tables.file("pa_folders.csv", toCsv(paFolders));
   tables.file("pa_attachments.csv", toCsv(paAttScoped));
   tables.file("pa_notes.csv", toCsv(paNotes));
-  tables.file("milestones.csv", toCsv(milestones));
+  tables.file("line_activities.csv", toCsv(lineActivities));
   tables.file("common_notes.csv", toCsv(commonNotes));
   tables.file("common_files.csv", toCsv(commonFiles));
 
