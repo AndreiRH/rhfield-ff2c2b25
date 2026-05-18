@@ -13,9 +13,10 @@ interface Props {
 }
 
 /**
- * Sticky month + year header. Renders viewport-relative segments only,
- * never drifts with horizontal scroll. Place inside the horizontally
- * scrolling container with `position: sticky; left: 0; width: viewportW`.
+ * Month + year header. Renders ONLY the segments currently visible in the
+ * viewport, positioned in viewport-local coordinates. This component must be
+ * placed OUTSIDE the horizontally scrolling container — it does not scroll
+ * with the day grid and never drifts.
  */
 export function TimelineMonthYearHeader({
   scrollLeft, viewportW, rangeStart, rangeEnd, dayWidth,
@@ -60,16 +61,13 @@ export function TimelineMonthYearHeader({
   }, [scrollLeft, viewportW, rangeStart, rangeEnd, dayWidth]);
 
   return (
-    <div
-      className="sticky left-0 z-20 bg-card"
-      style={{ width: viewportW || "100%" }}
-    >
+    <div className="bg-card" style={{ width: viewportW || "100%", overflow: "hidden" }}>
       {/* Years */}
-      <div className="relative border-b overflow-hidden" style={{ height: 22 }}>
+      <div className="relative border-b" style={{ height: 22 }}>
         {segs.years.map((y) => (
           <div
             key={`y-${y.key}`}
-            className="absolute top-0 flex items-center justify-center text-xs font-semibold"
+            className="absolute top-0 flex items-center justify-center text-xs font-semibold border-r border-border/40"
             style={{ left: y.left, width: y.width, height: 22 }}
           >
             <span className="truncate px-1">{y.label}</span>
@@ -77,11 +75,11 @@ export function TimelineMonthYearHeader({
         ))}
       </div>
       {/* Months */}
-      <div className="relative border-b overflow-hidden" style={{ height: 22 }}>
+      <div className="relative border-b" style={{ height: 22 }}>
         {segs.months.map((m) => (
           <div
             key={`m-${m.key}`}
-            className="absolute top-0 flex items-center justify-center text-[11px] text-muted-foreground"
+            className="absolute top-0 flex items-center justify-center text-[11px] text-muted-foreground border-r border-border/40"
             style={{ left: m.left, width: m.width, height: 22 }}
           >
             <span className="truncate px-1">{m.label}</span>
