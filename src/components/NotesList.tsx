@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import { confirmUnshareFromEquipment } from "@/lib/confirm-unshare";
 
 interface Note {
   id: string;
