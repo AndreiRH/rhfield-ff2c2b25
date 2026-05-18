@@ -28,7 +28,7 @@ export function ExportProjectButton({ projectId }: { projectId: string }) {
       toast.success("Export downloaded");
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.message ?? "Export failed");
+      toast.error(toUserMessage(e, "Export failed"));
     } finally {
       setRunning(false);
       setProgress(null);
