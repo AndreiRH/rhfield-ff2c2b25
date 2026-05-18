@@ -374,7 +374,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     start_date: r.start_date || r.date,
     end_date: r.end_date || r.date,
     color: r.color || "#3b82f6",
-    is_shared: r.is_shared === "true" || r.is_shared === true,
+    is_shared: String(r.is_shared) === "true",
     shared_group_id: null,
     origin_line_id: r.origin_line_id && lineMap.has(r.origin_line_id) ? lineMap.get(r.origin_line_id) : null,
     created_by: importerId,
