@@ -18,16 +18,19 @@ import {
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const DAY_WIDTH = 28;
-const ROW_HEIGHT = 40;
-const PALETTE = [
+export const DAY_WIDTH = 28;
+const ROW_HEIGHT = 22;
+const BAR_HEIGHT = 14;
+const MONTH_LABEL_W = 78;
+const YEAR_LABEL_W = 48;
+export const PALETTE = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
   "#a855f7", "#22c55e", "#eab308", "#dc2626", "#0ea5e9",
   "#d946ef", "#f43f5e", "#65a30d", "#0891b2", "#7c3aed",
 ];
-const RANGE_START = new Date(2026, 0, 1);
-const RANGE_END = new Date(2049, 11, 31);
+export const RANGE_START = new Date(2026, 0, 1);
+export const RANGE_END = new Date(2049, 11, 31);
 
 export interface LineActivity {
   id: string;
@@ -57,6 +60,8 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportW, setViewportW] = useState(0);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{ name: string; existingLineNumbers: number[]; existingColor: string; start: string; end: string } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
@@ -100,7 +105,32 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
+    setScrollLeft(target);
+    setViewportW(el.clientWidth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track scroll + viewport for sticky-centered month/year labels
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        setScrollLeft(el.scrollLeft);
+      });
+    };
+    const onResize = () => setViewportW(el.clientWidth);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    setViewportW(el.clientWidth);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   const scrollToActivity = (a: LineActivity) => {
@@ -139,7 +169,7 @@ export function ActivityPlanner({
     else { toast.success(`Shared "${name}" across ${allLines.length} lines`); onChange(); }
   };
 
-  const checkDuplicateAndAdd = async (name: string, start: string, end: string) => {
+  const checkDuplicateAndAdd = async (name: string, start: string, end: string, shareGlobal: boolean) => {
     const trimmed = name.trim();
     if (!trimmed) { toast.error("Activity name required"); return; }
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
@@ -165,7 +195,11 @@ export function ActivityPlanner({
         return;
       }
     }
-    await insertLocal(trimmed, start, end);
+    if (shareGlobal && allLines.length > 1) {
+      await insertSharedAcrossAll(trimmed, start, end, nextColor());
+    } else {
+      await insertLocal(trimmed, start, end);
+    }
   };
 
   const doShare = async (a: LineActivity) => {
@@ -226,36 +260,45 @@ export function ActivityPlanner({
               {/* Header */}
               <div className="sticky top-0 z-10 bg-card border-b">
                 {/* Years */}
-                <div className="flex border-b">
+                <div className="relative border-b" style={{ height: 22 }}>
                   {years.map((y) => {
                     const left = dayToX(y.start);
                     const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
+                    const labelW = Math.min(YEAR_LABEL_W, width);
+                    const center = scrollLeft + viewportW / 2;
+                    const ideal = center - labelW / 2;
+                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
                     return (
-                      <div
-                        key={y.year}
-                        className="text-xs font-semibold py-1 px-2 border-r"
-                        style={{ width, position: "absolute", left, top: 0 }}
-                      >
-                        {y.year}
+                      <div key={y.year} className="absolute top-0 border-r h-full" style={{ left, width }}>
+                        <div
+                          className="absolute top-0 h-full text-xs font-semibold py-0.5 text-center"
+                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
+                        >
+                          {y.year}
+                        </div>
                       </div>
                     );
                   })}
-                  <div style={{ height: 24 }} />
                 </div>
                 {/* Months */}
-                <div className="relative border-b" style={{ height: 24 }}>
+                <div className="relative border-b" style={{ height: 22 }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
                     const left = dayToX(mStart);
                     const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
+                    const labelW = Math.min(MONTH_LABEL_W, width);
+                    const center = scrollLeft + viewportW / 2;
+                    const ideal = center - labelW / 2;
+                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
                     return (
-                      <div
-                        key={m.toISOString()}
-                        className="text-[11px] text-muted-foreground py-0.5 px-2 border-r absolute top-0 truncate"
-                        style={{ width, left }}
-                      >
-                        {format(m, "MMM yyyy")}
+                      <div key={m.toISOString()} className="absolute top-0 border-r h-full" style={{ left, width }}>
+                        <div
+                          className="absolute top-0 h-full text-[11px] text-muted-foreground text-center truncate"
+                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
+                        >
+                          {format(m, "MMM")}
+                        </div>
                       </div>
                     );
                   })}
@@ -343,16 +386,16 @@ export function ActivityPlanner({
                       type="button"
                       onClick={() => canEdit && setEditing(a)}
                       title={`${a.name} · ${format(s, "d MMM yyyy")} → ${format(e, "d MMM yyyy")}`}
-                      className="absolute rounded-full flex items-center px-3 overflow-hidden hover:ring-2 hover:ring-foreground/30 transition"
+                      className="absolute rounded-full flex items-center px-2 overflow-hidden hover:ring-2 hover:ring-foreground/30 transition"
                       style={{
                         left,
                         width,
-                        top: i * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2,
-                        height: 24,
+                        top: i * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
+                        height: BAR_HEIGHT,
                         background: a.color,
                       }}
                     >
-                      <span className="text-xs font-medium text-white truncate">{a.name}</span>
+                      <span className="text-[10px] font-medium text-white truncate leading-none">{a.name}</span>
                     </button>
                   );
                 })}
@@ -407,7 +450,7 @@ export function ActivityPlanner({
                     <button
                       type="button"
                       onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+                      title={a.is_shared ? "On global calendar (shared across all lines) — click to remove from global" : "Line only — click to add to global calendar"}
                       className={`inline-flex h-6 w-6 items-center justify-center rounded ${a.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -429,7 +472,7 @@ export function ActivityPlanner({
       </div>
 
       {/* Add form */}
-      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} />}
+      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} canShareGlobal={allLines.length > 1} />}
 
       {/* Duplicate conflict dialog */}
       {duplicateConflict && (
@@ -553,32 +596,48 @@ export function ActivityPlanner({
   );
 }
 
-function AddActivityForm({ onSubmit }: { onSubmit: (name: string, start: string, end: string) => Promise<void> }) {
+function AddActivityForm({
+  onSubmit,
+  canShareGlobal,
+}: {
+  onSubmit: (name: string, start: string, end: string, shareGlobal: boolean) => Promise<void>;
+  canShareGlobal: boolean;
+}) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
   const [end, setEnd] = useState<Date | undefined>();
+  const [shareGlobal, setShareGlobal] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
     setBusy(true);
     try {
-      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
-      setName(""); setStart(undefined); setEnd(undefined);
+      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), shareGlobal);
+      setName(""); setStart(undefined); setEnd(undefined); setShareGlobal(false);
     } finally { setBusy(false); }
   };
 
   return (
     <Card className="border-dashed">
       <CardContent className="p-4 space-y-3">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-          <Plus className="h-3 w-3" /> Add activity
-        </div>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
         <div className="grid gap-2 sm:grid-cols-2">
           <DateField label="Start" date={start} onChange={setStart} />
           <DateField label="End" date={end} onChange={setEnd} />
         </div>
+        {canShareGlobal && (
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 accent-primary"
+              checked={shareGlobal}
+              onChange={(e) => setShareGlobal(e.target.checked)}
+            />
+            <Globe className="h-3 w-3" />
+            <span>Also add to global calendar (share across all lines)</span>
+          </label>
+        )}
         <Button onClick={submit} disabled={busy} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add activity
         </Button>
