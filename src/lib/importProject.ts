@@ -367,12 +367,16 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     };
   });
 
-  const milestones = msRows.filter((r) => lineMap.has(r.line_id)).map((r) => ({
+  const line_activities = msRows.filter((r) => lineMap.has(r.line_id)).map((r) => ({
     id: newId(),
     line_id: lineMap.get(r.line_id),
-    label: r.label,
-    date: r.date,
-    notes: r.notes || null,
+    name: r.name || r.label || "Activity",
+    start_date: r.start_date || r.date,
+    end_date: r.end_date || r.date,
+    color: r.color || "#3b82f6",
+    is_shared: r.is_shared === "true" || r.is_shared === true,
+    shared_group_id: null,
+    origin_line_id: r.origin_line_id && lineMap.has(r.origin_line_id) ? lineMap.get(r.origin_line_id) : null,
     created_by: importerId,
     created_at: r.created_at || new Date().toISOString(),
   }));
