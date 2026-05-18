@@ -448,53 +448,59 @@ export function ActivityPlanner({
             {sorted.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border-2 bg-card px-2 py-1 text-xs cursor-pointer transition hover:brightness-105"
+                className="rounded-md border-2 bg-card px-2 py-1.5 text-xs cursor-pointer transition hover:brightness-105"
                 style={{ borderColor: a.color }}
                 onClick={() => scrollToActivity(a)}
               >
-                <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium flex-1 min-w-[80px] truncate" style={{ color: a.color }}>{a.name}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+                  </span>
+                  {canEdit && (
+                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(a)}
+                        title="Edit"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => doDuplicate(a)}
+                        title="Duplicate"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(a)}
+                        title="Delete"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {canEdit && (
-                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing(a)}
-                      title="Edit"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => doDuplicate(a)}
-                      title="Duplicate"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </button>
+                  <div className="mt-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "On global calendar — click to remove" : "Add to global calendar"}
+                      title={a.is_shared ? "Showing on global calendar — click to hide" : "Show on global calendar"}
                       className={cn(
-                        "inline-flex h-6 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border",
+                        "inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] font-medium uppercase tracking-wide border transition",
                         a.is_shared
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
                       {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                      <span className="hidden sm:inline">{a.is_shared ? "Global" : "Line"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(a)}
-                      title="Delete"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-destructive hover:opacity-80"
-                    >
-                      <Trash2 className="h-3 w-3" />
+                      <span>{a.is_shared ? "On global" : "Line only"}</span>
                     </button>
                   </div>
                 )}
