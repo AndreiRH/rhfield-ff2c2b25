@@ -19,7 +19,7 @@
 // All replays are triggered on `online`, on `visibilitychange`, and via
 // Background Sync (`rhfield-flush`).
 
-const VER = "v17";
+const VER = "v18";
 
 // A stored blob is only servable as media if it has a real media MIME.
 // Anything else (multipart/form-data, application/octet-stream, empty) is
@@ -504,6 +504,7 @@ const REL = {
     component_types: { table: "component_types", fk: "equipment_group_id" },
   },
   component_types: {
+    checklist_items: { table: "checklist_items", fk: "component_type_id" },
     components: { table: "components", fk: "component_type_id" },
   },
   components: {
@@ -1464,11 +1465,16 @@ self.addEventListener("fetch", (event) => {
             }
           } catch {}
 
-          // Try network first.
+          // Try network first. Only queue when the request truly could not
+          // reach the server; do not hide server/auth errors as "offline"
+          // successes because that leaves published clients pending forever.
           let netRes = null;
+          let networkFailed = false;
           try {
             netRes = await fetch(req.clone());
-          } catch {}
+          } catch {
+            networkFailed = true;
+          }
 
           if (netRes && netRes.ok) {
             // Online success → mirror change into snapshot (best-effort).
@@ -1507,7 +1513,9 @@ self.addEventListener("fetch", (event) => {
             return netRes;
           }
 
-          // Offline (or server failure): apply optimistically + queue.
+          if (netRes && !networkFailed) return netRes;
+
+          // Offline: apply optimistically + queue.
           if (table && !isRpc) {
             let resultRows = [];
             try {
@@ -1552,7 +1560,7 @@ self.addEventListener("fetch", (event) => {
             });
           }
 
-          // Unknown route: queue & 202.
+          // Unknown route while offline: queue & 202.
           await queueRequest(req);
           return new Response(JSON.stringify({ queued: true }), {
             status: 202,
@@ -1563,14 +1571,23 @@ self.addEventListener("fetch", (event) => {
       return;
     }
 
-    // GET/HEAD reads: local snapshot/cache first + fast background revalidate.
+    // GET/HEAD reads: online must be network-first. The snapshot/cache is only
+    // a fallback for true offline/network failure; otherwise published clients
+    // can keep showing old local data while preview shows the live server.
     if (req.method === "GET" || req.method === "HEAD") {
       event.respondWith(
         (async () => {
           const cache = await caches.open(CACHE_DATA);
           const cached = req.method === "GET" ? await cache.match(req) : null;
-          const hasSnapshot = !!(await snapGet(SNAP_META, "lastSync"));
-          const network = fetchWithTimeout(req, 2500)
+          const isOffline = self.navigator && self.navigator.onLine === false;
+
+          if (isOffline) {
+            const snap = await snapshotResponse(url, req);
+            if (snap) return snap;
+            if (cached) return cached;
+          }
+
+          const fresh = await fetchWithTimeout(req, 5000)
             .then(async (res) => {
               if (res && res.ok && req.method === "GET") {
                 cache.put(req, res.clone()).catch(() => {});
@@ -1578,14 +1595,8 @@ self.addEventListener("fetch", (event) => {
               return res;
             })
             .catch(() => null);
-
-          if (hasSnapshot || cached || (self.navigator && self.navigator.onLine === false)) {
-            const snap = await snapshotResponse(url, req);
-            if (snap) return snap;
-            if (cached) return cached;
-          }
-          const fresh = await network;
           if (fresh) return fresh;
+
           const snap = await snapshotResponse(url, req);
           if (snap) return snap;
           if (cached) return cached;
@@ -1688,7 +1699,9 @@ self.addEventListener("fetch", (event) => {
 
           if (netRes && netRes.ok) return netRes;
 
-          // Offline / failed → queue and synthesize success.
+          if (netRes) return netRes;
+
+          // Offline / unreachable → queue and synthesize success.
           await queueRequest(cloneForQueue);
           const synthetic = info
             ? { Key: `${info.bucket}/${info.path}`, Id: `local-${Date.now()}` }
@@ -1724,6 +1737,7 @@ self.addEventListener("fetch", (event) => {
             netRes = await fetch(req.clone());
           } catch {}
           if (netRes && netRes.ok) return netRes;
+          if (netRes) return netRes;
           await queueRequest(req);
           return new Response(JSON.stringify({ message: "queued" }), {
             status: 200,
