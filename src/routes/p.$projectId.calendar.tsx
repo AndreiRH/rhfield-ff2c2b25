@@ -10,6 +10,7 @@ import {
   eachMonthOfInterval, eachDayOfInterval, startOfYear,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { TimelineMonthYearHeader } from "@/components/TimelineMonthYearHeader";
 
 interface LineLite { id: string; number: number; name: string | null }
 interface Activity { id: string; line_id: string; start_date: string; end_date: string; name: string; color: string }
