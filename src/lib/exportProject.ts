@@ -118,7 +118,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
     fetchAll<any>("pa_folders", { col: "line_id", ids: lineIds }),
     fetchAll<any>("pa_attachments"),
     fetchAll<any>("pa_notes", { col: "line_id", ids: lineIds }),
-    fetchAll<any>("milestones", { col: "line_id", ids: lineIds }),
+    fetchAll<any>("line_activities", { col: "line_id", ids: lineIds }),
     fetchAll<any>("common_notes", { col: "project_id", ids: [projectId] }),
     fetchAll<any>("common_files", { col: "project_id", ids: [projectId] }),
   ]);
