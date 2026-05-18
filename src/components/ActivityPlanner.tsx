@@ -450,7 +450,7 @@ export function ActivityPlanner({
                     <button
                       type="button"
                       onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+                      title={a.is_shared ? "On global calendar (shared across all lines) — click to remove from global" : "Line only — click to add to global calendar"}
                       className={`inline-flex h-6 w-6 items-center justify-center rounded ${a.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
