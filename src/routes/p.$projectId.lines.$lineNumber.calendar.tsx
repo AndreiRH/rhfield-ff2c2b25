@@ -65,7 +65,7 @@ function LineCalendarPage() {
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 Production line {String(data.line.number).padStart(2, "0")}
               </span>
-              <h1 className="text-3xl font-semibold">Activity Planner</h1>
+              <h1 className="text-3xl font-semibold">Hot commissioning planner</h1>
             </div>
             <ActivityPlanner
               line={data.line}
