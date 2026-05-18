@@ -148,8 +148,3 @@
   }
 }
 
-/* Disable browser pull-to-refresh — the app has its own sync flow and PTR
-   triggers a full reload which fails offline. */
-html, body {
-  overscroll-behavior-y: contain;
-}
