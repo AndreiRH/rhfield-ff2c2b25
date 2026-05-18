@@ -256,36 +256,45 @@ export function ActivityPlanner({
               {/* Header */}
               <div className="sticky top-0 z-10 bg-card border-b">
                 {/* Years */}
-                <div className="flex border-b">
+                <div className="relative border-b" style={{ height: 22 }}>
                   {years.map((y) => {
                     const left = dayToX(y.start);
                     const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
+                    const labelW = Math.min(YEAR_LABEL_W, width);
+                    const center = scrollLeft + viewportW / 2;
+                    const ideal = center - labelW / 2;
+                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
                     return (
-                      <div
-                        key={y.year}
-                        className="text-xs font-semibold py-1 px-2 border-r"
-                        style={{ width, position: "absolute", left, top: 0 }}
-                      >
-                        {y.year}
+                      <div key={y.year} className="absolute top-0 border-r h-full" style={{ left, width }}>
+                        <div
+                          className="absolute top-0 h-full text-xs font-semibold py-0.5 text-center"
+                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
+                        >
+                          {y.year}
+                        </div>
                       </div>
                     );
                   })}
-                  <div style={{ height: 24 }} />
                 </div>
                 {/* Months */}
-                <div className="relative border-b" style={{ height: 24 }}>
+                <div className="relative border-b" style={{ height: 22 }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
                     const left = dayToX(mStart);
                     const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
+                    const labelW = Math.min(MONTH_LABEL_W, width);
+                    const center = scrollLeft + viewportW / 2;
+                    const ideal = center - labelW / 2;
+                    const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
                     return (
-                      <div
-                        key={m.toISOString()}
-                        className="text-[11px] text-muted-foreground py-0.5 px-2 border-r absolute top-0 truncate"
-                        style={{ width, left }}
-                      >
-                        {format(m, "MMM yyyy")}
+                      <div key={m.toISOString()} className="absolute top-0 border-r h-full" style={{ left, width }}>
+                        <div
+                          className="absolute top-0 h-full text-[11px] text-muted-foreground text-center truncate"
+                          style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
+                        >
+                          {format(m, "MMM")}
+                        </div>
                       </div>
                     );
                   })}
