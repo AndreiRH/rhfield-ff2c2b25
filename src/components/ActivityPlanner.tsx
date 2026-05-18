@@ -147,7 +147,7 @@ export function ActivityPlanner({
     const c = color ?? nextColor();
     const { error } = await supabase.from("line_activities").insert({
       line_id: line.id, name, start_date: start, end_date: end, color: c,
-      is_shared: false, created_by: user?.id ?? null,
+      is_shared: false, created_by: user?.id ?? null, show_on_global: false,
     });
     if (error) toast.error(toUserMessage(error));
     else { toast.success("Activity added"); onChange(); }
@@ -159,6 +159,7 @@ export function ActivityPlanner({
       line_id: l.id, name, start_date: start, end_date: end, color,
       is_shared: true, shared_group_id: groupId, origin_line_id: line.id,
       created_by: user?.id ?? null,
+      show_on_global: l.id === line.id,
     }));
     const { error } = await supabase.from("line_activities").insert(rows);
     if (error) toast.error(toUserMessage(error));
@@ -211,6 +212,7 @@ export function ActivityPlanner({
         line_id: l.id, name: a.name, start_date: a.start_date, end_date: a.end_date,
         color: a.color, is_shared: true, shared_group_id: groupId, origin_line_id: line.id,
         created_by: user?.id ?? null,
+        show_on_global: false,
       }));
       const { error } = await supabase.from("line_activities").insert(rows);
       if (error) { toast.error(toUserMessage(error)); return; }
