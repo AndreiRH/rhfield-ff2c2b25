@@ -504,6 +504,7 @@ const REL = {
     component_types: { table: "component_types", fk: "equipment_group_id" },
   },
   component_types: {
+    checklist_items: { table: "checklist_items", fk: "component_type_id" },
     components: { table: "components", fk: "component_type_id" },
   },
   components: {
