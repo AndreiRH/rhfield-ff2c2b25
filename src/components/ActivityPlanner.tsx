@@ -637,23 +637,20 @@ export function ActivityPlanner({
 
 function AddActivityForm({
   onSubmit,
-  canShareGlobal,
 }: {
   onSubmit: (name: string, start: string, end: string, shareGlobal: boolean) => Promise<void>;
-  canShareGlobal: boolean;
 }) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
   const [end, setEnd] = useState<Date | undefined>();
-  const [shareGlobal, setShareGlobal] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
     setBusy(true);
     try {
-      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), shareGlobal);
-      setName(""); setStart(undefined); setEnd(undefined); setShareGlobal(false);
+      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), false);
+      setName(""); setStart(undefined); setEnd(undefined);
     } finally { setBusy(false); }
   };
 
@@ -665,18 +662,6 @@ function AddActivityForm({
           <DateField label="Start" date={start} onChange={setStart} />
           <DateField label="End" date={end} onChange={setEnd} />
         </div>
-        {canShareGlobal && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-primary"
-              checked={shareGlobal}
-              onChange={(e) => setShareGlobal(e.target.checked)}
-            />
-            <Globe className="h-3 w-3" />
-            <span>Also add to global calendar (share across all lines)</span>
-          </label>
-        )}
         <Button onClick={submit} disabled={busy} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add activity
         </Button>
