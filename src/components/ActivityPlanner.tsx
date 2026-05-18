@@ -382,16 +382,16 @@ export function ActivityPlanner({
                       type="button"
                       onClick={() => canEdit && setEditing(a)}
                       title={`${a.name} · ${format(s, "d MMM yyyy")} → ${format(e, "d MMM yyyy")}`}
-                      className="absolute rounded-full flex items-center px-3 overflow-hidden hover:ring-2 hover:ring-foreground/30 transition"
+                      className="absolute rounded-full flex items-center px-2 overflow-hidden hover:ring-2 hover:ring-foreground/30 transition"
                       style={{
                         left,
                         width,
-                        top: i * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2,
-                        height: 24,
+                        top: i * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
+                        height: BAR_HEIGHT,
                         background: a.color,
                       }}
                     >
-                      <span className="text-xs font-medium text-white truncate">{a.name}</span>
+                      <span className="text-[10px] font-medium text-white truncate leading-none">{a.name}</span>
                     </button>
                   );
                 })}
