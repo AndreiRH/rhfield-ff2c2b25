@@ -427,7 +427,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
   counts.equipment_notes = equipment_notes.length;
   counts.pa_folders = pa_folders.length;
   counts.pa_notes = pa_notes.length;
-  counts.milestones = milestones.length;
+  counts.line_activities = line_activities.length;
 
   const { error: rpcErr } = await supabase.rpc("import_project_bulk", { payload: payload as any });
   if (rpcErr) {
