@@ -169,7 +169,7 @@ export function ActivityPlanner({
     else { toast.success(`Shared "${name}" across ${allLines.length} lines`); onChange(); }
   };
 
-  const checkDuplicateAndAdd = async (name: string, start: string, end: string) => {
+  const checkDuplicateAndAdd = async (name: string, start: string, end: string, shareGlobal: boolean) => {
     const trimmed = name.trim();
     if (!trimmed) { toast.error("Activity name required"); return; }
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
@@ -195,7 +195,11 @@ export function ActivityPlanner({
         return;
       }
     }
-    await insertLocal(trimmed, start, end);
+    if (shareGlobal && allLines.length > 1) {
+      await insertSharedAcrossAll(trimmed, start, end, nextColor());
+    } else {
+      await insertLocal(trimmed, start, end);
+    }
   };
 
   const doShare = async (a: LineActivity) => {
