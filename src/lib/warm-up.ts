@@ -29,7 +29,7 @@ const TABLES = [
   "pa_folders",
   "pa_notes",
   "pa_attachments",
-  "milestones",
+  "line_activities",
   "common_notes",
   "common_files",
   "common_folders",
