@@ -10,6 +10,7 @@ import {
   eachMonthOfInterval, eachDayOfInterval, startOfYear,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { TimelineMonthYearHeader } from "@/components/TimelineMonthYearHeader";
 
 interface LineLite { id: string; number: number; name: string | null }
 interface Activity { id: string; line_id: string; start_date: string; end_date: string; name: string; color: string }
@@ -200,48 +201,13 @@ function CombinedGantt({ projectId }: { projectId: string }) {
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {/* Header */}
             <div className="sticky top-0 z-10 bg-card border-b">
-              {/* Years */}
-              <div className="relative border-b" style={{ height: 22 }}>
-                {years.map((y) => {
-                  const left = dayToX(y.start);
-                  const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
-                  const labelW = Math.min(YEAR_LABEL_W, width);
-                  const ideal = center - labelW / 2;
-                  const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
-                  return (
-                    <div key={y.year} className="absolute top-0 border-r h-full" style={{ left, width }}>
-                      <div
-                        className="absolute top-0 h-full text-xs font-semibold text-center"
-                        style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
-                      >
-                        {y.year}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Months */}
-              <div className="relative border-b" style={{ height: 22 }}>
-                {months.map((m) => {
-                  const mStart = m < RANGE_START ? RANGE_START : m;
-                  const mEnd = endOfMonth(m) > RANGE_END ? RANGE_END : endOfMonth(m);
-                  const left = dayToX(mStart);
-                  const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
-                  const labelW = Math.min(MONTH_LABEL_W, width);
-                  const ideal = center - labelW / 2;
-                  const clamped = Math.max(left, Math.min(left + width - labelW, ideal));
-                  return (
-                    <div key={m.toISOString()} className="absolute top-0 border-r h-full" style={{ left, width }}>
-                      <div
-                        className="absolute top-0 h-full text-[11px] text-muted-foreground text-center truncate"
-                        style={{ left: clamped - left, width: labelW, lineHeight: "22px" }}
-                      >
-                        {format(m, "MMM")}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <TimelineMonthYearHeader
+                scrollLeft={scrollLeft}
+                viewportW={viewportW}
+                rangeStart={RANGE_START}
+                rangeEnd={RANGE_END}
+                dayWidth={DAY_WIDTH}
+              />
               {/* Weekday letters */}
               <div className="relative border-b" style={{ height: 16 }}>
                 {days.map((d) => {
