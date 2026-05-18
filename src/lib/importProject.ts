@@ -415,7 +415,7 @@ export async function importProjectFromZip(opts: Opts): Promise<ImportSummary> {
     item_photos, item_files,
     equipment_notes, equipment_photos,
     pa_folders, pa_attachments, pa_notes,
-    milestones, common_notes, common_files,
+    line_activities, common_notes, common_files,
   };
 
   counts.lines = lines.length;
