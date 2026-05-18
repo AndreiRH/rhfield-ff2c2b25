@@ -19,7 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { HotCalendar } from "@/components/HotCalendar";
+
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/")({ component: LineOverview });
 
@@ -173,31 +173,15 @@ function kindLabel(kind: string) {
   return kind;
 }
 
-function HotCommissioningButton({ line, canEdit, onChange }: any) {
-  const [open, setOpen] = useState(false);
+function HotCommissioningButton({ line }: any) {
+  const { projectId, lineNumber } = Route.useParams();
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto">
-          <CalendarDays className="h-4 w-4" />
-          <span>Line hot commissioning calendar</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Line hot commissioning calendar · Production line {String(line.number).padStart(2, "0")}</DialogTitle>
-        </DialogHeader>
-        <div className="max-h-[75vh] overflow-y-auto">
-          <HotCalendar
-            lineId={line.id}
-            plannedStart={line.hot_planned_start}
-            plannedEnd={line.hot_planned_end}
-            canEdit={canEdit}
-            onChange={onChange}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Link to="/p/$projectId/lines/$lineNumber/calendar" params={{ projectId, lineNumber }}>
+      <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto">
+        <CalendarDays className="h-4 w-4" />
+        <span>Activity planner</span>
+      </Button>
+    </Link>
   );
 }
 

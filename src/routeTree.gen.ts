@@ -17,6 +17,7 @@ import { Route as PProjectIdSearchRouteImport } from './routes/p.$projectId.sear
 import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
 import { Route as PProjectIdLinesLineNumberIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.index'
+import { Route as PProjectIdLinesLineNumberCalendarRouteImport } from './routes/p.$projectId.lines.$lineNumber.calendar'
 import { Route as PProjectIdLinesLineNumberEquipmentKindRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind'
 import { Route as PProjectIdLinesLineNumberEquipmentKindIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.index'
 import { Route as PProjectIdLinesLineNumberEquipmentKindPaRouteImport } from './routes/p.$projectId.lines.$lineNumber.equipment.$kind.pa'
@@ -64,6 +65,12 @@ const PProjectIdLinesLineNumberIndexRoute =
   PProjectIdLinesLineNumberIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => PProjectIdLinesLineNumberRoute,
+  } as any)
+const PProjectIdLinesLineNumberCalendarRoute =
+  PProjectIdLinesLineNumberCalendarRouteImport.update({
+    id: '/calendar',
+    path: '/calendar',
     getParentRoute: () => PProjectIdLinesLineNumberRoute,
   } as any)
 const PProjectIdLinesLineNumberEquipmentKindRoute =
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/calendar': typeof PProjectIdLinesLineNumberCalendarRoute
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
@@ -130,6 +138,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
+  '/p/$projectId/lines/$lineNumber/calendar': typeof PProjectIdLinesLineNumberCalendarRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/pa': typeof PProjectIdLinesLineNumberEquipmentKindPaRoute
@@ -146,6 +155,7 @@ export interface FileRoutesById {
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/lines/$lineNumber': typeof PProjectIdLinesLineNumberRouteWithChildren
+  '/p/$projectId/lines/$lineNumber/calendar': typeof PProjectIdLinesLineNumberCalendarRoute
   '/p/$projectId/lines/$lineNumber/': typeof PProjectIdLinesLineNumberIndexRoute
   '/p/$projectId/lines/$lineNumber/equipment/$kind': typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
   '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId': typeof PProjectIdLinesLineNumberEquipmentKindEquipmentIdRouteWithChildren
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/search'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
+    | '/p/$projectId/lines/$lineNumber/calendar'
     | '/p/$projectId/lines/$lineNumber/'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/common'
     | '/p/$projectId/search'
     | '/p/$projectId'
+    | '/p/$projectId/lines/$lineNumber/calendar'
     | '/p/$projectId/lines/$lineNumber'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/pa'
@@ -194,6 +206,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/search'
     | '/p/$projectId/'
     | '/p/$projectId/lines/$lineNumber'
+    | '/p/$projectId/lines/$lineNumber/calendar'
     | '/p/$projectId/lines/$lineNumber/'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind'
     | '/p/$projectId/lines/$lineNumber/equipment/$kind/$equipmentId'
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/p/$projectId/lines/$lineNumber/'
       preLoaderRoute: typeof PProjectIdLinesLineNumberIndexRouteImport
+      parentRoute: typeof PProjectIdLinesLineNumberRoute
+    }
+    '/p/$projectId/lines/$lineNumber/calendar': {
+      id: '/p/$projectId/lines/$lineNumber/calendar'
+      path: '/calendar'
+      fullPath: '/p/$projectId/lines/$lineNumber/calendar'
+      preLoaderRoute: typeof PProjectIdLinesLineNumberCalendarRouteImport
       parentRoute: typeof PProjectIdLinesLineNumberRoute
     }
     '/p/$projectId/lines/$lineNumber/equipment/$kind': {
@@ -368,12 +388,15 @@ const PProjectIdLinesLineNumberEquipmentKindRouteWithChildren =
   )
 
 interface PProjectIdLinesLineNumberRouteChildren {
+  PProjectIdLinesLineNumberCalendarRoute: typeof PProjectIdLinesLineNumberCalendarRoute
   PProjectIdLinesLineNumberIndexRoute: typeof PProjectIdLinesLineNumberIndexRoute
   PProjectIdLinesLineNumberEquipmentKindRoute: typeof PProjectIdLinesLineNumberEquipmentKindRouteWithChildren
 }
 
 const PProjectIdLinesLineNumberRouteChildren: PProjectIdLinesLineNumberRouteChildren =
   {
+    PProjectIdLinesLineNumberCalendarRoute:
+      PProjectIdLinesLineNumberCalendarRoute,
     PProjectIdLinesLineNumberIndexRoute: PProjectIdLinesLineNumberIndexRoute,
     PProjectIdLinesLineNumberEquipmentKindRoute:
       PProjectIdLinesLineNumberEquipmentKindRouteWithChildren,

@@ -104,7 +104,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
     checklistItems, itemPhotos, itemFiles,
     equipmentNotes, equipmentPhotos,
     paFolders, paAttachments, paNotes,
-    milestones, commonNotes, commonFiles,
+    lineActivities, commonNotes, commonFiles,
   ] = await Promise.all([
     fetchAll<any>("plant_equipment", { col: "line_id", ids: lineIds }),
     fetchAll<any>("equipment_groups", { col: "line_id", ids: lineIds }),
@@ -118,7 +118,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
     fetchAll<any>("pa_folders", { col: "line_id", ids: lineIds }),
     fetchAll<any>("pa_attachments"),
     fetchAll<any>("pa_notes", { col: "line_id", ids: lineIds }),
-    fetchAll<any>("milestones", { col: "line_id", ids: lineIds }),
+    fetchAll<any>("line_activities", { col: "line_id", ids: lineIds }),
     fetchAll<any>("common_notes", { col: "project_id", ids: [projectId] }),
     fetchAll<any>("common_files", { col: "project_id", ids: [projectId] }),
   ]);
@@ -272,7 +272,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
   tables.file("pa_folders.csv", toCsv(paFolders));
   tables.file("pa_attachments.csv", toCsv(paAttScoped));
   tables.file("pa_notes.csv", toCsv(paNotes));
-  tables.file("milestones.csv", toCsv(milestones));
+  tables.file("line_activities.csv", toCsv(lineActivities));
   tables.file("common_notes.csv", toCsv(commonNotes));
   tables.file("common_files.csv", toCsv(commonFiles));
 
