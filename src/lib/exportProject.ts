@@ -104,7 +104,7 @@ export async function exportProject(projectId: string, opts: Opts): Promise<void
     checklistItems, itemPhotos, itemFiles,
     equipmentNotes, equipmentPhotos,
     paFolders, paAttachments, paNotes,
-    milestones, commonNotes, commonFiles,
+    lineActivities, commonNotes, commonFiles,
   ] = await Promise.all([
     fetchAll<any>("plant_equipment", { col: "line_id", ids: lineIds }),
     fetchAll<any>("equipment_groups", { col: "line_id", ids: lineIds }),
