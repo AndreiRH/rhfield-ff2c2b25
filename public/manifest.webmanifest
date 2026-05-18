@@ -2,11 +2,10 @@
   "name": "RHfield",
   "short_name": "RHfield",
   "description": "Production line commissioning",
-  "id": "/?v=2",
-  "start_url": "/?v=2",
+  "id": "/?v=3",
+  "start_url": "/?v=3",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#1f9d3a",
   "theme_color": "#1f9d3a",
   "icons": [
