@@ -382,20 +382,23 @@ export function ActivityPlanner({
                   />
                 )}
 
+                {/* Week separators (before each Monday) */}
+                {eachDayOfInterval({ start: rangeStart, end: rangeEnd })
+                  .filter((d) => d.getDay() === 1)
+                  .map((d) => (
+                    <div
+                      key={`wk-${d.toISOString()}`}
+                      className="absolute top-0 bottom-0 pointer-events-none"
+                      style={{ left: dayToX(d), width: 1, background: "hsl(var(--border) / 0.7)" }}
+                    />
+                  ))}
+
                 {/* Today line */}
                 {todayX >= 0 && todayX <= timelineWidth && (
-                  <>
-                    <div
-                      className="absolute top-0 bottom-0 pointer-events-none"
-                      style={{ left: todayX, width: 2, background: "hsl(var(--primary) / 0.6)" }}
-                    />
-                    <div
-                      className="absolute top-0 text-[10px] px-1 rounded-sm bg-primary text-primary-foreground"
-                      style={{ left: todayX + 4 }}
-                    >
-                      Today
-                    </div>
-                  </>
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none"
+                    style={{ left: todayX, width: 2, background: "hsl(var(--primary) / 0.6)" }}
+                  />
                 )}
 
                 {/* Activity bars */}
