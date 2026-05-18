@@ -1464,11 +1464,16 @@ self.addEventListener("fetch", (event) => {
             }
           } catch {}
 
-          // Try network first.
+          // Try network first. Only queue when the request truly could not
+          // reach the server; do not hide server/auth errors as "offline"
+          // successes because that leaves published clients pending forever.
           let netRes = null;
+          let networkFailed = false;
           try {
             netRes = await fetch(req.clone());
-          } catch {}
+          } catch {
+            networkFailed = true;
+          }
 
           if (netRes && netRes.ok) {
             // Online success → mirror change into snapshot (best-effort).
@@ -1507,7 +1512,9 @@ self.addEventListener("fetch", (event) => {
             return netRes;
           }
 
-          // Offline (or server failure): apply optimistically + queue.
+          if (netRes && !networkFailed) return netRes;
+
+          // Offline: apply optimistically + queue.
           if (table && !isRpc) {
             let resultRows = [];
             try {
@@ -1552,7 +1559,7 @@ self.addEventListener("fetch", (event) => {
             });
           }
 
-          // Unknown route: queue & 202.
+          // Unknown route while offline: queue & 202.
           await queueRequest(req);
           return new Response(JSON.stringify({ queued: true }), {
             status: 202,
