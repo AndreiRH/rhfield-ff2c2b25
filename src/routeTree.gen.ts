@@ -15,6 +15,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
 import { Route as PProjectIdSearchRouteImport } from './routes/p.$projectId.search'
 import { Route as PProjectIdCommonRouteImport } from './routes/p.$projectId.common'
+import { Route as PProjectIdCalendarRouteImport } from './routes/p.$projectId.calendar'
 import { Route as PProjectIdLinesLineNumberRouteImport } from './routes/p.$projectId.lines.$lineNumber'
 import { Route as PProjectIdLinesLineNumberIndexRouteImport } from './routes/p.$projectId.lines.$lineNumber.index'
 import { Route as PProjectIdLinesLineNumberCalendarRouteImport } from './routes/p.$projectId.lines.$lineNumber.calendar'
@@ -53,6 +54,11 @@ const PProjectIdSearchRoute = PProjectIdSearchRouteImport.update({
 const PProjectIdCommonRoute = PProjectIdCommonRouteImport.update({
   id: '/p/$projectId/common',
   path: '/p/$projectId/common',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PProjectIdCalendarRoute = PProjectIdCalendarRouteImport.update({
+  id: '/p/$projectId/calendar',
+  path: '/p/$projectId/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PProjectIdLinesLineNumberRoute =
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
+  '/p/$projectId/calendar': typeof PProjectIdCalendarRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
+  '/p/$projectId/calendar': typeof PProjectIdCalendarRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin/users': typeof AdminUsersRoute
+  '/p/$projectId/calendar': typeof PProjectIdCalendarRoute
   '/p/$projectId/common': typeof PProjectIdCommonRoute
   '/p/$projectId/search': typeof PProjectIdSearchRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/admin/users'
+    | '/p/$projectId/calendar'
     | '/p/$projectId/common'
     | '/p/$projectId/search'
     | '/p/$projectId/'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/admin/users'
+    | '/p/$projectId/calendar'
     | '/p/$projectId/common'
     | '/p/$projectId/search'
     | '/p/$projectId'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/admin/users'
+    | '/p/$projectId/calendar'
     | '/p/$projectId/common'
     | '/p/$projectId/search'
     | '/p/$projectId/'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  PProjectIdCalendarRoute: typeof PProjectIdCalendarRoute
   PProjectIdCommonRoute: typeof PProjectIdCommonRoute
   PProjectIdSearchRoute: typeof PProjectIdSearchRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
@@ -268,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$projectId/common'
       fullPath: '/p/$projectId/common'
       preLoaderRoute: typeof PProjectIdCommonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$projectId/calendar': {
+      id: '/p/$projectId/calendar'
+      path: '/p/$projectId/calendar'
+      fullPath: '/p/$projectId/calendar'
+      preLoaderRoute: typeof PProjectIdCalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$projectId/lines/$lineNumber': {
@@ -411,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   AdminUsersRoute: AdminUsersRoute,
+  PProjectIdCalendarRoute: PProjectIdCalendarRoute,
   PProjectIdCommonRoute: PProjectIdCommonRoute,
   PProjectIdSearchRoute: PProjectIdSearchRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,

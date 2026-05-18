@@ -303,18 +303,42 @@ export function ActivityPlanner({
                     );
                   })}
                 </div>
+                {/* Weekday letters */}
+                <div className="relative border-b" style={{ height: 16 }}>
+                  {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
+                    const dow = d.getDay(); // 0=Sun..6=Sat
+                    const letter = ["S", "M", "T", "W", "T", "F", "S"][dow];
+                    const isWeekend = dow === 0 || dow === 6;
+                    return (
+                      <div
+                        key={`wd-${d.toISOString()}`}
+                        className={cn(
+                          "absolute top-0 text-center text-[9px] font-medium uppercase",
+                          isWeekend ? "text-primary/70" : "text-muted-foreground/70",
+                        )}
+                        style={{ left: dayToX(d), width: DAY_WIDTH, height: 16, lineHeight: "16px" }}
+                      >
+                        {letter}
+                      </div>
+                    );
+                  })}
+                </div>
                 {/* Days */}
                 <div className="relative" style={{ height: 22 }}>
                   {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
                     const isToday = format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
                     const isFirst = d.getDate() === 1;
+                    const dow = d.getDay();
+                    const isWeekend = dow === 0 || dow === 6;
                     return (
                       <div
                         key={d.toISOString()}
                         className={cn(
                           "absolute top-0 text-center text-[10px] tabular-nums border-r",
                           isFirst ? "border-border" : "border-border/30",
-                          isToday ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
+                          isToday
+                            ? "bg-primary text-primary-foreground font-semibold"
+                            : isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
                         )}
                         style={{ left: dayToX(d), width: DAY_WIDTH, height: 22, lineHeight: "22px" }}
                       >
@@ -450,10 +474,16 @@ export function ActivityPlanner({
                     <button
                       type="button"
                       onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                      title={a.is_shared ? "On global calendar (shared across all lines) — click to remove from global" : "Line only — click to add to global calendar"}
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded ${a.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      title={a.is_shared ? "On global calendar — click to remove" : "Add to global calendar"}
+                      className={cn(
+                        "inline-flex h-6 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border",
+                        a.is_shared
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
+                      )}
                     >
                       {a.is_shared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                      <span className="hidden sm:inline">{a.is_shared ? "Global" : "Line"}</span>
                     </button>
                     <button
                       type="button"

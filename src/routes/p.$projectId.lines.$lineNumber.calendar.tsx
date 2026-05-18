@@ -1,10 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { ActivityPlanner, type LineActivity, type LineInfo, type LineLite } from "@/components/ActivityPlanner";
 
@@ -55,6 +57,11 @@ function LineCalendarPage() {
         ) : (
           <>
             <div className="mb-6 border-b pb-4">
+              <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 h-7 gap-1 text-muted-foreground">
+                <Link to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber }}>
+                  <ChevronLeft className="h-4 w-4" /> Back to line
+                </Link>
+              </Button>
               <LineBreadcrumb projectId={projectId} lineNumber={lineNumber} segments={[title]} currentTitle={title} />
               <h1 className="text-3xl font-semibold">{title}</h1>
             </div>
