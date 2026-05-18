@@ -57,6 +57,11 @@ function LineCalendarPage() {
         ) : (
           <>
             <div className="mb-6 border-b pb-4">
+              <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 h-7 gap-1 text-muted-foreground">
+                <Link to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber }}>
+                  <ChevronLeft className="h-4 w-4" /> Back to line
+                </Link>
+              </Button>
               <LineBreadcrumb projectId={projectId} lineNumber={lineNumber} segments={[title]} currentTitle={title} />
               <h1 className="text-3xl font-semibold">{title}</h1>
             </div>
