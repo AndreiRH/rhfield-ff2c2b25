@@ -179,7 +179,7 @@ function HotCommissioningButton({ line }: any) {
     <Link to="/p/$projectId/lines/$lineNumber/calendar" params={{ projectId, lineNumber }}>
       <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto">
         <CalendarDays className="h-4 w-4" />
-        <span>Activity planner</span>
+        <span>Hot commissioning planner</span>
       </Button>
     </Link>
   );
