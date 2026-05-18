@@ -111,8 +111,8 @@ function LineOverview() {
                     <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgressPct}%</span>
                   </h1>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="min-w-[200px] sm:min-w-[280px]">
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+                  <div className="w-full sm:min-w-[280px]">
                     <ProgressBar value={lineProgressPct} size="md" />
                   </div>
                   <HotCommissioningButton line={data} canEdit={canEdit} onChange={invalidate} />
