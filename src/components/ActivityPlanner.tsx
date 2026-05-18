@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
+import { format, parseISO, differenceInCalendarDays, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
 import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
