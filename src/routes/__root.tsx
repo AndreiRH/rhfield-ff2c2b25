@@ -190,9 +190,7 @@ function RootComponent() {
     let reloaded = false;
     const onControllerChange = () => {
       if (reloaded) return;
-      if (sessionStorage.getItem("rhfield-sw-reloaded") === "1") return;
       reloaded = true;
-      sessionStorage.setItem("rhfield-sw-reloaded", "1");
       window.location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
