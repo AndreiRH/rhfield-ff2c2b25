@@ -105,7 +105,32 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
+    setScrollLeft(target);
+    setViewportW(el.clientWidth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track scroll + viewport for sticky-centered month/year labels
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        setScrollLeft(el.scrollLeft);
+      });
+    };
+    const onResize = () => setViewportW(el.clientWidth);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    setViewportW(el.clientWidth);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   const scrollToActivity = (a: LineActivity) => {
