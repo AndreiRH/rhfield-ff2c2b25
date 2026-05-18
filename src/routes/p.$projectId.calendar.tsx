@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import {
   format, parseISO, differenceInCalendarDays, endOfMonth,
   eachMonthOfInterval, eachDayOfInterval, startOfYear,
@@ -47,6 +47,13 @@ function ProjectCalendarPage() {
           <h1 className="text-3xl font-semibold">Global hot commissioning calendar</h1>
           <p className="mt-1 text-sm text-muted-foreground">All activities across every production line.</p>
         </div>
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+          <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+          <span>
+            This view is read-only. Activities can be added, edited, or removed only inside each
+            <span className="font-medium text-foreground"> Line hot commissioning planner</span>.
+          </span>
+        </div>
         <CombinedGantt projectId={projectId} />
       </main>
     </div>
@@ -82,6 +89,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
   const months = useMemo(() => eachMonthOfInterval({ start: RANGE_START, end: RANGE_END }), []);
   const days = useMemo(() => eachDayOfInterval({ start: RANGE_START, end: RANGE_END }), []);
+  const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
@@ -96,14 +104,38 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     }));
   }, [months]);
 
-  const actsByLine = useMemo(() => {
-    const m = new Map<string, Activity[]>();
-    for (const a of activities) {
-      if (!m.has(a.line_id)) m.set(a.line_id, []);
-      m.get(a.line_id)!.push(a);
+  // Lane-pack activities per line so overlapping ones stack into multiple rows.
+  const linePacks = useMemo(() => {
+    const result = new Map<string, { lanes: number; placed: (Activity & { lane: number })[] }>();
+    for (const l of lines) {
+      const acts = activities
+        .filter((a) => a.line_id === l.id)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+      const laneEnds: string[] = [];
+      const placed: (Activity & { lane: number })[] = [];
+      for (const a of acts) {
+        let lane = laneEnds.findIndex((endDate) => endDate < a.start_date);
+        if (lane === -1) { lane = laneEnds.length; laneEnds.push(a.end_date); }
+        else laneEnds[lane] = a.end_date;
+        placed.push({ ...a, lane });
+      }
+      result.set(l.id, { lanes: Math.max(1, laneEnds.length), placed });
     }
-    return m;
-  }, [activities]);
+    return result;
+  }, [lines, activities]);
+
+  const lineRowInfo = useMemo(() => {
+    let top = 0;
+    return lines.map((l) => {
+      const lanes = linePacks.get(l.id)?.lanes ?? 1;
+      const height = lanes * ROW_HEIGHT;
+      const info = { id: l.id, top, height, lanes };
+      top += height;
+      return info;
+    });
+  }, [lines, linePacks]);
+
+  const bodyHeight = Math.max(lineRowInfo.reduce((acc, l) => acc + l.height, 0), 60);
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -138,7 +170,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     return <p className="p-4 text-sm text-muted-foreground">No production lines yet.</p>;
   }
 
-  const bodyHeight = Math.max(lines.length * ROW_HEIGHT, 60);
   const center = scrollLeft + viewportW / 2;
   // header rows: year (22) + month (22) + weekday (16) + day (22) = 82
   const HEADER_H = 22 + 22 + 16 + 22;
@@ -149,15 +180,18 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         {/* Sticky left line labels */}
         <div className="shrink-0 border-r bg-card" style={{ width: LINE_LABEL_W }}>
           <div className="border-b" style={{ height: HEADER_H }} />
-          {lines.map((l) => (
-            <div
-              key={l.id}
-              className="flex items-center px-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground border-b"
-              style={{ height: ROW_HEIGHT }}
-            >
-              Line {String(l.number).padStart(2, "0")}
-            </div>
-          ))}
+          {lines.map((l, i) => {
+            const info = lineRowInfo[i];
+            return (
+              <div
+                key={l.id}
+                className="flex items-center px-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground border-b"
+                style={{ height: info.height }}
+              >
+                Line {String(l.number).padStart(2, "0")}
+              </div>
+            );
+          })}
         </div>
 
         {/* Scrollable timeline */}
@@ -230,7 +264,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
               {/* Days */}
               <div className="relative" style={{ height: 22 }}>
                 {days.map((d) => {
-                  const isToday = format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
                   const isFirst = d.getDate() === 1;
                   const dow = d.getDay();
                   const isWeekend = dow === 0 || dow === 6;
@@ -240,9 +273,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                       className={cn(
                         "absolute top-0 text-center text-[10px] tabular-nums border-r",
                         isFirst ? "border-border" : "border-border/30",
-                        isToday
-                          ? "bg-primary text-primary-foreground font-semibold"
-                          : isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
+                        isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
                       )}
                       style={{ left: dayToX(d), width: DAY_WIDTH, height: 22, lineHeight: "22px" }}
                     >
@@ -269,11 +300,20 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 );
               })}
 
-              {lines.map((l, i) => (
+              {/* Week separators (before each Monday) */}
+              {mondays.map((d) => (
                 <div
-                  key={`sep-${l.id}`}
+                  key={`wk-${d.toISOString()}`}
+                  className="absolute top-0 bottom-0 pointer-events-none"
+                  style={{ left: dayToX(d), width: 1, background: "hsl(var(--border) / 0.7)" }}
+                />
+              ))}
+
+              {lineRowInfo.map((info) => (
+                <div
+                  key={`sep-${info.id}`}
                   className="absolute left-0 right-0 border-b border-border/40"
-                  style={{ top: (i + 1) * ROW_HEIGHT - 1, height: 1 }}
+                  style={{ top: info.top + info.height - 1, height: 1 }}
                 />
               ))}
 
@@ -284,9 +324,11 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 />
               )}
 
-              {lines.map((l, rowIdx) => {
-                const acts = actsByLine.get(l.id) ?? [];
-                return acts.map((a) => {
+              {lineRowInfo.map((info, i) => {
+                const l = lines[i];
+                const pack = linePacks.get(l.id);
+                if (!pack) return null;
+                return pack.placed.map((a) => {
                   const s = parseISO(a.start_date);
                   const e = parseISO(a.end_date);
                   const left = dayToX(s);
@@ -298,7 +340,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                       className="absolute rounded-full flex items-center px-2 overflow-hidden"
                       style={{
                         left, width,
-                        top: rowIdx * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
+                        top: info.top + a.lane * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
                         height: BAR_HEIGHT,
                         background: a.color,
                       }}
