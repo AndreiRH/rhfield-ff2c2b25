@@ -1,0 +1,1 @@
+ALTER TABLE public.line_activities ADD COLUMN IF NOT EXISTS show_on_global boolean NOT NULL DEFAULT true;
