@@ -68,28 +68,10 @@ export function ActivityPlanner({
     [activities],
   );
 
-  // Timeline range
-  const { rangeStart, rangeEnd, totalDays } = useMemo(() => {
-    const dates: Date[] = [];
-    if (line.hot_planned_start) dates.push(parseISO(line.hot_planned_start));
-    if (line.hot_planned_end) dates.push(parseISO(line.hot_planned_end));
-    for (const a of sorted) {
-      dates.push(parseISO(a.start_date));
-      dates.push(parseISO(a.end_date));
-    }
-    let start: Date, end: Date;
-    if (dates.length === 0) {
-      const now = new Date();
-      start = addDays(now, -90);
-      end = addDays(now, 90);
-    } else {
-      const min = new Date(Math.min(...dates.map((d) => d.getTime())));
-      const max = new Date(Math.max(...dates.map((d) => d.getTime())));
-      start = addDays(startOfMonth(min), -14);
-      end = addDays(endOfMonth(max), 14);
-    }
-    return { rangeStart: start, rangeEnd: end, totalDays: differenceInCalendarDays(end, start) + 1 };
-  }, [sorted, line.hot_planned_start, line.hot_planned_end]);
+  // Fixed timeline range: 01/01/2026 → 31/12/2049
+  const rangeStart = RANGE_START;
+  const rangeEnd = RANGE_END;
+  const totalDays = differenceInCalendarDays(rangeEnd, rangeStart) + 1;
 
   const dayToX = (d: Date) => differenceInCalendarDays(d, rangeStart) * DAY_WIDTH;
   const todayX = dayToX(new Date());
@@ -109,13 +91,14 @@ export function ActivityPlanner({
       start: start < rangeStart ? rangeStart : start,
       end: end > rangeEnd ? rangeEnd : end,
     }));
-  }, [months, rangeStart, rangeEnd]);
+  }, [months]);
 
-  // Auto-scroll today into view on mount / activity changes
+  // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const target = Math.max(0, todayX - el.clientWidth / 2);
+    const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
+    const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -128,8 +111,10 @@ export function ActivityPlanner({
     el.scrollTo({ left: Math.max(0, x + w / 2 - el.clientWidth / 2), behavior: "smooth" });
   };
 
-  const usedLocalColors = new Set(activities.filter((a) => !a.is_shared).map((a) => a.color));
-  const nextColor = () => PALETTE.find((c) => !usedLocalColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
+  // Avoid color repeats on the same line — include shared + local activities.
+  const usedColors = new Set(activities.map((a) => a.color));
+  const nextColor = () => PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
+
 
   // ---------- handlers ----------
   const insertLocal = async (name: string, start: string, end: string, color?: string) => {
