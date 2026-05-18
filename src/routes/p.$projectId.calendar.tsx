@@ -173,25 +173,43 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   }
 
   const center = scrollLeft + viewportW / 2;
-  // header rows: year (22) + month (22) + weekday (16) + day (22) = 82
-  const HEADER_H = 22 + 22 + 16 + 22;
+  // Day-grid header (weekday letters + day numbers) inside the scroll area
+  const DAY_HEADER_H = 16 + 22;
+  // Month + year header — fixed, OUTSIDE the scroll container
+  const FIXED_HEADER_H = 22 + 22;
 
   return (
     <div className="rounded-md border bg-card overflow-hidden">
+      {/* Top fixed header row: spacer over line labels + month/year overlay over timeline */}
+      <div className="flex border-b">
+        <div className="shrink-0 border-r bg-card" style={{ width: LINE_LABEL_W, height: FIXED_HEADER_H }} />
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <TimelineMonthYearHeader
+            scrollLeft={scrollLeft}
+            viewportW={viewportW}
+            rangeStart={RANGE_START}
+            rangeEnd={RANGE_END}
+            dayWidth={DAY_WIDTH}
+          />
+        </div>
+      </div>
+
       <div className="flex">
         {/* Sticky left line labels */}
         <div className="shrink-0 border-r bg-card" style={{ width: LINE_LABEL_W }}>
-          <div className="border-b" style={{ height: HEADER_H }} />
+          <div className="border-b" style={{ height: DAY_HEADER_H }} />
           {lines.map((l, i) => {
             const info = lineRowInfo[i];
             return (
-              <div
+              <Link
                 key={l.id}
-                className="flex items-center px-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground border-b"
+                to="/p/$projectId/lines/$lineNumber/calendar"
+                params={{ projectId, lineNumber: String(l.number) }}
+                className="flex items-center px-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground border-b hover:bg-muted/40 hover:text-foreground transition-colors"
                 style={{ height: info.height }}
               >
                 Line {String(l.number).padStart(2, "0")}
-              </div>
+              </Link>
             );
           })}
         </div>
