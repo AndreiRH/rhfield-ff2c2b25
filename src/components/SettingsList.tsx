@@ -32,6 +32,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/use-auth";
 import { logSetting } from "@/lib/settingLogs";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmUnshareToOriginLine } from "@/lib/confirm-unshare";
 
 interface SettingPhoto { id: string; storage_path: string; is_shared?: boolean; origin_line_id?: string | null }
 interface SettingFile { id: string; storage_path: string; file_name: string; is_shared?: boolean; origin_line_id?: string | null }
