@@ -1,11 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft } from "lucide-react";
+import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { ActivityPlanner, type LineActivity, type LineInfo, type LineLite } from "@/components/ActivityPlanner";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
@@ -44,28 +44,19 @@ function LineCalendarPage() {
   });
 
   if (!session) return null;
+  const title = "Hot commissioning planner";
 
   return (
     <div className="min-h-screen">
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
-        <Link
-          to="/p/$projectId/lines/$lineNumber"
-          params={{ projectId, lineNumber }}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Line {lineNumber}
-        </Link>
-
         {isLoading || !data ? (
           <Skeleton className="h-64" />
         ) : (
           <>
             <div className="mb-6 border-b pb-4">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Production line {String(data.line.number).padStart(2, "0")}
-              </span>
-              <h1 className="text-3xl font-semibold">Hot commissioning planner</h1>
+              <LineBreadcrumb projectId={projectId} lineNumber={lineNumber} segments={[title]} currentTitle={title} />
+              <h1 className="text-3xl font-semibold">{title}</h1>
             </div>
             <ActivityPlanner
               line={data.line}
