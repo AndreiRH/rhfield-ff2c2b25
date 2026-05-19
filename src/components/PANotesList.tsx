@@ -33,6 +33,7 @@ interface Note {
 
 export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string; kind: string; canEdit: boolean; userId?: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [open, setOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
