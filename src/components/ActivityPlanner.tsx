@@ -507,8 +507,16 @@ export function ActivityPlanner({
         )}
       </div>
 
-      {/* Add form */}
-      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} />}
+      {/* Create dialog */}
+      {creating && (
+        <CreateActivityDialog
+          onClose={() => setCreating(false)}
+          onSubmit={async (name, start, end) => {
+            await checkDuplicateAndAdd(name, start, end, false);
+            setCreating(false);
+          }}
+        />
+      )}
 
       {/* Duplicate conflict dialog */}
       {duplicateConflict && (
