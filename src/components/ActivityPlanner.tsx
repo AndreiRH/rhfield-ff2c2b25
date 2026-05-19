@@ -236,25 +236,47 @@ export function ActivityPlanner({
       {/* Gantt timeline */}
       <Card>
         <CardContent className="p-0">
-          {/* Fixed (non-scrolling) month + year header, sits OUTSIDE the
-              horizontally scrollable timeline. Width matches the scroll
-              container's viewport. */}
-          <div className="border-b">
-            <TimelineMonthYearHeader
-              scrollLeft={scrollLeft}
-              viewportW={viewportW}
-              rangeStart={rangeStart}
-              rangeEnd={rangeEnd}
-              dayWidth={DAY_WIDTH}
-            />
-          </div>
           <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
-              {/* Day-grid header (weekday letters + day numbers) — scrolls with body */}
+              {/* Full timeline header — scrolls as one piece with the body */}
               <div className="border-b bg-card">
+                {/* Years */}
+                <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
+                  {years.map((y) => {
+                    const left = dayToX(y.start);
+                    const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
+                    return (
+                      <div
+                        key={`yr-${y.year}`}
+                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
+                        style={{ left, width, height: YEAR_HEADER_H }}
+                      >
+                        <span className="truncate px-1">{y.year}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Months */}
+                <div className="relative border-b" style={{ height: MONTH_HEADER_H }}>
+                  {months.map((m) => {
+                    const mStart = m < rangeStart ? rangeStart : m;
+                    const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
+                    const left = dayToX(mStart);
+                    const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
+                    return (
+                      <div
+                        key={`mo-${m.toISOString()}`}
+                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
+                        style={{ left, width, height: MONTH_HEADER_H }}
+                      >
+                        <span className="truncate px-1">{format(m, "MMM")}</span>
+                      </div>
+                    );
+                  })}
+                </div>
                 {/* Weekday letters */}
-                <div className="relative border-b" style={{ height: 16 }}>
-                  {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
+                <div className="relative border-b" style={{ height: WEEKDAY_HEADER_H }}>
+                  {days.map((d) => {
                     const dow = d.getDay(); // 0=Sun..6=Sat
                     const letter = ["S", "M", "T", "W", "T", "F", "S"][dow];
                     const isWeekend = dow === 0 || dow === 6;
@@ -265,7 +287,7 @@ export function ActivityPlanner({
                           "absolute top-0 text-center text-[9px] font-medium uppercase",
                           isWeekend ? "text-primary/70" : "text-muted-foreground/70",
                         )}
-                        style={{ left: dayToX(d), width: DAY_WIDTH, height: 16, lineHeight: "16px" }}
+                        style={{ left: dayToX(d), width: DAY_WIDTH, height: WEEKDAY_HEADER_H, lineHeight: `${WEEKDAY_HEADER_H}px` }}
                       >
                         {letter}
                       </div>
@@ -273,8 +295,8 @@ export function ActivityPlanner({
                   })}
                 </div>
                 {/* Days */}
-                <div className="relative" style={{ height: 22 }}>
-                  {eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((d) => {
+                <div className="relative" style={{ height: DAY_NUMBERS_HEADER_H }}>
+                  {days.map((d) => {
                     const isToday = format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
                     const isFirst = d.getDate() === 1;
                     const dow = d.getDay();
@@ -289,7 +311,7 @@ export function ActivityPlanner({
                             ? "bg-primary text-primary-foreground font-semibold"
                             : isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
                         )}
-                        style={{ left: dayToX(d), width: DAY_WIDTH, height: 22, lineHeight: "22px" }}
+                        style={{ left: dayToX(d), width: DAY_WIDTH, height: DAY_NUMBERS_HEADER_H, lineHeight: `${DAY_NUMBERS_HEADER_H}px` }}
                       >
                         {d.getDate()}
                       </div>
