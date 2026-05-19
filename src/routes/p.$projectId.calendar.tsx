@@ -10,7 +10,7 @@ import {
   eachMonthOfInterval, eachDayOfInterval, startOfYear,
 } from "date-fns";
 import { cn } from "@/lib/utils";
-import { TimelineMonthYearHeader } from "@/components/TimelineMonthYearHeader";
+import { CalendarNotesList } from "@/components/CalendarNotesList";
 
 interface LineLite { id: string; number: number; name: string | null }
 interface Activity { id: string; line_id: string; start_date: string; end_date: string; name: string; color: string }
@@ -18,8 +18,10 @@ interface Activity { id: string; line_id: string; start_date: string; end_date: 
 const DAY_WIDTH = 28;
 const ROW_HEIGHT = 22;
 const BAR_HEIGHT = 14;
-const MONTH_LABEL_W = 78;
-const YEAR_LABEL_W = 48;
+const YEAR_HEADER_H = 22;
+const MONTH_HEADER_H = 22;
+const WEEKDAY_HEADER_H = 16;
+const DAY_NUMBERS_HEADER_H = 22;
 const LINE_LABEL_W = 70;
 const RANGE_START = new Date(2026, 0, 1);
 const RANGE_END = new Date(2049, 11, 31);
@@ -30,7 +32,7 @@ export const Route = createFileRoute("/p/$projectId/calendar")({
 
 function ProjectCalendarPage() {
   const { projectId } = Route.useParams();
-  const { session, loading } = useAuth();
+  const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
   if (!session) return null;
@@ -55,6 +57,9 @@ function ProjectCalendarPage() {
             This view is read-only. Activities can be added, edited, or removed only inside each
             <span className="font-medium text-foreground"> Line hot commissioning planner</span>.
           </span>
+        </div>
+        <div className="mt-6">
+          <CalendarNotesList projectId={projectId} scope="global" canEdit={canEdit} userId={user?.id} />
         </div>
       </main>
     </div>
