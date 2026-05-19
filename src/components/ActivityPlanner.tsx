@@ -17,13 +17,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { TimelineMonthYearHeader } from "@/components/TimelineMonthYearHeader";
 
 export const DAY_WIDTH = 28;
 const ROW_HEIGHT = 22;
 const BAR_HEIGHT = 14;
-const MONTH_LABEL_W = 78;
-const YEAR_LABEL_W = 48;
+const YEAR_HEADER_H = 22;
+const MONTH_HEADER_H = 22;
+const WEEKDAY_HEADER_H = 16;
+const DAY_NUMBERS_HEADER_H = 22;
 export const PALETTE = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
@@ -62,8 +63,6 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [viewportW, setViewportW] = useState(0);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{ name: string; existingLineNumbers: number[]; existingColor: string; start: string; end: string } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
@@ -100,6 +99,8 @@ export function ActivityPlanner({
       end: end > rangeEnd ? rangeEnd : end,
     }));
   }, [months]);
+  const days = useMemo(() => eachDayOfInterval({ start: rangeStart, end: rangeEnd }), [rangeStart, rangeEnd]);
+  const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
 
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
@@ -108,26 +109,7 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
-    setScrollLeft(target);
-    setViewportW(el.clientWidth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Track scroll + viewport for sticky-centered month/year labels
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      setScrollLeft(el.scrollLeft);
-    };
-    const onResize = () => setViewportW(el.clientWidth);
-    el.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    setViewportW(el.clientWidth);
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
   }, []);
 
   const scrollToActivity = (a: LineActivity) => {
