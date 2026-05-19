@@ -640,10 +640,12 @@ export function ActivityPlanner({
   );
 }
 
-function AddActivityForm({
+function CreateActivityDialog({
+  onClose,
   onSubmit,
 }: {
-  onSubmit: (name: string, start: string, end: string, shareGlobal: boolean) => Promise<void>;
+  onClose: () => void;
+  onSubmit: (name: string, start: string, end: string) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
@@ -651,27 +653,39 @@ function AddActivityForm({
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
+    if (!name.trim()) { toast.error("Activity name required"); return; }
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
+    if (start > end) { toast.error("End must be after start"); return; }
     setBusy(true);
     try {
-      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), false);
-      setName(""); setStart(undefined); setEnd(undefined);
+      await onSubmit(name.trim(), format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
     } finally { setBusy(false); }
   };
 
   return (
-    <Card className="border-dashed">
-      <CardContent className="p-4 space-y-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <DateField label="Start" date={start} onChange={setStart} />
-          <DateField label="End" date={end} onChange={setEnd} />
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New activity</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
+            <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <DateField label="Start" date={start} onChange={setStart} />
+            <DateField label="End" date={end} onChange={setEnd} />
+          </div>
         </div>
-        <Button onClick={submit} disabled={busy} className="w-full sm:w-auto">
-          <Plus className="mr-1 h-4 w-4" /> Add activity
-        </Button>
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={submit} disabled={busy}>
+            <Plus className="mr-1 h-4 w-4" /> Add activity
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
