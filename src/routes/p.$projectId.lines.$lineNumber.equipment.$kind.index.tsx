@@ -19,6 +19,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
+import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
