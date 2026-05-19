@@ -10,6 +10,7 @@ import { ChevronLeft } from "lucide-react";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { ActivityPlanner, type LineActivity, type LineInfo, type LineLite } from "@/components/ActivityPlanner";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
+import { CalendarNotesList } from "@/components/CalendarNotesList";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
   component: LineCalendarPage,
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")
 
 function LineCalendarPage() {
   const { projectId, lineNumber } = Route.useParams();
-  const { session, loading, canEdit } = useAuth();
+  const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
 
@@ -76,6 +77,9 @@ function LineCalendarPage() {
               canEdit={canEdit}
               onChange={refetch}
             />
+            <div className="mt-6">
+              <CalendarNotesList projectId={projectId} lineId={data.line.id} scope="line" canEdit={canEdit} userId={user?.id} />
+            </div>
           </>
         )}
       </main>
