@@ -1,6 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, parseISO, differenceInCalendarDays, endOfMonth, eachMonthOfInterval, startOfYear, eachDayOfInterval } from "date-fns";
-import { Pencil, Copy, Globe, Lock, Trash2, Plus, CalendarIcon, Share2, Eye, EyeOff } from "lucide-react";
+import {
+  format,
+  parseISO,
+  differenceInCalendarDays,
+  endOfMonth,
+  eachMonthOfInterval,
+  startOfYear,
+  eachDayOfInterval,
+} from "date-fns";
+import {
+  Pencil,
+  Copy,
+  Globe,
+  Lock,
+  Trash2,
+  Plus,
+  CalendarIcon,
+  Share2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { toUserMessage } from "@/lib/errors";
@@ -10,10 +29,22 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -26,10 +57,26 @@ const MONTH_HEADER_H = 22;
 const WEEKDAY_HEADER_H = 16;
 const DAY_NUMBERS_HEADER_H = 22;
 export const PALETTE = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
-  "#a855f7", "#22c55e", "#eab308", "#dc2626", "#0ea5e9",
-  "#d946ef", "#f43f5e", "#65a30d", "#0891b2", "#7c3aed",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#f97316",
+  "#84cc16",
+  "#ec4899",
+  "#14b8a6",
+  "#a855f7",
+  "#22c55e",
+  "#eab308",
+  "#dc2626",
+  "#0ea5e9",
+  "#d946ef",
+  "#f43f5e",
+  "#65a30d",
+  "#0891b2",
+  "#7c3aed",
 ];
 export const RANGE_START = new Date(2026, 0, 1);
 export const RANGE_END = new Date(2049, 11, 31);
@@ -49,11 +96,22 @@ export interface LineActivity {
   created_at: string;
 }
 
-export interface LineLite { id: string; number: number; name?: string | null }
-export interface LineInfo extends LineLite { hot_planned_start: string | null; hot_planned_end: string | null }
+export interface LineLite {
+  id: string;
+  number: number;
+  name?: string | null;
+}
+export interface LineInfo extends LineLite {
+  hot_planned_start: string | null;
+  hot_planned_end: string | null;
+}
 
 export function ActivityPlanner({
-  line, allLines, activities, canEdit, onChange,
+  line,
+  allLines,
+  activities,
+  canEdit,
+  onChange,
 }: {
   line: LineInfo;
   allLines: LineLite[];
@@ -64,7 +122,13 @@ export function ActivityPlanner({
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
-  const [duplicateConflict, setDuplicateConflict] = useState<{ name: string; existingLineNumbers: number[]; existingColor: string; start: string; end: string } | null>(null);
+  const [duplicateConflict, setDuplicateConflict] = useState<{
+    name: string;
+    existingLineNumbers: number[];
+    existingColor: string;
+    start: string;
+    end: string;
+  } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<LineActivity | null>(null);
@@ -85,7 +149,10 @@ export function ActivityPlanner({
   const timelineWidth = totalDays * DAY_WIDTH;
 
   // Months and years
-  const months = useMemo(() => eachMonthOfInterval({ start: rangeStart, end: rangeEnd }), [rangeStart, rangeEnd]);
+  const months = useMemo(
+    () => eachMonthOfInterval({ start: rangeStart, end: rangeEnd }),
+    [rangeStart, rangeEnd],
+  );
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
@@ -99,7 +166,10 @@ export function ActivityPlanner({
       end: end > rangeEnd ? rangeEnd : end,
     }));
   }, [months]);
-  const days = useMemo(() => eachDayOfInterval({ start: rangeStart, end: rangeEnd }), [rangeStart, rangeEnd]);
+  const days = useMemo(
+    () => eachDayOfInterval({ start: rangeStart, end: rangeEnd }),
+    [rangeStart, rangeEnd],
+  );
   const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
 
   // Auto-scroll to today (or first activity) on mount
@@ -115,45 +185,78 @@ export function ActivityPlanner({
   const scrollToActivity = (a: LineActivity) => {
     if (!scrollRef.current) return;
     const x = dayToX(parseISO(a.start_date));
-    const w = (differenceInCalendarDays(parseISO(a.end_date), parseISO(a.start_date)) + 1) * DAY_WIDTH;
+    const w =
+      (differenceInCalendarDays(parseISO(a.end_date), parseISO(a.start_date)) + 1) * DAY_WIDTH;
     const el = scrollRef.current;
     el.scrollTo({ left: Math.max(0, x + w / 2 - el.clientWidth / 2), behavior: "smooth" });
   };
 
   // Avoid color repeats on the same line — include shared + local activities.
   const usedColors = new Set(activities.map((a) => a.color));
-  const nextColor = () => PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
-
+  const nextColor = () =>
+    PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
 
   // ---------- handlers ----------
   const insertLocal = async (name: string, start: string, end: string, color?: string) => {
     const c = color ?? nextColor();
     const { error } = await supabase.from("line_activities").insert({
-      line_id: line.id, name, start_date: start, end_date: end, color: c,
-      is_shared: false, created_by: user?.id ?? null, show_on_global: false,
+      line_id: line.id,
+      name,
+      start_date: start,
+      end_date: end,
+      color: c,
+      is_shared: false,
+      created_by: user?.id ?? null,
+      show_on_global: false,
     });
     if (error) toast.error(toUserMessage(error));
-    else { toast.success("Activity added"); onChange(); }
+    else {
+      toast.success("Activity added");
+      onChange();
+    }
   };
 
   const insertSharedAcrossAll = async (name: string, start: string, end: string, color: string) => {
     const groupId = crypto.randomUUID();
     const rows = allLines.map((l) => ({
-      line_id: l.id, name, start_date: start, end_date: end, color,
-      is_shared: true, shared_group_id: groupId, origin_line_id: line.id,
+      line_id: l.id,
+      name,
+      start_date: start,
+      end_date: end,
+      color,
+      is_shared: true,
+      shared_group_id: groupId,
+      origin_line_id: line.id,
       created_by: user?.id ?? null,
       show_on_global: l.id === line.id,
     }));
     const { error } = await supabase.from("line_activities").insert(rows);
     if (error) toast.error(toUserMessage(error));
-    else { toast.success(`Shared "${name}" across ${allLines.length} lines`); onChange(); }
+    else {
+      toast.success(`Shared "${name}" across ${allLines.length} lines`);
+      onChange();
+    }
   };
 
-  const checkDuplicateAndAdd = async (name: string, start: string, end: string, shareGlobal: boolean) => {
+  const checkDuplicateAndAdd = async (
+    name: string,
+    start: string,
+    end: string,
+    shareGlobal: boolean,
+  ) => {
     const trimmed = name.trim();
-    if (!trimmed) { toast.error("Activity name required"); return; }
-    if (!start || !end) { toast.error("Pick start and end dates"); return; }
-    if (start > end) { toast.error("End date must be after start"); return; }
+    if (!trimmed) {
+      toast.error("Activity name required");
+      return;
+    }
+    if (!start || !end) {
+      toast.error("Pick start and end dates");
+      return;
+    }
+    if (start > end) {
+      toast.error("End date must be after start");
+      return;
+    }
     const otherLineIds = allLines.filter((l) => l.id !== line.id).map((l) => l.id);
     if (otherLineIds.length > 0) {
       const { data } = await supabase
@@ -170,7 +273,8 @@ export function ActivityPlanner({
           name: trimmed,
           existingLineNumbers: lineNumbers,
           existingColor: (dupes[0] as any).color,
-          start, end,
+          start,
+          end,
         });
         return;
       }
@@ -188,17 +292,29 @@ export function ActivityPlanner({
       .from("line_activities")
       .update({ is_shared: true, shared_group_id: groupId, origin_line_id: line.id })
       .eq("id", a.id);
-    if (updErr) { toast.error(toUserMessage(updErr)); return; }
+    if (updErr) {
+      toast.error(toUserMessage(updErr));
+      return;
+    }
     const others = allLines.filter((l) => l.id !== line.id);
     if (others.length > 0) {
       const rows = others.map((l) => ({
-        line_id: l.id, name: a.name, start_date: a.start_date, end_date: a.end_date,
-        color: a.color, is_shared: true, shared_group_id: groupId, origin_line_id: line.id,
+        line_id: l.id,
+        name: a.name,
+        start_date: a.start_date,
+        end_date: a.end_date,
+        color: a.color,
+        is_shared: true,
+        shared_group_id: groupId,
+        origin_line_id: line.id,
         created_by: user?.id ?? null,
         show_on_global: false,
       }));
       const { error } = await supabase.from("line_activities").insert(rows);
-      if (error) { toast.error(toUserMessage(error)); return; }
+      if (error) {
+        toast.error(toUserMessage(error));
+        return;
+      }
     }
     toast.success("Shared across all lines");
     onChange();
@@ -211,12 +327,18 @@ export function ActivityPlanner({
       .delete()
       .eq("shared_group_id", a.shared_group_id)
       .neq("line_id", line.id);
-    if (delErr) { toast.error(toUserMessage(delErr)); return; }
+    if (delErr) {
+      toast.error(toUserMessage(delErr));
+      return;
+    }
     const { error: updErr } = await supabase
       .from("line_activities")
       .update({ is_shared: false, shared_group_id: null, origin_line_id: null })
       .eq("id", a.id);
-    if (updErr) { toast.error(toUserMessage(updErr)); return; }
+    if (updErr) {
+      toast.error(toUserMessage(updErr));
+      return;
+    }
     toast.success("Now local to this line");
     onChange();
   };
@@ -224,7 +346,10 @@ export function ActivityPlanner({
   const doDelete = async (a: LineActivity) => {
     const { error } = await supabase.from("line_activities").delete().eq("id", a.id);
     if (error) toast.error(toUserMessage(error));
-    else { toast.success("Activity deleted"); onChange(); }
+    else {
+      toast.success("Activity deleted");
+      onChange();
+    }
   };
 
   const doDuplicate = async (a: LineActivity) => {
@@ -246,7 +371,12 @@ export function ActivityPlanner({
                 <div
                   key={`wk-full-${d.toISOString()}`}
                   className="absolute top-0 z-10 pointer-events-none"
-                  style={{ left: dayToX(d), width: 1, height: timelineContentHeight, background: "hsl(var(--border) / 0.7)" }}
+                  style={{
+                    left: dayToX(d),
+                    width: 1,
+                    height: timelineContentHeight,
+                    background: "hsl(var(--border) / 0.7)",
+                  }}
                 />
               ))}
 
@@ -299,7 +429,12 @@ export function ActivityPlanner({
                           "absolute top-0 text-center text-[9px] font-medium uppercase",
                           isWeekend ? "text-primary/70" : "text-muted-foreground/70",
                         )}
-                        style={{ left: dayToX(d), width: DAY_WIDTH, height: WEEKDAY_HEADER_H, lineHeight: `${WEEKDAY_HEADER_H}px` }}
+                        style={{
+                          left: dayToX(d),
+                          width: DAY_WIDTH,
+                          height: WEEKDAY_HEADER_H,
+                          lineHeight: `${WEEKDAY_HEADER_H}px`,
+                        }}
                       >
                         {letter}
                       </div>
@@ -321,9 +456,16 @@ export function ActivityPlanner({
                           isFirst ? "border-border" : "border-border/30",
                           isToday
                             ? "bg-primary text-primary-foreground font-semibold"
-                            : isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
+                            : isWeekend
+                              ? "text-foreground/70 bg-muted/40"
+                              : "text-muted-foreground",
                         )}
-                        style={{ left: dayToX(d), width: DAY_WIDTH, height: DAY_NUMBERS_HEADER_H, lineHeight: `${DAY_NUMBERS_HEADER_H}px` }}
+                        style={{
+                          left: dayToX(d),
+                          width: DAY_WIDTH,
+                          height: DAY_NUMBERS_HEADER_H,
+                          lineHeight: `${DAY_NUMBERS_HEADER_H}px`,
+                        }}
                       >
                         {d.getDate()}
                       </div>
@@ -345,7 +487,8 @@ export function ActivityPlanner({
                       key={`bg-${m.toISOString()}`}
                       className="absolute top-0 bottom-0"
                       style={{
-                        left, width,
+                        left,
+                        width,
                         background: i % 2 === 0 ? "hsl(var(--muted) / 0.3)" : "transparent",
                       }}
                     />
@@ -358,7 +501,13 @@ export function ActivityPlanner({
                     className="absolute top-0 bottom-0"
                     style={{
                       left: dayToX(parseISO(line.hot_planned_start)),
-                      width: (differenceInCalendarDays(parseISO(line.hot_planned_end), parseISO(line.hot_planned_start)) + 1) * DAY_WIDTH,
+                      width:
+                        (differenceInCalendarDays(
+                          parseISO(line.hot_planned_end),
+                          parseISO(line.hot_planned_start),
+                        ) +
+                          1) *
+                        DAY_WIDTH,
                       background: "hsl(var(--primary) / 0.08)",
                     }}
                     title="Hot commissioning planned window"
@@ -394,7 +543,9 @@ export function ActivityPlanner({
                         background: a.color,
                       }}
                     >
-                      <span className="text-[10px] font-medium text-white truncate leading-none">{a.name}</span>
+                      <span className="text-[10px] font-medium text-white truncate leading-none">
+                        {a.name}
+                      </span>
                     </button>
                   );
                 })}
@@ -439,7 +590,10 @@ export function ActivityPlanner({
               >
                 <div className="flex items-center gap-2">
                   {canEdit && (
-                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center gap-0.5 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         type="button"
                         onClick={() => setEditing(a)}
@@ -450,14 +604,22 @@ export function ActivityPlanner({
                       </button>
                       <button
                         type="button"
-                        onClick={() => a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a)}
-                        title={a.is_shared ? "Shared across all lines — click to make local" : "Share across all lines"}
+                        onClick={() => (a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a))}
+                        title={
+                          a.is_shared
+                            ? "Shared across all lines — click to make local"
+                            : "Share across all lines"
+                        }
                         className={cn(
                           "inline-flex h-5 w-5 items-center justify-center rounded hover:text-foreground",
                           a.is_shared ? "text-primary" : "text-muted-foreground",
                         )}
                       >
-                        {a.is_shared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                        {a.is_shared ? (
+                          <Share2 className="h-3 w-3" />
+                        ) : (
+                          <Lock className="h-3 w-3" />
+                        )}
                       </button>
                       <button
                         type="button"
@@ -477,9 +639,12 @@ export function ActivityPlanner({
                       </button>
                     </div>
                   )}
-                  <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>{a.name}</span>
+                  <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
+                    {a.name}
+                  </span>
                   <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
-                    {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+                    {format(parseISO(a.start_date), "d MMM yy")} →{" "}
+                    {format(parseISO(a.end_date), "d MMM yy")}
                   </span>
                   {canEdit && (
                     <button
@@ -491,9 +656,20 @@ export function ActivityPlanner({
                           .update({ show_on_global: !a.show_on_global })
                           .eq("id", a.id);
                         if (error) toast.error(toUserMessage(error));
-                        else { toast.success(a.show_on_global ? "Hidden from global calendar" : "Shown on global calendar"); onChange(); }
+                        else {
+                          toast.success(
+                            a.show_on_global
+                              ? "Hidden from global calendar"
+                              : "Shown on global calendar",
+                          );
+                          onChange();
+                        }
                       }}
-                      title={a.show_on_global ? "Visible on global calendar — click to hide" : "Hidden from global calendar — click to show"}
+                      title={
+                        a.show_on_global
+                          ? "Visible on global calendar — click to hide"
+                          : "Hidden from global calendar — click to show"
+                      }
                       className={cn(
                         "shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border transition",
                         a.show_on_global
@@ -501,7 +677,11 @@ export function ActivityPlanner({
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
-                      {a.show_on_global ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                      {a.show_on_global ? (
+                        <Eye className="h-3 w-3" />
+                      ) : (
+                        <EyeOff className="h-3 w-3" />
+                      )}
                       <span>{a.show_on_global ? "Global" : "Hidden"}</span>
                     </button>
                   )}
@@ -542,7 +722,11 @@ export function ActivityPlanner({
               <Button
                 variant="outline"
                 onClick={async () => {
-                  await insertLocal(duplicateConflict.name, duplicateConflict.start, duplicateConflict.end);
+                  await insertLocal(
+                    duplicateConflict.name,
+                    duplicateConflict.start,
+                    duplicateConflict.end,
+                  );
                   setDuplicateConflict(null);
                 }}
               >
@@ -571,7 +755,10 @@ export function ActivityPlanner({
         <EditActivityDialog
           activity={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); onChange(); }}
+          onSaved={() => {
+            setEditing(null);
+            onChange();
+          }}
         />
       )}
 
@@ -588,7 +775,13 @@ export function ActivityPlanner({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => { const a = confirmShare; setConfirmShare(null); await doShare(a); }}>
+              <AlertDialogAction
+                onClick={async () => {
+                  const a = confirmShare;
+                  setConfirmShare(null);
+                  await doShare(a);
+                }}
+              >
                 Share
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -604,15 +797,23 @@ export function ActivityPlanner({
               <AlertDialogTitle>Remove from all lines?</AlertDialogTitle>
               <AlertDialogDescription>
                 This activity was originally shared from Line{" "}
-                {String(allLines.find((l) => l.id === confirmUnshare.origin_line_id)?.number ?? "?").padStart(2, "0")}.
-                Making it local will DELETE it from all other lines in the project.
-                Only this line (Line {String(line.number).padStart(2, "0")}) will keep it, with its current dates.
+                {String(
+                  allLines.find((l) => l.id === confirmUnshare.origin_line_id)?.number ?? "?",
+                ).padStart(2, "0")}
+                . Making it local will DELETE it from all other lines in the project. Only this line
+                (Line {String(line.number).padStart(2, "0")}) will keep it, with its current dates.
                 This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => { const a = confirmUnshare; setConfirmUnshare(null); await doUnshare(a); }}>
+              <AlertDialogAction
+                onClick={async () => {
+                  const a = confirmUnshare;
+                  setConfirmUnshare(null);
+                  await doUnshare(a);
+                }}
+              >
                 Make local on this line only
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -634,7 +835,13 @@ export function ActivityPlanner({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => { const a = confirmDelete; setConfirmDelete(null); await doDelete(a); }}>
+              <AlertDialogAction
+                onClick={async () => {
+                  const a = confirmDelete;
+                  setConfirmDelete(null);
+                  await doDelete(a);
+                }}
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -658,13 +865,24 @@ function CreateActivityDialog({
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!name.trim()) { toast.error("Activity name required"); return; }
-    if (!start || !end) { toast.error("Pick start and end dates"); return; }
-    if (start > end) { toast.error("End must be after start"); return; }
+    if (!name.trim()) {
+      toast.error("Activity name required");
+      return;
+    }
+    if (!start || !end) {
+      toast.error("Pick start and end dates");
+      return;
+    }
+    if (start > end) {
+      toast.error("End must be after start");
+      return;
+    }
     setBusy(true);
     try {
       await onSubmit(name.trim(), format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -676,7 +894,12 @@ function CreateActivityDialog({
         <div className="space-y-3">
           <div>
             <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
-            <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
+            <Input
+              value={name}
+              autoFocus
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Activity name"
+            />
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <DateField label="Start" date={start} onChange={setStart} />
@@ -684,7 +907,9 @@ function CreateActivityDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={busy}>
             <Plus className="mr-1 h-4 w-4" /> Add activity
           </Button>
@@ -695,25 +920,47 @@ function CreateActivityDialog({
 }
 
 function EditActivityDialog({
-  activity, onClose, onSaved,
-}: { activity: LineActivity; onClose: () => void; onSaved: () => void }) {
+  activity,
+  onClose,
+  onSaved,
+}: {
+  activity: LineActivity;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [name, setName] = useState(activity.name);
   const [start, setStart] = useState<Date | undefined>(parseISO(activity.start_date));
   const [end, setEnd] = useState<Date | undefined>(parseISO(activity.end_date));
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
-    if (!name.trim()) { toast.error("Name required"); return; }
-    if (!start || !end) { toast.error("Dates required"); return; }
-    if (start > end) { toast.error("End must be after start"); return; }
+    if (!name.trim()) {
+      toast.error("Name required");
+      return;
+    }
+    if (!start || !end) {
+      toast.error("Dates required");
+      return;
+    }
+    if (start > end) {
+      toast.error("End must be after start");
+      return;
+    }
     setBusy(true);
     const { error } = await supabase
       .from("line_activities")
-      .update({ name: name.trim(), start_date: format(start, "yyyy-MM-dd"), end_date: format(end, "yyyy-MM-dd") })
+      .update({
+        name: name.trim(),
+        start_date: format(start, "yyyy-MM-dd"),
+        end_date: format(end, "yyyy-MM-dd"),
+      })
       .eq("id", activity.id);
     setBusy(false);
     if (error) toast.error(toUserMessage(error));
-    else { toast.success("Activity updated"); onSaved(); }
+    else {
+      toast.success("Activity updated");
+      onSaved();
+    }
   };
 
   return (
@@ -733,21 +980,33 @@ function EditActivityDialog({
           </div>
           {activity.is_shared && (
             <p className="text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
-              This is a shared activity. Editing the name will only affect this line.
-              Dates are always local to each line.
+              This is a shared activity. Editing the name will only affect this line. Dates are
+              always local to each line.
             </p>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>Save</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={busy}>
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function DateField({ label, date, onChange }: { label: string; date: Date | undefined; onChange: (d: Date | undefined) => void }) {
+function DateField({
+  label,
+  date,
+  onChange,
+}: {
+  label: string;
+  date: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+}) {
   return (
     <div>
       <Label className="mb-1 block text-xs text-muted-foreground">{label}</Label>
@@ -755,11 +1014,20 @@ function DateField({ label, date, onChange }: { label: string; date: Date | unde
         <PopoverTrigger asChild>
           <Button variant="outline" className="w-full justify-start text-left font-normal">
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "d MMM yyyy") : <span className="text-muted-foreground">Pick a date</span>}
+            {date ? (
+              format(date, "d MMM yyyy")
+            ) : (
+              <span className="text-muted-foreground">Pick a date</span>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={date} onSelect={onChange} className={cn("p-3 pointer-events-auto")} />
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={onChange}
+            className={cn("p-3 pointer-events-auto")}
+          />
         </PopoverContent>
       </Popover>
     </div>

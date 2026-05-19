@@ -6,14 +6,30 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Info } from "lucide-react";
 import {
-  format, parseISO, differenceInCalendarDays, endOfMonth,
-  eachMonthOfInterval, eachDayOfInterval, startOfYear,
+  format,
+  parseISO,
+  differenceInCalendarDays,
+  endOfMonth,
+  eachMonthOfInterval,
+  eachDayOfInterval,
+  startOfYear,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CalendarNotesList } from "@/components/CalendarNotesList";
 
-interface LineLite { id: string; number: number; name: string | null }
-interface Activity { id: string; line_id: string; start_date: string; end_date: string; name: string; color: string }
+interface LineLite {
+  id: string;
+  number: number;
+  name: string | null;
+}
+interface Activity {
+  id: string;
+  line_id: string;
+  start_date: string;
+  end_date: string;
+  name: string;
+  color: string;
+}
 
 const DAY_WIDTH = 28;
 const ROW_HEIGHT = 22;
@@ -34,7 +50,9 @@ function ProjectCalendarPage() {
   const { projectId } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
-  useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
+  useEffect(() => {
+    if (!loading && !session) navigate({ to: "/login" });
+  }, [session, loading, navigate]);
   if (!session) return null;
 
   return (
@@ -42,13 +60,20 @@ function ProjectCalendarPage() {
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-6 border-b pb-4">
-          <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 h-7 gap-1 text-muted-foreground">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="mb-2 -ml-2 h-7 gap-1 text-muted-foreground"
+          >
             <Link to="/p/$projectId" params={{ projectId }}>
               <ChevronLeft className="h-4 w-4" /> Back to project
             </Link>
           </Button>
           <h1 className="text-3xl font-semibold">Global hot commissioning calendar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">All activities across every production line.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            All activities across every production line.
+          </p>
         </div>
         <CombinedGantt projectId={projectId} />
         <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
@@ -59,7 +84,12 @@ function ProjectCalendarPage() {
           </span>
         </div>
         <div className="mt-6">
-          <CalendarNotesList projectId={projectId} scope="global" canEdit={canEdit} userId={user?.id} />
+          <CalendarNotesList
+            projectId={projectId}
+            scope="global"
+            canEdit={canEdit}
+            userId={user?.id}
+          />
         </div>
       </main>
     </div>
@@ -74,13 +104,23 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   useEffect(() => {
     (async () => {
       const { data: ls } = await supabase
-        .from("lines").select("id, number, name").eq("project_id", projectId).order("number");
+        .from("lines")
+        .select("id, number, name")
+        .eq("project_id", projectId)
+        .order("number");
       const list = (ls ?? []) as LineLite[];
       setLines(list);
-      if (list.length === 0) { setActivities([]); return; }
+      if (list.length === 0) {
+        setActivities([]);
+        return;
+      }
       const { data: acts } = await supabase
-        .from("line_activities").select("id, line_id, start_date, end_date, name, color, show_on_global")
-        .in("line_id", list.map((l) => l.id))
+        .from("line_activities")
+        .select("id, line_id, start_date, end_date, name, color, show_on_global")
+        .in(
+          "line_id",
+          list.map((l) => l.id),
+        )
         .eq("show_on_global", true)
         .order("start_date");
       setActivities((acts ?? []) as Activity[]);
@@ -120,8 +160,10 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       const placed: (Activity & { lane: number })[] = [];
       for (const a of acts) {
         let lane = laneEnds.findIndex((endDate) => endDate < a.start_date);
-        if (lane === -1) { lane = laneEnds.length; laneEnds.push(a.end_date); }
-        else laneEnds[lane] = a.end_date;
+        if (lane === -1) {
+          lane = laneEnds.length;
+          laneEnds.push(a.end_date);
+        } else laneEnds[lane] = a.end_date;
         placed.push({ ...a, lane });
       }
       result.set(l.id, { lanes: Math.max(1, laneEnds.length), placed });
@@ -140,7 +182,10 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     });
   }, [lines, linePacks]);
 
-  const bodyHeight = Math.max(lineRowInfo.reduce((acc, l) => acc + l.height, 0), 60);
+  const bodyHeight = Math.max(
+    lineRowInfo.reduce((acc, l) => acc + l.height, 0),
+    60,
+  );
 
   useLayoutEffect(() => {
     if (!scrollRef.current) return;
@@ -186,7 +231,12 @@ function CombinedGantt({ projectId }: { projectId: string }) {
               <div
                 key={`wk-full-${d.toISOString()}`}
                 className="absolute top-0 z-10 pointer-events-none"
-                style={{ left: dayToX(d), width: 1, height: timelineContentHeight, background: "hsl(var(--border) / 0.7)" }}
+                style={{
+                  left: dayToX(d),
+                  width: 1,
+                  height: timelineContentHeight,
+                  background: "hsl(var(--border) / 0.7)",
+                }}
               />
             ))}
 
@@ -239,7 +289,12 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                         "absolute top-0 text-center text-[9px] font-medium uppercase",
                         isWeekend ? "text-primary/70" : "text-muted-foreground/70",
                       )}
-                      style={{ left: dayToX(d), width: DAY_WIDTH, height: WEEKDAY_HEADER_H, lineHeight: `${WEEKDAY_HEADER_H}px` }}
+                      style={{
+                        left: dayToX(d),
+                        width: DAY_WIDTH,
+                        height: WEEKDAY_HEADER_H,
+                        lineHeight: `${WEEKDAY_HEADER_H}px`,
+                      }}
                     >
                       {letter}
                     </div>
@@ -260,7 +315,12 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                         isFirst ? "border-border" : "border-border/30",
                         isWeekend ? "text-foreground/70 bg-muted/40" : "text-muted-foreground",
                       )}
-                      style={{ left: dayToX(d), width: DAY_WIDTH, height: DAY_NUMBERS_HEADER_H, lineHeight: `${DAY_NUMBERS_HEADER_H}px` }}
+                      style={{
+                        left: dayToX(d),
+                        width: DAY_WIDTH,
+                        height: DAY_NUMBERS_HEADER_H,
+                        lineHeight: `${DAY_NUMBERS_HEADER_H}px`,
+                      }}
                     >
                       {d.getDate()}
                     </div>
@@ -280,7 +340,11 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   <div
                     key={`bg-${m.toISOString()}`}
                     className="absolute top-0 bottom-0"
-                    style={{ left, width, background: i % 2 === 0 ? "hsl(var(--muted) / 0.3)" : "transparent" }}
+                    style={{
+                      left,
+                      width,
+                      background: i % 2 === 0 ? "hsl(var(--muted) / 0.3)" : "transparent",
+                    }}
                   />
                 );
               })}
@@ -315,13 +379,16 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                       title={`Line ${String(l.number).padStart(2, "0")} · ${a.name} · ${format(s, "d MMM yyyy")} → ${format(e, "d MMM yyyy")}`}
                       className="absolute rounded-full flex items-center px-2 overflow-hidden"
                       style={{
-                        left, width,
+                        left,
+                        width,
                         top: info.top + a.lane * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
                         height: BAR_HEIGHT,
                         background: a.color,
                       }}
                     >
-                      <span className="text-[10px] font-medium text-white truncate leading-none">{a.name}</span>
+                      <span className="text-[10px] font-medium text-white truncate leading-none">
+                        {a.name}
+                      </span>
                     </div>
                   );
                 });

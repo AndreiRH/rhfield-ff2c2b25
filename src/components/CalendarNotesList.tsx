@@ -5,17 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Camera,
+  Paperclip,
+  GripVertical,
+  X,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import {
-  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -33,8 +50,18 @@ interface CalendarNote {
 }
 
 export function CalendarNotesList({
-  projectId, lineId, scope, canEdit, userId,
-}: { projectId: string; lineId?: string | null; scope: "global" | "line"; canEdit: boolean; userId?: string }) {
+  projectId,
+  lineId,
+  scope,
+  canEdit,
+  userId,
+}: {
+  projectId: string;
+  lineId?: string | null;
+  scope: "global" | "line";
+  canEdit: boolean;
+  userId?: string;
+}) {
   const [notes, setNotes] = useState<CalendarNote[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -50,14 +77,22 @@ export function CalendarNotesList({
     const { data } = await query;
     setNotes((data ?? []) as CalendarNote[]);
   };
-  useEffect(() => { load(); }, [projectId, lineId, scope]);
+  useEffect(() => {
+    load();
+  }, [projectId, lineId, scope]);
 
   const addNote = async () => {
     const { error } = await supabase.from("calendar_notes").insert({
-      project_id: projectId, line_id: scope === "line" ? lineId : null, scope,
-      title: "Note", body: "", sort_order: notes.length, created_by: userId,
+      project_id: projectId,
+      line_id: scope === "line" ? lineId : null,
+      scope,
+      title: "Note",
+      body: "",
+      sort_order: notes.length,
+      created_by: userId,
     });
-    if (error) toast.error(toUserMessage(error)); else load();
+    if (error) toast.error(toUserMessage(error));
+    else load();
   };
 
   const update = (id: string, patch: Partial<CalendarNote>) => {
@@ -84,14 +119,19 @@ export function CalendarNotesList({
     const newIdx = notes.findIndex((n) => n.id === over.id);
     const next = arrayMove(notes, oldIdx, newIdx);
     setNotes(next);
-    await Promise.all(next.map((n, i) => supabase.from("calendar_notes").update({ sort_order: i }).eq("id", n.id)));
+    await Promise.all(
+      next.map((n, i) => supabase.from("calendar_notes").update({ sort_order: i }).eq("id", n.id)),
+    );
   };
 
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-sm font-medium hover:text-foreground">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-2 text-sm font-medium hover:text-foreground"
+          >
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             Notes
             <span className="font-mono text-xs text-muted-foreground">({notes.length})</span>
@@ -102,35 +142,52 @@ export function CalendarNotesList({
             </Button>
           )}
         </div>
-        {open && (
-          notes.length === 0 ? (
+        {open &&
+          (notes.length === 0 ? (
             <p className="text-sm text-muted-foreground">No notes yet.</p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext
+                items={notes.map((n) => n.id)}
+                strategy={verticalListSortingStrategy}
+              >
                 <ul className="space-y-2">
                   {notes.map((n) => (
-                    <NoteRow key={n.id} note={n} canEdit={canEdit}
-                      onUpdate={(p: Partial<CalendarNote>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} />
+                    <NoteRow
+                      key={n.id}
+                      note={n}
+                      canEdit={canEdit}
+                      onUpdate={(p: Partial<CalendarNote>) => update(n.id, p)}
+                      onDelete={() => remove(n)}
+                      onReload={load}
+                    />
                   ))}
                 </ul>
               </SortableContext>
             </DndContext>
-          )
-        )}
+          ))}
       </CardContent>
     </Card>
   );
 }
 
 function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: note.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
-  useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
+  useEffect(() => {
+    setTitle(note.title);
+    setBody(note.body);
+  }, [note.title, note.body]);
 
   const hasPhoto = !!note.photo_path;
   const hasFile = !!note.file_name;
@@ -145,7 +202,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
+    if (error) {
+      toast.error(toUserMessage(error));
+      return;
+    }
     if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
     await supabase.from("calendar_notes").update({ photo_path: path }).eq("id", note.id);
     onReload();
@@ -154,9 +214,15 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     const path = `${basePath}/${Date.now()}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
+    if (error) {
+      toast.error(toUserMessage(error));
+      return;
+    }
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("calendar_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
+    await supabase
+      .from("calendar_notes")
+      .update({ file_path: path, file_name: file.name })
+      .eq("id", note.id);
     onReload();
   };
   const removePhoto = async () => {
@@ -166,7 +232,10 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   };
   const removeFile = async () => {
     if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("calendar_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
+    await supabase
+      .from("calendar_notes")
+      .update({ file_path: null, file_name: null })
+      .eq("id", note.id);
     onReload();
   };
 
@@ -174,11 +243,20 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
     <li ref={setNodeRef} style={style} data-nest className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
         {canEdit && (
-          <button {...attributes} {...listeners} className="cursor-grab touch-none p-1 active:cursor-grabbing">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none p-1 active:cursor-grabbing"
+          >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
-        <button type="button" onClick={() => setOpen((o) => !o)} className="p-1 text-muted-foreground hover:text-foreground" title={open ? "Collapse" : "Expand"}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="p-1 text-muted-foreground hover:text-foreground"
+          title={open ? "Collapse" : "Expand"}
+        >
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {open ? (
@@ -186,17 +264,36 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => { if (title !== note.title) onUpdate({ title }); maybeAutoDelete(); }}
+            onBlur={() => {
+              if (title !== note.title) onUpdate({ title });
+              maybeAutoDelete();
+            }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
           />
         ) : (
-          <button type="button" onClick={() => setOpen(true)} className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium"
+          >
             <span className="truncate">{note.title || "Untitled"}</span>
-            {hasPhoto && <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground"><Camera className="h-3 w-3" /> 1</span>}
-            {hasFile && <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground"><Paperclip className="h-3 w-3" /> 1</span>}
+            {hasPhoto && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                <Camera className="h-3 w-3" /> 1
+              </span>
+            )}
+            {hasFile && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                <Paperclip className="h-3 w-3" /> 1
+              </span>
+            )}
           </button>
         )}
-        {canEdit && <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80"><Trash2 className="h-4 w-4" /></button>}
+        {canEdit && (
+          <button onClick={onDelete} className="p-1 text-destructive hover:opacity-80">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
       {open && (
         <div className="space-y-2 p-3">
@@ -204,18 +301,42 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             value={body}
             disabled={!canEdit}
             onChange={(e) => setBody(e.target.value)}
-            onBlur={() => { if (body !== note.body) onUpdate({ body }); maybeAutoDelete(); }}
+            onBlur={() => {
+              if (body !== note.body) onUpdate({ body });
+              maybeAutoDelete();
+            }}
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
-          {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
+          {note.photo_path && (
+            <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />
+          )}
+          {note.file_name && (
+            <NoteFile
+              path={note.file_path}
+              name={note.file_name}
+              canEdit={canEdit}
+              onRemove={removeFile}
+            />
+          )}
           {canEdit && (
             <div className="flex gap-2">
-              <PhotoPicker onPick={uploadPhoto}><button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent"><Camera className="h-3 w-3" /> Photo</button></PhotoPicker>
+              <PhotoPicker onPick={uploadPhoto}>
+                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                  <Camera className="h-3 w-3" /> Photo
+                </button>
+              </PhotoPicker>
               <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
                 <Paperclip className="h-3 w-3" /> File
-                <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadFile(f);
+                    e.target.value = "";
+                  }}
+                />
               </label>
             </div>
           )}
@@ -225,17 +346,50 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   );
 }
 
-function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  return <StoragePhoto bucket="photos" path={path} imgClassName="max-h-40 w-full rounded border object-cover" canEdit={canEdit} onRemove={onRemove} />;
+function NotePhoto({
+  path,
+  canEdit,
+  onRemove,
+}: {
+  path: string;
+  canEdit: boolean;
+  onRemove: () => void;
+}) {
+  return (
+    <StoragePhoto
+      bucket="photos"
+      path={path}
+      imgClassName="max-h-40 w-full rounded border object-cover"
+      canEdit={canEdit}
+      onRemove={onRemove}
+    />
+  );
 }
 
-function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
+function NoteFile({
+  path,
+  name,
+  canEdit,
+  onRemove,
+}: {
+  path: string | null;
+  name: string;
+  canEdit: boolean;
+  onRemove: () => void;
+}) {
   return (
     <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={() => openStorageFile("files", path, name)} className="flex flex-1 items-center gap-1 text-left hover:underline">
+      <button
+        onClick={() => openStorageFile("files", path, name)}
+        className="flex flex-1 items-center gap-1 text-left hover:underline"
+      >
         <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
       </button>
-      {canEdit && <button onClick={onRemove} className="text-destructive hover:opacity-80"><X className="h-3 w-3" /></button>}
+      {canEdit && (
+        <button onClick={onRemove} className="text-destructive hover:opacity-80">
+          <X className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
