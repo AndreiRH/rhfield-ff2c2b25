@@ -67,6 +67,9 @@ function PAPage() {
               </p>
             </div>
             <PAFoldersList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            <div className="mt-8">
+              <PANotesList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            </div>
           </>
         )}
       </main>
