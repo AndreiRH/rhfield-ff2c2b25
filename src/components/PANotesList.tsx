@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Camera, Paperclip, GripVertical, X } from "lucide-react";
+import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
@@ -33,6 +33,7 @@ interface Note {
 
 export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string; kind: string; canEdit: boolean; userId?: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [open, setOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -87,30 +88,37 @@ export function PANotesList({ lineId, kind, canEdit, userId }: { lineId: string;
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Notes</h3>
-          {canEdit && (
+          <button onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-2 text-sm font-medium hover:text-foreground">
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            Notes
+            <span className="font-mono text-xs text-muted-foreground">({notes.length})</span>
+          </button>
+          {open && canEdit && (
             <Button size="sm" onClick={addNote}>
               <Plus className="mr-1 h-4 w-4" /> Add note
             </Button>
           )}
         </div>
-        {notes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No notes yet.</p>
-        ) : (() => {
-          const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
-          return (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-2">
-                {notes.map((n) => (
-                  <NoteRow key={n.id} note={n} canEdit={canEdit}
-                    onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} gallery={noteGallery} />
-                ))}
-              </ul>
-            </SortableContext>
-          </DndContext>
-          );
-        })()}
+        {open && (
+          notes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notes yet.</p>
+          ) : (() => {
+            const noteGallery = notes.filter((n) => n.photo_path).map((n) => ({ bucket: "photos", path: n.photo_path! }));
+            return (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+                <ul className="space-y-2">
+                  {notes.map((n) => (
+                    <NoteRow key={n.id} note={n} canEdit={canEdit}
+                      onUpdate={(p: Partial<Note>) => update(n.id, p)} onDelete={() => remove(n)} onReload={load} gallery={noteGallery} />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+            );
+          })()
+        )}
       </CardContent>
     </Card>
   );
