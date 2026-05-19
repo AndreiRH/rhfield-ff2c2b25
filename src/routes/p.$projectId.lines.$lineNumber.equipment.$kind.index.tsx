@@ -37,7 +37,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
 
 function PlantEquipmentList() {
   const { projectId, lineNumber, kind } = Route.useParams();
-  const { session, loading, canEdit, isAdmin } = useAuth();
+  const { session, loading, canEdit, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
