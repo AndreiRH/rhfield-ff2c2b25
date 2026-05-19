@@ -178,7 +178,7 @@ function PlantEquipmentList() {
   );
 }
 
-function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projectId, lineNumber }: any) {
+function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange, projectId, lineNumber }: any) {
   const totals = equipment.reduce(
     (acc: any, pe: any) => {
       const p = equipmentProgress(pe);
