@@ -407,7 +407,20 @@ export function ActivityPlanner({
 
       {/* Activity list */}
       <div>
-        <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Activities</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground">Activities</h3>
+          {canEdit && (
+            <Button
+              size="icon"
+              onClick={() => setCreating(true)}
+              className="h-7 w-7 bg-blue-600 hover:bg-blue-700 text-white"
+              title="Add activity"
+              aria-label="Add activity"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
