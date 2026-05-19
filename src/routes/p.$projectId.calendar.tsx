@@ -70,8 +70,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const [lines, setLines] = useState<LineLite[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [viewportW, setViewportW] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -147,59 +145,24 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   useLayoutEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
-    setViewportW(el.clientWidth);
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollLeft = target;
-    setScrollLeft(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines.length]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      setScrollLeft(el.scrollLeft);
-    };
-    const onResize = () => setViewportW(el.clientWidth);
-    el.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    setViewportW(el.clientWidth);
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
 
   if (lines.length === 0) {
     return <p className="p-4 text-sm text-muted-foreground">No production lines yet.</p>;
   }
 
-  const center = scrollLeft + viewportW / 2;
-  // Day-grid header (weekday letters + day numbers) inside the scroll area
-  const DAY_HEADER_H = 16 + 22;
-  // Month + year header — fixed, OUTSIDE the scroll container
-  const FIXED_HEADER_H = 22 + 22;
+  const headerHeight = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H + DAY_NUMBERS_HEADER_H;
+  const timelineContentHeight = headerHeight + bodyHeight;
 
   return (
     <div className="rounded-md border bg-card overflow-hidden">
-      {/* Top fixed header row: spacer over line labels + month/year overlay over timeline */}
-      <div className="flex border-b">
-        <div className="shrink-0 border-r bg-card" style={{ width: LINE_LABEL_W, height: FIXED_HEADER_H }} />
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <TimelineMonthYearHeader
-            scrollLeft={scrollLeft}
-            viewportW={viewportW}
-            rangeStart={RANGE_START}
-            rangeEnd={RANGE_END}
-            dayWidth={DAY_WIDTH}
-          />
-        </div>
-      </div>
-
       <div className="flex">
         {/* Sticky left line labels */}
         <div className="shrink-0 border-r bg-card" style={{ width: LINE_LABEL_W }}>
-          <div className="border-b" style={{ height: DAY_HEADER_H }} />
+          <div className="border-b" style={{ height: headerHeight }} />
           {lines.map((l, i) => {
             const info = lineRowInfo[i];
             return (
