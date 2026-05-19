@@ -326,6 +326,10 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
           onDuplicate={duplicateEquipment}
         />
       )}
+
+      <div className="mt-8">
+        <PANotesList lineId={lineId} kind={kind} canEdit={canEdit} userId={userId} />
+      </div>
     </>
   );
 }
