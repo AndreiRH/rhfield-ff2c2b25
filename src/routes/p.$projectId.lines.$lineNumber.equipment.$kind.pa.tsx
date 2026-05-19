@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
 import { PAFoldersList } from "@/components/PAFoldersList";
+import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/pa")({
