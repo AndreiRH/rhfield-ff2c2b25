@@ -105,6 +105,11 @@ export interface LineInfo extends LineLite {
   hot_planned_start: string | null;
   hot_planned_end: string | null;
 }
+interface DuplicateActivityRow {
+  name: string;
+  color: string;
+  line_id: string;
+}
 
 export function ActivityPlanner({
   line,
@@ -165,7 +170,7 @@ export function ActivityPlanner({
       start: start < rangeStart ? rangeStart : start,
       end: end > rangeEnd ? rangeEnd : end,
     }));
-  }, [months]);
+  }, [months, rangeEnd, rangeStart]);
   const days = useMemo(
     () => eachDayOfInterval({ start: rangeStart, end: rangeEnd }),
     [rangeStart, rangeEnd],
@@ -264,15 +269,17 @@ export function ActivityPlanner({
         .select("name, color, line_id")
         .in("line_id", otherLineIds)
         .ilike("name", trimmed);
-      const dupes = (data ?? []).filter((r: any) => r.name.toLowerCase() === trimmed.toLowerCase());
+      const dupes = ((data ?? []) as DuplicateActivityRow[]).filter(
+        (r) => r.name.toLowerCase() === trimmed.toLowerCase(),
+      );
       if (dupes.length > 0) {
         const lineNumbers = dupes
-          .map((d: any) => allLines.find((l) => l.id === d.line_id)?.number)
+          .map((d) => allLines.find((l) => l.id === d.line_id)?.number)
           .filter((n): n is number => typeof n === "number");
         setDuplicateConflict({
           name: trimmed,
           existingLineNumbers: lineNumbers,
-          existingColor: (dupes[0] as any).color,
+          existingColor: dupes[0].color,
           start,
           end,
         });
