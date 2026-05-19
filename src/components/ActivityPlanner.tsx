@@ -231,6 +231,10 @@ export function ActivityPlanner({
     await insertLocal(a.name, a.start_date, a.end_date);
   };
 
+  const bodyHeight = Math.max(sorted.length * ROW_HEIGHT, 120);
+  const headerHeight = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H + DAY_NUMBERS_HEADER_H;
+  const timelineContentHeight = headerHeight + bodyHeight;
+
   return (
     <div className="space-y-6">
       {/* Gantt timeline */}
@@ -238,6 +242,14 @@ export function ActivityPlanner({
         <CardContent className="p-0">
           <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
+              {mondays.map((d) => (
+                <div
+                  key={`wk-full-${d.toISOString()}`}
+                  className="absolute top-0 z-10 pointer-events-none"
+                  style={{ left: dayToX(d), width: 1, height: timelineContentHeight, background: "hsl(var(--border) / 0.7)" }}
+                />
+              ))}
+
               {/* Full timeline header — scrolls as one piece with the body */}
               <div className="border-b bg-card">
                 {/* Years */}
@@ -321,7 +333,7 @@ export function ActivityPlanner({
               </div>
 
               {/* Body */}
-              <div className="relative" style={{ height: Math.max(sorted.length * ROW_HEIGHT, 120) }}>
+              <div className="relative" style={{ height: bodyHeight }}>
                 {/* Alternating month bands */}
                 {months.map((m, i) => {
                   const mStart = m < rangeStart ? rangeStart : m;
@@ -352,17 +364,6 @@ export function ActivityPlanner({
                     title="Hot commissioning planned window"
                   />
                 )}
-
-                {/* Week separators (before each Monday) */}
-                {eachDayOfInterval({ start: rangeStart, end: rangeEnd })
-                  .filter((d) => d.getDay() === 1)
-                  .map((d) => (
-                    <div
-                      key={`wk-${d.toISOString()}`}
-                      className="absolute top-0 bottom-0 pointer-events-none"
-                      style={{ left: dayToX(d), width: 1, background: "hsl(var(--border) / 0.7)" }}
-                    />
-                  ))}
 
                 {/* Today line */}
                 {todayX >= 0 && todayX <= timelineWidth && (
