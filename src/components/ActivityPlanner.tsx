@@ -69,6 +69,7 @@ export function ActivityPlanner({
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<LineActivity | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const sorted = useMemo(
     () => [...activities].sort((a, b) => a.start_date.localeCompare(b.start_date)),
