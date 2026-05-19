@@ -165,6 +165,7 @@ function PlantEquipmentList() {
             kind={kind}
             equipment={data.plantEquipment}
             canEdit={canEdit} isAdmin={isAdmin}
+            userId={user?.id}
             onChange={invalidate}
             projectId={projectId}
             lineNumber={lineNumber}
