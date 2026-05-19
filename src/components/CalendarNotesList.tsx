@@ -48,6 +48,13 @@ interface CalendarNote {
   file_path: string | null;
   file_name: string | null;
 }
+interface NoteRowProps {
+  note: CalendarNote;
+  canEdit: boolean;
+  onUpdate: (patch: Partial<CalendarNote>) => void;
+  onDelete: () => void;
+  onReload: () => void;
+}
 
 export function CalendarNotesList({
   projectId,
@@ -171,7 +178,7 @@ export function CalendarNotesList({
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: note.id,
   });
