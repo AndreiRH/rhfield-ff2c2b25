@@ -758,11 +758,21 @@ function renderSection(s: Section, data: any, canEdit: boolean, userId: string |
     return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} lineNumber={data.line.number} equipmentId={data.pe.id} />;
   }
   if (s === "wiring") {
-    return <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
-      emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />;
+    return (
+      <div className="space-y-6">
+        <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
+          emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
+        <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} />
+      </div>
+    );
   }
-  return <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
-    emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />;
+  return (
+    <div className="space-y-6">
+      <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
+        emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
+      <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} />
+    </div>
+  );
 }
 
 function HeaderInner({ data, plantLabel, overall, accent }: any) {

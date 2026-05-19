@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
 import { PAFoldersList } from "@/components/PAFoldersList";
+import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/$kind/pa")({
@@ -66,6 +67,9 @@ function PAPage() {
               </p>
             </div>
             <PAFoldersList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            <div className="mt-8">
+              <PANotesList lineId={data.id} kind={kind} canEdit={canEdit} userId={user?.id} />
+            </div>
           </>
         )}
       </main>

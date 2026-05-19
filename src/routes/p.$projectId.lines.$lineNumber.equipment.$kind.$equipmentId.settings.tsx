@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ScrollText } from "lucide-react";
 import { SettingsList } from "@/components/SettingsList";
+import { NotesList } from "@/components/NotesList";
 import { Button } from "@/components/ui/button";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { PillSwitcher } from "@/components/PillSwitcher";
@@ -116,6 +117,9 @@ function EquipmentSettingsPage() {
                 userId={user?.id}
                 lineCount={data.lineCount}
               />
+              <div className="mt-6">
+                <NotesList equipmentId={equipmentId} canEdit={canEdit} userId={user?.id} />
+              </div>
             </CurrentLineProvider>
           </>
         )}

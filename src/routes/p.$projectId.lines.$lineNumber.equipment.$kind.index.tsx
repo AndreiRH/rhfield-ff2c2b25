@@ -19,6 +19,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
+import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/equipment/
 
 function PlantEquipmentList() {
   const { projectId, lineNumber, kind } = Route.useParams();
-  const { session, loading, canEdit, isAdmin } = useAuth();
+  const { session, loading, canEdit, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
@@ -164,6 +165,7 @@ function PlantEquipmentList() {
             kind={kind}
             equipment={data.plantEquipment}
             canEdit={canEdit} isAdmin={isAdmin}
+            userId={user?.id}
             onChange={invalidate}
             projectId={projectId}
             lineNumber={lineNumber}
@@ -176,7 +178,7 @@ function PlantEquipmentList() {
   );
 }
 
-function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projectId, lineNumber }: any) {
+function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange, projectId, lineNumber }: any) {
   const totals = equipment.reduce(
     (acc: any, pe: any) => {
       const p = equipmentProgress(pe);
@@ -324,6 +326,10 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, onChange, projec
           onDuplicate={duplicateEquipment}
         />
       )}
+
+      <div className="mt-8">
+        <PANotesList lineId={lineId} kind={kind} canEdit={canEdit} userId={userId} />
+      </div>
     </>
   );
 }

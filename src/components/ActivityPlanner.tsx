@@ -69,6 +69,7 @@ export function ActivityPlanner({
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<LineActivity | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const sorted = useMemo(
     () => [...activities].sort((a, b) => a.start_date.localeCompare(b.start_date)),
@@ -406,7 +407,20 @@ export function ActivityPlanner({
 
       {/* Activity list */}
       <div>
-        <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Activities</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground">Activities</h3>
+          {canEdit && (
+            <Button
+              size="icon"
+              onClick={() => setCreating(true)}
+              className="h-7 w-7 bg-blue-600 hover:bg-blue-700 text-white"
+              title="Add activity"
+              aria-label="Add activity"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
@@ -493,8 +507,16 @@ export function ActivityPlanner({
         )}
       </div>
 
-      {/* Add form */}
-      {canEdit && <AddActivityForm onSubmit={checkDuplicateAndAdd} />}
+      {/* Create dialog */}
+      {creating && (
+        <CreateActivityDialog
+          onClose={() => setCreating(false)}
+          onSubmit={async (name, start, end) => {
+            await checkDuplicateAndAdd(name, start, end, false);
+            setCreating(false);
+          }}
+        />
+      )}
 
       {/* Duplicate conflict dialog */}
       {duplicateConflict && (
@@ -618,10 +640,12 @@ export function ActivityPlanner({
   );
 }
 
-function AddActivityForm({
+function CreateActivityDialog({
+  onClose,
   onSubmit,
 }: {
-  onSubmit: (name: string, start: string, end: string, shareGlobal: boolean) => Promise<void>;
+  onClose: () => void;
+  onSubmit: (name: string, start: string, end: string) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
@@ -629,27 +653,39 @@ function AddActivityForm({
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
+    if (!name.trim()) { toast.error("Activity name required"); return; }
     if (!start || !end) { toast.error("Pick start and end dates"); return; }
+    if (start > end) { toast.error("End must be after start"); return; }
     setBusy(true);
     try {
-      await onSubmit(name, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"), false);
-      setName(""); setStart(undefined); setEnd(undefined);
+      await onSubmit(name.trim(), format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
     } finally { setBusy(false); }
   };
 
   return (
-    <Card className="border-dashed">
-      <CardContent className="p-4 space-y-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <DateField label="Start" date={start} onChange={setStart} />
-          <DateField label="End" date={end} onChange={setEnd} />
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New activity</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
+            <Input value={name} autoFocus onChange={(e) => setName(e.target.value)} placeholder="Activity name" />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <DateField label="Start" date={start} onChange={setStart} />
+            <DateField label="End" date={end} onChange={setEnd} />
+          </div>
         </div>
-        <Button onClick={submit} disabled={busy} className="w-full sm:w-auto">
-          <Plus className="mr-1 h-4 w-4" /> Add activity
-        </Button>
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={submit} disabled={busy}>
+            <Plus className="mr-1 h-4 w-4" /> Add activity
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
