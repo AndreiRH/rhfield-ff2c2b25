@@ -887,16 +887,16 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
         disabled={!canEdit}
         onClick={() => switchMode("checklist")}
         className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-      >Manual checklist</button>
+      >Checklist</button>
     </div>
   );
 
   return (
     <div className="space-y-6">
-      {mode === "manual" ? (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            {modeToggle}
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex">{modeToggle}</div>
+          {mode === "manual" ? (
             <div className="flex items-center gap-2">
               <Input
                 type="number" min={0} max={100} value={pct}
@@ -907,15 +907,12 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
               <span className="text-sm text-muted-foreground">%</span>
               {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {modeToggle}
-          <ComponentTypesTree group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
-            emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
-        </div>
-      )}
+          ) : (
+            <ComponentTypesTree group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
+              emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
+          )}
+        </CardContent>
+      </Card>
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
     </div>
