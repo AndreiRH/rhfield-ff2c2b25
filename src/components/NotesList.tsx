@@ -26,6 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 import { confirmUnshareFromEquipment } from "@/lib/confirm-unshare";
 import { NoteAttachments } from "@/components/NoteAttachments";
+import { undoableDelete } from "@/lib/undoableDelete";
 
 interface Note {
   id: string;
@@ -77,20 +78,27 @@ export function NotesList({ equipmentId, canEdit, userId, section = "assembly" }
 
   const remove = async (n: Note) => {
     if (!confirmSharedDelete(!!n.is_shared)) return;
-    // Cascade remove note attachments
-    const [{ data: photos }, { data: files }] = await Promise.all([
-      supabase.from("note_photos" as any).select("storage_path").eq("parent_kind", "equipment_note").eq("parent_id", n.id),
-      supabase.from("note_files" as any).select("storage_path").eq("parent_kind", "equipment_note").eq("parent_id", n.id),
-    ]);
-    const photoPaths = (photos ?? []).map((p: any) => p.storage_path).filter(Boolean);
-    const filePaths = (files ?? []).map((f: any) => f.storage_path).filter(Boolean);
-    if (photoPaths.length) await supabase.storage.from("photos").remove(photoPaths);
-    if (filePaths.length) await supabase.storage.from("files").remove(filePaths);
-    await supabase.from("note_photos" as any).delete().eq("parent_kind", "equipment_note").eq("parent_id", n.id);
-    await supabase.from("note_files" as any).delete().eq("parent_kind", "equipment_note").eq("parent_id", n.id);
-    await supabase.from("equipment_notes").delete().eq("id", n.id);
-    load();
+    undoableDelete({
+      label: "Note deleted",
+      optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
+      restore: load,
+      commit: async () => {
+        const [{ data: photos }, { data: files }] = await Promise.all([
+          supabase.from("note_photos" as any).select("storage_path").eq("parent_kind", "equipment_note").eq("parent_id", n.id),
+          supabase.from("note_files" as any).select("storage_path").eq("parent_kind", "equipment_note").eq("parent_id", n.id),
+        ]);
+        const photoPaths = ((photos ?? []) as any[]).map((p) => p.storage_path).filter(Boolean);
+        const filePaths = ((files ?? []) as any[]).map((f) => f.storage_path).filter(Boolean);
+        if (photoPaths.length) await supabase.storage.from("photos").remove(photoPaths);
+        if (filePaths.length) await supabase.storage.from("files").remove(filePaths);
+        await supabase.from("note_photos" as any).delete().eq("parent_kind", "equipment_note").eq("parent_id", n.id);
+        await supabase.from("note_files" as any).delete().eq("parent_kind", "equipment_note").eq("parent_id", n.id);
+        await supabase.from("equipment_notes").delete().eq("id", n.id);
+      },
+      afterCommit: load,
+    });
   };
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
