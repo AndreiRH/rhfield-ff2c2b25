@@ -887,7 +887,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
         disabled={!canEdit}
         onClick={() => switchMode("checklist")}
         className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-      >Items</button>
+      >Manual checklist</button>
     </div>
   );
 
@@ -910,7 +910,11 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
           </CardContent>
         </Card>
       ) : (
-        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} headerLeading={modeToggle} />
+        <div className="space-y-3">
+          {modeToggle}
+          <ComponentTypesTree group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
+            emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
+        </div>
       )}
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
