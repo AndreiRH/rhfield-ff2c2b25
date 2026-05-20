@@ -408,11 +408,42 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       }
       next = origin;
     }
-    const query = supabase.from("checklist_items").update({ local_line_id: next });
-    const { error } = item.template_id
-      ? await query.eq("template_id", item.template_id)
-      : await query.eq("id", item.id);
-    if (error) toast.error(toUserMessage(error)); else onChange();
+    // Collect all descendant ids (cascade so sublayers follow parent)
+    const descendantIds: string[] = [];
+    const collect = (pid: string) => {
+      for (const it of allItems as any[]) {
+        if (it.parent_item_id === pid) {
+          descendantIds.push(it.id);
+          collect(it.id);
+        }
+      }
+    };
+    collect(item.id);
+
+    const updates: Promise<any>[] = [];
+    const baseUpd = { local_line_id: next };
+    if (item.template_id) {
+      updates.push(supabase.from("checklist_items").update(baseUpd).eq("template_id", item.template_id));
+    } else {
+      updates.push(supabase.from("checklist_items").update(baseUpd).eq("id", item.id));
+    }
+    // Cascade to descendants — group by template_id when present, else by id
+    const descTemplateIds = new Set<string>();
+    const descPlainIds: string[] = [];
+    for (const id of descendantIds) {
+      const d: any = (allItems as any[]).find((x) => x.id === id);
+      if (d?.template_id) descTemplateIds.add(d.template_id);
+      else descPlainIds.push(id);
+    }
+    if (descTemplateIds.size) {
+      updates.push(supabase.from("checklist_items").update(baseUpd).in("template_id", Array.from(descTemplateIds)));
+    }
+    if (descPlainIds.length) {
+      updates.push(supabase.from("checklist_items").update(baseUpd).in("id", descPlainIds));
+    }
+    const results = await Promise.all(updates);
+    const firstErr = results.find((r) => r.error)?.error;
+    if (firstErr) toast.error(toUserMessage(firstErr)); else onChange();
   };
 
   const toggleSharePhoto = async (p: any) => {
