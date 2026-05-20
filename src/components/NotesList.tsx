@@ -26,6 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 import { confirmUnshareFromEquipment } from "@/lib/confirm-unshare";
 import { NoteAttachments } from "@/components/NoteAttachments";
+import { undoableDelete } from "@/lib/undoableDelete";
 
 interface Note {
   id: string;
