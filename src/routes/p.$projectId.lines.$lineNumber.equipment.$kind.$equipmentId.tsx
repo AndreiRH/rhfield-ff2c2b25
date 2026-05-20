@@ -853,3 +853,68 @@ function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section;
   );
 }
 
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount, lineNumber, equipmentId }: any) {
+  const modeKey = `assembly_mode_${lineNumber}_${equipmentId}`;
+  const [mode, setMode] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const v = window.localStorage.getItem(modeKey);
+      if (v === "manual" || v === "checklist") return v;
+    }
+    return pe.mech_mode ?? "manual";
+  });
+  const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
+
+  const switchMode = (m: string) => {
+    setMode(m);
+    if (typeof window !== "undefined") window.localStorage.setItem(modeKey, m);
+  };
+
+  const savePct = async () => {
+    const n = pct === "" ? null : Math.max(0, Math.min(100, parseInt(pct, 10) || 0));
+    const { error } = await supabase.from("plant_equipment")
+      .update({ mech_manual_pct: n }).eq("id", pe.id);
+    if (error) toast.error(toUserMessage(error)); else { toast.success("Saved"); onChange(); }
+  };
+
+  const modeToggle = (
+    <div className="inline-flex rounded-md border p-1">
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("manual")}
+        className={`rounded px-3 py-1 text-xs ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Man %</button>
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("checklist")}
+        className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Items</button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {mode === "manual" ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            {modeToggle}
+            <div className="flex items-center gap-2">
+              <Input
+                type="number" min={0} max={100} value={pct}
+                disabled={!canEdit}
+                onChange={(e) => setPct(e.target.value)}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">%</span>
+              {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} headerLeading={modeToggle} />
+      )}
+
+      <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
+    </div>
+  );
+}
+
