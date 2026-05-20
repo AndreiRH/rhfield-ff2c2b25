@@ -196,3 +196,27 @@ export function NoteAttachments({
     </div>
   );
 }
+
+/**
+ * Delete every photo + file attachment belonging to a note (from storage AND
+ * the polymorphic note_photos/note_files tables). Call this BEFORE deleting
+ * the parent note row — the polymorphic rows have no FK cascade.
+ */
+export async function deleteNoteAttachments(parentKind: NoteParentKind, parentId: string) {
+  const [{ data: ph }, { data: fl }] = await Promise.all([
+    supabase.from("note_photos" as any).select("storage_path")
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+    supabase.from("note_files" as any).select("storage_path")
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+  ]);
+  const photoPaths = ((ph ?? []) as any[]).map((x) => x.storage_path).filter(Boolean);
+  const filePaths = ((fl ?? []) as any[]).map((x) => x.storage_path).filter(Boolean);
+  if (photoPaths.length) await supabase.storage.from("photos").remove(photoPaths);
+  if (filePaths.length) await supabase.storage.from("files").remove(filePaths);
+  await Promise.all([
+    supabase.from("note_photos" as any).delete()
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+    supabase.from("note_files" as any).delete()
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+  ]);
+}
