@@ -64,11 +64,11 @@ function PlantEquipmentList() {
             id, name, sort_order, deleted_at, mech_mode, mech_manual_pct,
             equipment_groups(
               id, chapter, deleted_at,
-              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
+              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id, local_line_id)),
               component_types(
                 id, deleted_at,
-                checklist_items(id, done, deleted_at, parent_item_id),
-                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+                checklist_items(id, done, deleted_at, parent_item_id, local_line_id),
+                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id, local_line_id))
               )
             )
           `)
@@ -109,7 +109,7 @@ function PlantEquipmentList() {
               id, name, sort_order, deleted_at, note, note_shared,
               component_photos(id, storage_path),
               component_files(id, storage_path, file_name),
-              checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+              checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
                 item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
             )
           `)
