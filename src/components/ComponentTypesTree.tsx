@@ -477,7 +477,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
               canEdit={canEdit}
               onChange={onChange}
               emptyHint="No items yet."
-              defaultOpen={defaultOpen}
+              defaultOpen={false}
               hideRootAdd
             />
           </div>
