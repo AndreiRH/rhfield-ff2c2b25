@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { NoteAttachments, deleteNoteAttachments } from "@/components/NoteAttachments";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 import { undoableDelete } from "@/lib/undoableDelete";
@@ -337,6 +338,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
       optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
       restore: load,
       commit: async () => {
+        await deleteNoteAttachments("pa_note", n.id);
         if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
         if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
         await supabase.from("pa_notes").delete().eq("id", n.id);
@@ -548,24 +550,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) 
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => body !== note.body && onUpdate({ body })}
             placeholder="Write something…"
+            data-resize-key={`pa-folder-note:${note.id}`}
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} gallery={gallery} />}
-          {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
-          {canEdit && (
-            <div className="flex gap-2">
-              <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                  <Camera className="h-3 w-3" /> Photo
-                </button>
-              </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Paperclip className="h-3 w-3" /> File
-                <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-              </label>
-            </div>
-          )}
+          <NoteAttachments parentKind="pa_note" parentId={note.id} storagePrefix={basePath}
+            canEdit={canEdit} showSharedToggle={false}
+            legacyPhotoPath={note.photo_path} legacyFilePath={note.file_path} legacyFileName={note.file_name}
+            onLegacyMigrated={(p) => { supabase.from("pa_notes").update(p as any).eq("id", note.id).then(); onUpdate(p); onReload(); }} />
         </div>
       )}
     </li>
