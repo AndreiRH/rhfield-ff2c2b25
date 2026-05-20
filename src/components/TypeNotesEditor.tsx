@@ -175,6 +175,7 @@ function NoteRow({ note, canEdit, userId, autoOpen, onUpdate, onDelete }: any) {
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => { if (body !== note.body) onUpdate({ body }); }}
             placeholder="Write something…"
+            data-resize-key={`component-type-note:${note.id}`}
             className="min-h-[50px] resize-y text-xs" />
           <NoteAttachments
             parentKind={"component_type_note" as any}

@@ -32,7 +32,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         if (!entry) return;
         if (frame) cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
-          const height = clampHeight(Math.round(entry.contentRect.height));
+          const height = clampHeight(Math.round(el.offsetHeight));
           if (Math.abs(el.offsetHeight - height) > 2) el.style.height = `${height}px`;
           window.localStorage.setItem(storageKey, String(height));
         });

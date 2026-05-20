@@ -871,6 +871,7 @@ function SettingRow({
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => body !== setting.body && onBody(body)}
             placeholder="Value (local to this production line)…"
+            data-resize-key={`equipment-setting:${setting.id}`}
             className="min-h-[60px] resize-y text-sm"
           />
           {canEdit && (
