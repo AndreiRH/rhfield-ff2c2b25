@@ -105,16 +105,31 @@ export function NoteAttachments({
   };
   const removePhoto = async (p: NotePhoto) => {
     if (!confirmSharedDelete(!!p.is_shared)) return;
-    await supabase.storage.from("photos").remove([p.storage_path]);
-    await supabase.from("note_photos" as any).delete().eq("id", p.id);
-    load();
+    undoableDelete({
+      label: "Photo deleted",
+      optimistic: () => setPhotos((s) => s.filter((x) => x.id !== p.id)),
+      restore: load,
+      commit: async () => {
+        await supabase.storage.from("photos").remove([p.storage_path]);
+        await supabase.from("note_photos" as any).delete().eq("id", p.id);
+      },
+      afterCommit: load,
+    });
   };
   const removeFile = async (f: NoteFile) => {
     if (!confirmSharedDelete(!!f.is_shared)) return;
-    await supabase.storage.from("files").remove([f.storage_path]);
-    await supabase.from("note_files" as any).delete().eq("id", f.id);
-    load();
+    undoableDelete({
+      label: "File deleted",
+      optimistic: () => setFiles((s) => s.filter((x) => x.id !== f.id)),
+      restore: load,
+      commit: async () => {
+        await supabase.storage.from("files").remove([f.storage_path]);
+        await supabase.from("note_files" as any).delete().eq("id", f.id);
+      },
+      afterCommit: load,
+    });
   };
+
   const toggleSharedPhoto = async (p: NotePhoto) => {
     await supabase.from("note_photos" as any).update({ is_shared: !p.is_shared }).eq("id", p.id);
     load();
