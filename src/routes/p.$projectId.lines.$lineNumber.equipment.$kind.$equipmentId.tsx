@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { toUserMessage } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +8,9 @@ import { localUuid } from "@/lib/local-id";
 import { equipmentProgress } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, Settings as SettingsIcon, Wrench, Cable, Snowflake } from "lucide-react";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
@@ -46,6 +50,7 @@ function groupWeight(group: any) {
 }
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
+import { FlatChecklist } from "@/components/FlatChecklist";
 import { NotesList } from "@/components/NotesList";
 import { CurrentLineProvider } from "@/lib/current-line";
 
@@ -66,7 +71,7 @@ export async function fetchEquipmentDetail(
 
   const { data: pe, error: peErr } = await supabase
     .from("plant_equipment")
-    .select("id, name, kind")
+    .select("id, name, kind, mech_mode, mech_manual_pct, mech_notes")
     .eq("id", equipmentId).single();
   if (peErr) throw peErr;
 
@@ -755,13 +760,7 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
 
 function renderSection(s: Section, data: any, canEdit: boolean, userId: string | undefined, onChange: () => void) {
   if (s === "assembly") {
-    return (
-      <div className="space-y-6">
-        <ComponentTypesTree group={data.assembly} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
-          emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
-        <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} section="assembly" />
-      </div>
-    );
+    return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} lineNumber={data.line.number} equipmentId={data.pe.id} />;
   }
   if (s === "wiring") {
     return (
@@ -851,6 +850,71 @@ function SectionTab({ phase, pct, weight, dragging, onClick }: { phase: Section;
         </>
       )}
     </button>
+  );
+}
+
+function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCount, lineNumber, equipmentId }: any) {
+  const modeKey = `assembly_mode_${lineNumber}_${equipmentId}`;
+  const [mode, setMode] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const v = window.localStorage.getItem(modeKey);
+      if (v === "manual" || v === "checklist") return v;
+    }
+    return pe.mech_mode ?? "manual";
+  });
+  const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
+
+  const switchMode = (m: string) => {
+    setMode(m);
+    if (typeof window !== "undefined") window.localStorage.setItem(modeKey, m);
+  };
+
+  const savePct = async () => {
+    const n = pct === "" ? null : Math.max(0, Math.min(100, parseInt(pct, 10) || 0));
+    const { error } = await supabase.from("plant_equipment")
+      .update({ mech_manual_pct: n }).eq("id", pe.id);
+    if (error) toast.error(toUserMessage(error)); else { toast.success("Saved"); onChange(); }
+  };
+
+  const modeToggle = (
+    <div className="inline-flex rounded-md border p-1">
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("manual")}
+        className={`rounded px-3 py-1 text-xs ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Man %</button>
+      <button
+        disabled={!canEdit}
+        onClick={() => switchMode("checklist")}
+        className={`rounded px-3 py-1 text-xs ${mode === "checklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+      >Items</button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {mode === "manual" ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            {modeToggle}
+            <div className="flex items-center gap-2">
+              <Input
+                type="number" min={0} max={100} value={pct}
+                disabled={!canEdit}
+                onChange={(e) => setPct(e.target.value)}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">%</span>
+              {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount} headerLeading={modeToggle} />
+      )}
+
+      <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
+    </div>
   );
 }
 
