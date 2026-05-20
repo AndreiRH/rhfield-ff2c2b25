@@ -349,7 +349,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
   };
-  const currentLine = useCurrentLine();
+  const toggleLocalLine = async () => {
+    if (!currentLine) return;
+    const next = item.local_line_id ? null : currentLine.lineId;
+    const { error } = await supabase.from("checklist_items").update({ local_line_id: next }).eq("id", item.id);
+    if (error) toast.error(toUserMessage(error)); else onChange();
+  };
+
   const toggleSharePhoto = async (p: any) => {
     if (p.is_shared && !(await confirmUnshareToOriginLine(p.origin_line_id, currentLine?.lineId))) return;
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
