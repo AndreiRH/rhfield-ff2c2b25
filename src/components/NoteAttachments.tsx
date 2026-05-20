@@ -46,6 +46,7 @@ export function NoteAttachments({
   userId,
   defaultShared = false,
   showSharedToggle = true,
+  onCountsChange,
 }: {
   parentKind: NoteParentKind;
   parentId: string;
@@ -54,6 +55,7 @@ export function NoteAttachments({
   userId?: string;
   defaultShared?: boolean;
   showSharedToggle?: boolean;
+  onCountsChange?: (counts: { photos: number; files: number }) => void;
 }) {
   const [photos, setPhotos] = useState<NotePhoto[]>([]);
   const [files, setFiles] = useState<NoteFile[]>([]);
@@ -69,8 +71,11 @@ export function NoteAttachments({
         .eq("parent_kind", parentKind).eq("parent_id", parentId)
         .order("sort_order").order("uploaded_at"),
     ]);
-    setPhotos((ph ?? []) as any);
-    setFiles((fl ?? []) as any);
+    const nextPhotos = (ph ?? []) as NotePhoto[];
+    const nextFiles = (fl ?? []) as NoteFile[];
+    setPhotos(nextPhotos);
+    setFiles(nextFiles);
+    onCountsChange?.({ photos: nextPhotos.length, files: nextFiles.length });
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [parentKind, parentId]);
 
