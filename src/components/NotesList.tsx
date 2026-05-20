@@ -41,7 +41,7 @@ interface Note {
   is_shared: boolean;
 }
 
-export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: string; canEdit: boolean; userId?: string }) {
+export function NotesList({ equipmentId, canEdit, userId, section = "assembly" }: { equipmentId: string; canEdit: boolean; userId?: string; section?: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -61,19 +61,21 @@ export function NotesList({ equipmentId, canEdit, userId }: { equipmentId: strin
       : `equipment_id.eq.${equipmentId}`;
     const { data } = await supabase
       .from("equipment_notes").select("*")
+      .eq("section", section)
       .or(orFilter)
       .order("sort_order").order("created_at");
     setNotes((data ?? []) as Note[]);
   };
-  useEffect(() => { load(); }, [equipmentId]);
+  useEffect(() => { load(); }, [equipmentId, section]);
 
   const addNote = async () => {
     const { error } = await supabase.from("equipment_notes").insert({
       equipment_id: equipmentId, title: "Note", body: "",
-      sort_order: notes.length, created_by: userId,
-    });
+      sort_order: notes.length, created_by: userId, section,
+    } as any);
     if (error) toast.error(toUserMessage(error)); else load();
   };
+
 
   const update = (id: string, patch: Partial<Note>) => {
     setNotes((n) => n.map((x) => (x.id === id ? { ...x, ...patch } : x)));

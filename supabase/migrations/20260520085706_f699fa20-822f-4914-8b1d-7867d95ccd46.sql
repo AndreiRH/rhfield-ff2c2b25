@@ -1,0 +1,2 @@
+ALTER TABLE public.equipment_notes ADD COLUMN IF NOT EXISTS section text NOT NULL DEFAULT 'assembly';
+CREATE INDEX IF NOT EXISTS equipment_notes_equipment_section_idx ON public.equipment_notes(equipment_id, section);
