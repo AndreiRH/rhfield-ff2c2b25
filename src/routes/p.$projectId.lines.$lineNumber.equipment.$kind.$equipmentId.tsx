@@ -755,7 +755,13 @@ function EquipmentBody({ data, canEdit, userId, plantLabel, onChange }: any) {
 
 function renderSection(s: Section, data: any, canEdit: boolean, userId: string | undefined, onChange: () => void) {
   if (s === "assembly") {
-    return <MechanicalView pe={data.pe} assemblyGroup={data.assembly} canEdit={canEdit} userId={userId} onChange={onChange} lineCount={data.lineCount} lineNumber={data.line.number} equipmentId={data.pe.id} />;
+    return (
+      <div className="space-y-6">
+        <ComponentTypesTree group={data.assembly} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
+          emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
+        <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} section="assembly" />
+      </div>
+    );
   }
   if (s === "wiring") {
     return (
