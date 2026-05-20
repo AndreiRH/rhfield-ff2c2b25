@@ -49,6 +49,10 @@ export function NoteAttachments({
   defaultShared = false,
   showSharedToggle = true,
   onCountsChange,
+  legacyPhotoPath,
+  legacyFilePath,
+  legacyFileName,
+  onLegacyMigrated,
 }: {
   parentKind: NoteParentKind;
   parentId: string;
@@ -58,6 +62,10 @@ export function NoteAttachments({
   defaultShared?: boolean;
   showSharedToggle?: boolean;
   onCountsChange?: (counts: { photos: number; files: number }) => void;
+  legacyPhotoPath?: string | null;
+  legacyFilePath?: string | null;
+  legacyFileName?: string | null;
+  onLegacyMigrated?: (patch: { photo_path?: null; file_path?: null; file_name?: null }) => void;
 }) {
   const [photos, setPhotos] = useState<NotePhoto[]>([]);
   const [files, setFiles] = useState<NoteFile[]>([]);
@@ -80,6 +88,44 @@ export function NoteAttachments({
     onCountsChange?.({ photos: nextPhotos.length, files: nextFiles.length });
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [parentKind, parentId]);
+
+  useEffect(() => {
+    if (!legacyPhotoPath && !legacyFilePath) return;
+    let cancelled = false;
+    const migrate = async () => {
+      const patch: { photo_path?: null; file_path?: null; file_name?: null } = {};
+      if (legacyPhotoPath) {
+        const { data: existing } = await supabase.from("note_photos" as any).select("id")
+          .eq("parent_kind", parentKind).eq("parent_id", parentId).eq("storage_path", legacyPhotoPath).limit(1);
+        if (!existing?.length) {
+          await supabase.from("note_photos" as any).insert({
+            parent_kind: parentKind, parent_id: parentId, storage_path: legacyPhotoPath,
+            sort_order: photos.length, is_shared: defaultShared, uploaded_by: userId,
+          } as any);
+        }
+        patch.photo_path = null;
+      }
+      if (legacyFilePath) {
+        const { data: existing } = await supabase.from("note_files" as any).select("id")
+          .eq("parent_kind", parentKind).eq("parent_id", parentId).eq("storage_path", legacyFilePath).limit(1);
+        if (!existing?.length) {
+          await supabase.from("note_files" as any).insert({
+            parent_kind: parentKind, parent_id: parentId, storage_path: legacyFilePath, file_name: legacyFileName ?? "file",
+            sort_order: files.length, is_shared: defaultShared, uploaded_by: userId,
+          } as any);
+        }
+        patch.file_path = null;
+        patch.file_name = null;
+      }
+      if (!cancelled) {
+        onLegacyMigrated?.(patch);
+        load();
+      }
+    };
+    migrate();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyPhotoPath, legacyFilePath, parentKind, parentId]);
 
   const uploadPhoto = async (file: File, index = 0) => {
     const path = `${storagePrefix}/${Date.now()}-${index}-${file.name}`;
