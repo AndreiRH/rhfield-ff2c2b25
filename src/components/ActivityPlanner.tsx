@@ -684,12 +684,9 @@ export function ActivityPlanner({
                           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                       )}
                     >
-                      {a.show_on_global ? (
-                        <Eye className="h-3 w-3" />
-                      ) : (
-                        <EyeOff className="h-3 w-3" />
-                      )}
-                      <span>{a.show_on_global ? "Global" : "Hidden"}</span>
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>{a.show_on_global ? "Global" : "Local"}</span>
+
                     </button>
                   )}
                 </div>
