@@ -395,21 +395,11 @@ function FolderItem({
             <Paperclip className="h-3 w-3" /> {fileCount}
           </span>
         )}
-        {!deleteMode && canEdit && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onAddChild(); }}
-            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Add subfolder"
-            aria-label="Add subfolder"
-          >
-            <FolderPlus className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {open && (
         <div className="border-t bg-muted/20">
-          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} />}
+          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} onAddChild={onAddChild} />}
           {childrenContent && (
             <div className="p-3 pl-6 border-l-2 border-muted">
               {childrenContent}
@@ -421,7 +411,7 @@ function FolderItem({
   );
 }
 
-function FolderContents({ folder, canEdit, userId, onCountsChange }: any) {
+function FolderContents({ folder, canEdit, userId, onCountsChange, onAddChild }: any) {
   const [atts, setAtts] = useState<Attachment[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
 
@@ -546,6 +536,12 @@ function FolderContents({ folder, canEdit, userId, onCountsChange }: any) {
           <button onClick={() => setFilesOpen((v) => !v)} title={filesOpen ? "Hide files" : "Show files"}
             className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${filesOpen ? "text-primary" : "text-primary/70"}`}>
             <Paperclip className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{files.length}</span>
+          </button>
+        )}
+        {canEdit && onAddChild && (
+          <button onClick={onAddChild} title="Add subfolder" aria-label="Add subfolder"
+            className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <FolderPlus className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
