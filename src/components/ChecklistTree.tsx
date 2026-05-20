@@ -427,17 +427,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   };
   const toggleLocalLine = async () => {
     if (!currentLine) return;
-    let next: string | null;
-    if (item.local_line_id) {
-      next = null;
-    } else {
-      const origin = item.origin_line_id ?? await resolveItemOriginLine(item) ?? currentLine.lineId;
-      if (origin !== currentLine.lineId) {
-        const ok = await confirmUnshareToOriginLine(origin, currentLine.lineId);
-        if (!ok) return;
-      }
-      next = origin;
-    }
+    const next = item.local_line_id ? null : item.origin_line_id ?? await resolveItemOriginLine(item) ?? currentLine.lineId;
     // Collect all descendant ids (cascade so sublayers follow parent)
     const descendantIds: string[] = [];
     const collect = (pid: string) => {
@@ -471,9 +461,24 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     if (descPlainIds.length) {
       updates.push(supabase.from("checklist_items").update(baseUpd).in("id", descPlainIds));
     }
-    const results = await Promise.all(updates);
-    const firstErr = results.find((r) => r.error)?.error;
-    if (firstErr) toast.error(toUserMessage(firstErr)); else onChange();
+    const applyLocalChange = async () => {
+      const results = await Promise.all(updates);
+      const firstErr = results.find((r) => r.error)?.error;
+      if (firstErr) toast.error(toUserMessage(firstErr)); else onChange();
+    };
+
+    if (!item.local_line_id) {
+      const warning = await getUnshareWarning(next);
+      requestLocalConfirm?.({
+        originLineId: next,
+        originLabel: warning.originLabel,
+        otherLinesPhrase: warning.otherLinesPhrase,
+        apply: applyLocalChange,
+      });
+      return;
+    }
+
+    await applyLocalChange();
   };
 
   const toggleSharePhoto = async (p: any) => {
