@@ -55,6 +55,9 @@ export function CommonFoldersList({
   const [deleteMode, setDeleteMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [photoCounts, setPhotoCounts] = useState<Map<string, number>>(new Map());
+  const [fileCounts, setFileCounts] = useState<Map<string, number>>(new Map());
+  const [noteCounts, setNoteCounts] = useState<Map<string, number>>(new Map());
 
   const load = async () => {
     const { data } = await supabase
@@ -63,7 +66,24 @@ export function CommonFoldersList({
       .eq("project_id", projectId)
       .order("sort_order")
       .order("created_at");
-    setFolders((data ?? []) as FolderRow[]);
+    const rows = (data ?? []) as FolderRow[];
+    setFolders(rows);
+    const ids = rows.map((r) => r.id);
+    if (ids.length === 0) {
+      setPhotoCounts(new Map()); setFileCounts(new Map()); setNoteCounts(new Map());
+      return;
+    }
+    const [{ data: atts }, { data: ns }] = await Promise.all([
+      supabase.from("common_folder_attachments").select("folder_id, kind").in("folder_id", ids),
+      supabase.from("common_folder_notes").select("folder_id").in("folder_id", ids),
+    ]);
+    const ph = new Map<string, number>(), fl = new Map<string, number>(), nt = new Map<string, number>();
+    (atts ?? []).forEach((a: any) => {
+      const m = a.kind === "photo" ? ph : fl;
+      m.set(a.folder_id, (m.get(a.folder_id) ?? 0) + 1);
+    });
+    (ns ?? []).forEach((n: any) => nt.set(n.folder_id, (nt.get(n.folder_id) ?? 0) + 1));
+    setPhotoCounts(ph); setFileCounts(fl); setNoteCounts(nt);
   };
   useEffect(() => { load(); }, [projectId]);
 
