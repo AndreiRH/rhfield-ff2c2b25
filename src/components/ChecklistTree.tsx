@@ -774,7 +774,15 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
     opacity: isDragging ? 0.5 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-no-swipe
+      {...attributes}
+      {...listeners}
+      title="Long-press and drag to reorder"
+      className="relative touch-none cursor-grab active:cursor-grabbing"
+    >
       <StoragePhoto
         bucket="photos"
         path={path}
@@ -786,6 +794,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
       {canEdit && onToggleShared && (
         <button
           type="button"
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
           title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
           className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
@@ -793,17 +802,6 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
           {isShared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
         </button>
       )}
-      <button
-        type="button"
-        data-no-swipe
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        title="Drag to reorder"
-        className="absolute right-1 top-1 cursor-grab touch-none rounded bg-background/80 p-0.5 text-muted-foreground backdrop-blur active:cursor-grabbing"
-      >
-        <GripVertical className="h-3 w-3" />
-      </button>
     </div>
   );
 }
