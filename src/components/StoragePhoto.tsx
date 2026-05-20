@@ -226,15 +226,54 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
 
   const touchStartXRef = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+    if (e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      pinchRef.current = { dist, zoom };
+      touchStartXRef.current = null;
+    } else if (e.touches.length === 1) {
+      if (zoom > 1) {
+        panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, px: pan.x, py: pan.y };
+        touchStartXRef.current = null;
+      } else {
+        touchStartXRef.current = e.touches[0].clientX;
+      }
+    }
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const next = Math.min(6, Math.max(1, pinchRef.current.zoom * (dist / pinchRef.current.dist)));
+      setZoom(next);
+      if (next === 1) setPan({ x: 0, y: 0 });
+    } else if (e.touches.length === 1 && panStartRef.current) {
+      const dx = e.touches[0].clientX - panStartRef.current.x;
+      const dy = e.touches[0].clientY - panStartRef.current.y;
+      setPan({ x: panStartRef.current.px + dx, y: panStartRef.current.py + dy });
+    }
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    pinchRef.current = null;
+    panStartRef.current = null;
     const start = touchStartXRef.current;
     touchStartXRef.current = null;
-    if (start == null) return;
+    if (start == null || zoom > 1) return;
     const delta = (e.changedTouches[0]?.clientX ?? start) - start;
     if (delta < -50) go(1);
     else if (delta > 50) go(-1);
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    const next = Math.min(6, Math.max(1, zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    setZoom(next);
+    if (next === 1) setPan({ x: 0, y: 0 });
+  };
+
+  const onDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (zoom > 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
+    else setZoom(2);
   };
 
   const download = async () => {
@@ -262,9 +301,11 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
     <div
       onClick={onClose}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onWheel={onWheel}
       data-no-swipe
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+      className="fixed inset-0 z-[100] flex touch-none items-center justify-center overscroll-contain bg-black/90 p-4"
     >
       <button
         onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -280,7 +321,19 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
       >
         <Download className="h-5 w-5" />
       </button>
-      {hasNav && (
+      <div className="absolute left-4 top-4 flex gap-2">
+        <button
+          onClick={(e) => { e.stopPropagation(); setZoom((z) => Math.min(6, z * 1.25)); }}
+          className="rounded-full bg-white/10 px-3 py-1.5 text-base font-semibold text-white hover:bg-white/20"
+          aria-label="Zoom in"
+        >+</button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setZoom((z) => { const n = Math.max(1, z / 1.25); if (n === 1) setPan({ x: 0, y: 0 }); return n; }); }}
+          className="rounded-full bg-white/10 px-3 py-1.5 text-base font-semibold text-white hover:bg-white/20"
+          aria-label="Zoom out"
+        >−</button>
+      </div>
+      {hasNav && zoom === 1 && (
         <>
           <button
             onClick={(e) => { e.stopPropagation(); go(-1); }}
@@ -308,8 +361,11 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
           src={src}
           alt=""
           onClick={(e) => e.stopPropagation()}
+          onDoubleClick={onDoubleClick}
           onError={onImgError}
-          className="max-h-full max-w-full object-contain"
+          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center", transition: "transform 0.1s ease-out" }}
+          className="max-h-full max-w-full select-none object-contain"
+          draggable={false}
         />
       ) : (
         <p className="text-sm text-white/70">Loading…</p>
