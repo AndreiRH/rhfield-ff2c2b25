@@ -11,14 +11,14 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check,
+  Camera, Paperclip, Check, ListPlus, Share2, Lock, X,
 } from "lucide-react";
 import {
-  useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
+  useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType, pasteItem,
 } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
-import { ChecklistTree } from "@/components/ChecklistTree";
+import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
 import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
@@ -30,6 +30,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
+import { PhotoPicker } from "@/components/PhotoPicker";
+import { rememberLocalFile } from "@/lib/local-blobs";
+import { useCurrentLine } from "@/lib/current-line";
+import { TypeNotesEditor } from "@/components/TypeNotesEditor";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -458,17 +462,207 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
       </div>
 
       {open && (
-        <div className="bg-muted/20 p-3">
-          <ChecklistTree
-            componentTypeId={type.id}
-            items={type.checklist_items ?? []}
-            canEdit={canEdit}
-            onChange={onChange}
-            emptyHint="No items yet. Add the first one to start tracking checks."
-            defaultOpen={defaultOpen}
-          />
+        <div className="bg-muted/20">
+          <TypeActionBar type={type} canEdit={canEdit} onChange={onChange} />
+          <div className="p-3">
+            <ChecklistTree
+              componentTypeId={type.id}
+              items={type.checklist_items ?? []}
+              canEdit={canEdit}
+              onChange={onChange}
+              emptyHint="No items yet."
+              defaultOpen={defaultOpen}
+              hideRootAdd
+            />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function TypeActionBar({ type, canEdit, onChange }: any) {
+  const currentLine = useCurrentLine();
+  const { clip, lockTo } = useClipboard();
+  const [showNotes, setShowNotes] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+
+  const photos = ((type.component_type_photos ?? []) as any[])
+    .slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const files = ((type.component_type_files ?? []) as any[])
+    .slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const pasteKey = `tree-root:${type.id}`;
+
+  const addItem = async () => {
+    if (!text.trim()) return;
+    const { error } = await supabase.from("checklist_items").insert({
+      id: localUuid(), component_type_id: type.id, label: text.trim(),
+      sort_order: (type.checklist_items ?? []).length,
+    });
+    if (error) toast.error(toUserMessage(error));
+    else { setText(""); setAdding(false); onChange(); }
+  };
+
+  const pasteHere = async () => {
+    if (clip?.kind !== "item") return;
+    try {
+      await pasteItem(clip, { component_type_id: type.id, parent_item_id: null, sort_order: (type.checklist_items ?? []).length });
+      lockTo(pasteKey);
+      toast.success("Pasted"); onChange();
+    } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
+  };
+
+  const uploadPhoto = async (file: File) => {
+    const path = `component-types/${type.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("photos", path, file);
+    const { error: upErr } = await supabase.storage.from("photos").upload(path, file);
+    if (upErr) { toast.error(toUserMessage(upErr)); return; }
+    await supabase.from("component_type_photos" as any).insert({
+      id: localUuid(), component_type_id: type.id, storage_path: path, sort_order: photos.length,
+    } as any);
+    setShowPhotos(true); onChange();
+  };
+  const uploadFile = async (file: File) => {
+    const path = `component-types/${type.id}/${Date.now()}-${file.name}`;
+    rememberLocalFile("files", path, file);
+    const { error: upErr } = await supabase.storage.from("files").upload(path, file);
+    if (upErr) { toast.error(toUserMessage(upErr)); return; }
+    await supabase.from("component_type_files" as any).insert({
+      id: localUuid(), component_type_id: type.id, storage_path: path, file_name: file.name, sort_order: files.length,
+    } as any);
+    setShowFiles(true); onChange();
+  };
+  const removePhoto = async (p: any) => {
+    if (!confirmSharedDelete(!!p.is_shared)) return;
+    await supabase.from("component_type_photos" as any).delete().eq("id", p.id);
+    if (!p.is_shared) await supabase.storage.from("photos").remove([p.storage_path]);
+    onChange();
+  };
+  const removeFile = async (f: any) => {
+    if (!confirmSharedDelete(!!f.is_shared)) return;
+    await supabase.from("component_type_files" as any).delete().eq("id", f.id);
+    if (!f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
+    onChange();
+  };
+  const togglePhotoShare = async (p: any) => {
+    if (p.is_shared && !(await confirmUnshareToOriginLine(p.origin_line_id, currentLine?.lineId))) return;
+    await supabase.from("component_type_photos" as any).update({ is_shared: !p.is_shared }).eq("id", p.id);
+    onChange();
+  };
+  const toggleFileShare = async (f: any) => {
+    if (f.is_shared && !(await confirmUnshareToOriginLine(f.origin_line_id, currentLine?.lineId))) return;
+    await supabase.from("component_type_files" as any).update({ is_shared: !f.is_shared }).eq("id", f.id);
+    onChange();
+  };
+  const toggleLocal = async () => {
+    if (!currentLine) return;
+    const next = type.local_line_id ? null : currentLine.lineId;
+    const upd: any = { local_line_id: next };
+    const q = type.template_id
+      ? supabase.from("component_types").update(upd).eq("template_id", type.template_id)
+      : supabase.from("component_types").update(upd).eq("id", type.id);
+    const { error } = await q;
+    if (error) toast.error(toUserMessage(error)); else onChange();
+  };
+
+  if (!canEdit) return null;
+
+  return (
+    <>
+      <div className="flex flex-nowrap items-center gap-1 border-b border-dashed px-2 py-1 sm:px-3 sm:py-1.5">
+        <button onClick={() => setShowNotes((v) => !v)} title="Note"
+          className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${showNotes ? "text-primary" : "text-muted-foreground"}`}>
+          <StickyNote className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => setAdding(true)} title="Add item"
+          className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+          <ListPlus className="h-3.5 w-3.5" />
+        </button>
+        {photos.length === 0 ? (
+          <PhotoPicker onPick={uploadPhoto}>
+            <button title="Add photo" className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Camera className="h-3.5 w-3.5" />
+            </button>
+          </PhotoPicker>
+        ) : (
+          <button onClick={() => setShowPhotos((v) => !v)} title={showPhotos ? "Hide photos" : "Show photos"}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${showPhotos ? "text-primary" : "text-primary/70"}`}>
+            <Camera className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{photos.length}</span>
+          </button>
+        )}
+        {files.length === 0 ? (
+          <label title="Add file" className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <Paperclip className="h-3.5 w-3.5" />
+            <input type="file" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+          </label>
+        ) : (
+          <button onClick={() => setShowFiles((v) => !v)} title={showFiles ? "Hide files" : "Show files"}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${showFiles ? "text-primary" : "text-primary/70"}`}>
+            <Paperclip className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{files.length}</span>
+          </button>
+        )}
+        {clip?.kind === "item" && (!clip.lockedAt || clip.lockedAt === pasteKey) && (
+          <button onClick={pasteHere} title={`Paste ${clip.nodes.length} item${clip.nodes.length > 1 ? "s" : ""}`}
+            className="inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <ClipboardPaste className="h-3.5 w-3.5" />
+            {clip.nodes.length > 1 ? <span className="ml-0.5 text-[10px]">{clip.nodes.length}</span> : null}
+          </button>
+        )}
+        {currentLine && (
+          <button onClick={toggleLocal}
+            title={type.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
+            className={`ml-auto inline-flex items-center justify-center rounded p-1 ${type.local_line_id ? "text-muted-foreground hover:bg-accent hover:text-foreground" : "text-primary hover:bg-accent"}`}>
+            {type.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+          </button>
+        )}
+      </div>
+      {adding && (
+        <div className="flex gap-1 px-3 py-2">
+          <Input value={text} autoFocus onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addItem()}
+            placeholder="Checklist item" className="h-7 text-xs" />
+          <Button size="sm" className="h-7" onClick={addItem}>Add</Button>
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => { setAdding(false); setText(""); }}>Cancel</Button>
+        </div>
+      )}
+      {showNotes && (
+        <TypeNotesEditor typeId={type.id} typeTemplateId={type.template_id} canEdit={canEdit} />
+      )}
+      {showPhotos && photos.length > 0 && (
+        <div className="grid grid-cols-3 gap-1 px-3 pb-2">
+          {photos.map((p: any) => (
+            <PhotoTile key={p.id} path={p.storage_path} canEdit={canEdit}
+              onRemove={() => removePhoto(p)} isShared={!!p.is_shared}
+              onToggleShared={() => togglePhotoShare(p)}
+              gallery={photos.map((x: any) => ({ bucket: "photos", path: x.storage_path }))} />
+          ))}
+          <PhotoPicker onPick={uploadPhoto}>
+            <button title="Add another photo"
+              className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Plus className="h-4 w-4" />
+            </button>
+          </PhotoPicker>
+        </div>
+      )}
+      {showFiles && files.length > 0 && (
+        <div className="space-y-1 px-3 pb-2">
+          {files.map((f: any) => (
+            <FileChip key={f.id} f={f} canEdit={canEdit}
+              onRemove={() => removeFile(f)} onToggleShared={() => toggleFileShare(f)} />
+          ))}
+          <label title="Add file"
+            className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <Plus className="h-4 w-4" />
+            <input type="file" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+          </label>
+        </div>
+      )}
+    </>
   );
 }
