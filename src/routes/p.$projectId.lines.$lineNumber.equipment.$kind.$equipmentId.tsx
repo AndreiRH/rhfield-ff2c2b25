@@ -911,8 +911,9 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
           </CardContent>
         </Card>
       ) : (
-        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
-          headerLeading={modeToggle} />
+        <ComponentTypesTree group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
+          headerLeading={modeToggle}
+          emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
       )}
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
