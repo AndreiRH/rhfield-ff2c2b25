@@ -47,7 +47,7 @@ export function ComponentTypesTree(props: any) {
   );
 }
 
-function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount }: any) {
+function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount, headerLeading }: any) {
   const { isAdmin } = useAuth();
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
