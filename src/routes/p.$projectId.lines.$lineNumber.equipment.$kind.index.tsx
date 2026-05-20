@@ -78,7 +78,7 @@ function PlantEquipmentList() {
           .order("sort_order", { ascending: true });
         if (pErr) throw pErr;
         const cleanItems = (items: any[] | null | undefined) =>
-          (items ?? []).filter((i: any) => !i.deleted_at);
+          (items ?? []).filter((i: any) => !i.deleted_at && (!i.local_line_id || i.local_line_id === line.id));
         const cleanComponents = (comps: any[] | null | undefined) =>
           (comps ?? [])
             .filter((c: any) => !c.deleted_at)
