@@ -105,6 +105,7 @@ export function ItemNotesEditor({
         <ul className="space-y-2">
           {notes.map((n) => (
             <NoteRow key={n.id} note={n} canEdit={canEdit} userId={userId}
+              autoOpen={autoOpenId === n.id}
               onUpdate={(p: Partial<ItemNote>) => update(n.id, p)} onDelete={() => remove(n)} />
           ))}
         </ul>
