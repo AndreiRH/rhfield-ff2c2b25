@@ -120,34 +120,40 @@ export function CommonFoldersList({
   };
 
   const deleteFolders = async (ids: string[]) => {
-    // Expand to include all descendants so we can clean up storage
     const all = new Set<string>();
     for (const id of ids) {
       all.add(id);
       for (const d of collectDescendants(id)) all.add(d);
     }
     const allIds = Array.from(all);
-    const { data: atts } = await supabase.from("common_folder_attachments")
-      .select("kind, storage_path").in("folder_id", allIds);
-    const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
-    const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
-    const { data: notes } = await supabase.from("common_folder_notes")
-      .select("photo_path, file_path").in("folder_id", allIds);
-    (notes ?? []).forEach((n: any) => {
-      if (n.photo_path) photos.push(n.photo_path);
-      if (n.file_path) files.push(n.file_path);
+    const label = ids.length > 1 ? `${ids.length} folders deleted` : "Folder deleted";
+    undoableDelete({
+      label,
+      optimistic: () => setOpenIds((s) => {
+        const next = new Set(s);
+        allIds.forEach((id) => next.delete(id));
+        return next;
+      }),
+      restore: load,
+      commit: async () => {
+        const { data: atts } = await supabase.from("common_folder_attachments")
+          .select("kind, storage_path").in("folder_id", allIds);
+        const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
+        const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
+        const { data: notes } = await supabase.from("common_folder_notes")
+          .select("photo_path, file_path").in("folder_id", allIds);
+        (notes ?? []).forEach((n: any) => {
+          if (n.photo_path) photos.push(n.photo_path);
+          if (n.file_path) files.push(n.file_path);
+        });
+        if (photos.length) await supabase.storage.from("photos").remove(photos);
+        if (files.length) await supabase.storage.from("files").remove(files);
+        await supabase.from("common_folders").delete().in("id", ids);
+      },
+      afterCommit: load,
     });
-    if (photos.length) await supabase.storage.from("photos").remove(photos);
-    if (files.length) await supabase.storage.from("files").remove(files);
-    // CASCADE will remove descendant rows when we delete the top-level selected ids
-    await supabase.from("common_folders").delete().in("id", ids);
-    setOpenIds((s) => {
-      const next = new Set(s);
-      allIds.forEach((id) => next.delete(id));
-      return next;
-    });
-    await load();
   };
+
 
   const toggleSelect = (id: string) => {
     setSelected((s) => {
