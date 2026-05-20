@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Plus, Check, GripVertical, ChevronDown, ChevronRight,
-  StickyNote, Camera, Paperclip, Search, Globe, Lock,
+  StickyNote, Camera, Paperclip, Search, Share2, Lock,
   ClipboardPaste, Trash2, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -426,7 +426,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
                     title={component.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${component.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
                   >
-                    {component.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
+                    {component.note_shared ? <><Share2 className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
                   </button>
                 )}
               </div>
