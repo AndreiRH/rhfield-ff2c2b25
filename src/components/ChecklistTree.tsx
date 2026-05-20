@@ -59,7 +59,6 @@ export function ChecklistTree({
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const [localConfirm, setLocalConfirm] = useState<{
-    originLineId: string;
     originLabel: string;
     otherLinesPhrase: string;
     apply: () => Promise<void>;
@@ -470,7 +469,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     if (!item.local_line_id) {
       const warning = await getUnshareWarning(next);
       requestLocalConfirm?.({
-        originLineId: next,
         originLabel: warning.originLabel,
         otherLinesPhrase: warning.otherLinesPhrase,
         apply: applyLocalChange,
