@@ -586,7 +586,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         >{item.label}</span>
       )}
       {/* Always-visible content indicators */}
-      <span className="flex items-center gap-2">
+      <span className="flex shrink-0 items-center gap-2">
         {subsTotal > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
         )}
