@@ -118,7 +118,7 @@ function EquipmentSettingsPage() {
                 lineCount={data.lineCount}
               />
               <div className="mt-6">
-                <NotesList equipmentId={equipmentId} canEdit={canEdit} userId={user?.id} />
+                <NotesList equipmentId={equipmentId} canEdit={canEdit} userId={user?.id} section="settings" />
               </div>
             </CurrentLineProvider>
           </>
