@@ -17,8 +17,7 @@ import {
   Plus,
   CalendarIcon,
   Share2,
-  Eye,
-  EyeOff,
+
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
