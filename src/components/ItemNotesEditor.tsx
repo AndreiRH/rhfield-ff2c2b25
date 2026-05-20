@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, ChevronDown, ChevronRight, Share2, Lock, StickyNote } from "lucide-react";
 import { NoteAttachments } from "@/components/NoteAttachments";
+import { undoableDelete } from "@/lib/undoableDelete";
 
 interface ItemNote {
   id: string;
