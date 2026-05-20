@@ -869,9 +869,13 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
   });
   const [pct, setPct] = useState<string>(pe.mech_manual_pct?.toString() ?? "");
 
-  const switchMode = (m: string) => {
+  const switchMode = async (m: string) => {
     setMode(m);
     if (typeof window !== "undefined") window.localStorage.setItem(modeKey, m);
+    const { error } = await supabase.from("plant_equipment")
+      .update({ mech_mode: m }).eq("id", pe.id);
+    if (error) { toast.error(toUserMessage(error)); return; }
+    onChange();
   };
 
   const savePct = async () => {
