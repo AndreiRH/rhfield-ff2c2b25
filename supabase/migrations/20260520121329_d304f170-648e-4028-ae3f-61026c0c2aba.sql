@@ -1,0 +1,3 @@
+ALTER TABLE public.component_type_notes ADD CONSTRAINT component_type_notes_component_type_id_fkey FOREIGN KEY (component_type_id) REFERENCES public.component_types(id) ON DELETE CASCADE;
+ALTER TABLE public.component_type_photos ADD CONSTRAINT component_type_photos_component_type_id_fkey FOREIGN KEY (component_type_id) REFERENCES public.component_types(id) ON DELETE CASCADE;
+ALTER TABLE public.component_type_files ADD CONSTRAINT component_type_files_component_type_id_fkey FOREIGN KEY (component_type_id) REFERENCES public.component_types(id) ON DELETE CASCADE;

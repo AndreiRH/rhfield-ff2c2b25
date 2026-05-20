@@ -474,7 +474,15 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "component_type_files_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       component_type_notes: {
         Row: {
@@ -513,7 +521,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "component_type_notes_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       component_type_photos: {
         Row: {
@@ -552,7 +568,15 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "component_type_photos_component_type_id_fkey"
+            columns: ["component_type_id"]
+            isOneToOne: false
+            referencedRelation: "component_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       component_types: {
         Row: {
