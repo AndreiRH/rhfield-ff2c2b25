@@ -229,7 +229,12 @@ function EquipmentDetail() {
     initialDataUpdatedAt: () => qc.getQueryState(queryKey)?.dataUpdatedAt,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
+    qc.invalidateQueries({ queryKey: ["plant-equip-list", projectId, lineNumber, kind] });
+    qc.invalidateQueries({ queryKey: ["line-detail", projectId, lineNumber] });
+    qc.invalidateQueries({ queryKey: ["project-detail", projectId] });
+  };
 
   if (isChildRoute) return <Outlet />;
 
