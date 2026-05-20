@@ -215,6 +215,7 @@ function NoteRow({ note, canEdit, userId, currentEquipmentId, onUpdate, onDelete
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => { if (body !== note.body) onUpdate({ body }); }}
             placeholder="Write something…"
+            data-resize-key={`equipment-note:${note.id}`}
             className="min-h-[60px] resize-y text-sm"
           />
           <NoteAttachments

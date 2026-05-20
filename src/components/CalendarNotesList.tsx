@@ -279,6 +279,7 @@ function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: NoteRowProps) {
               if (body !== note.body) onUpdate({ body });
             }}
             placeholder="Write something…"
+            data-resize-key={`calendar-note:${note.id}`}
             className="min-h-[60px] resize-y text-sm"
           />
           <NoteAttachments
