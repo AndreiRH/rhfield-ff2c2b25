@@ -50,6 +50,7 @@ function groupWeight(group: any) {
 }
 import { toast } from "sonner";
 import { ComponentTypesTree } from "@/components/ComponentTypesTree";
+import { FlatChecklist } from "@/components/FlatChecklist";
 
 import { NotesList } from "@/components/NotesList";
 import { CurrentLineProvider } from "@/lib/current-line";
