@@ -45,10 +45,13 @@ export function ChecklistTree({
   canDeleteRoot?: boolean;
   hideRootAdd?: boolean;
 }) {
+  const currentLine = useCurrentLine();
   const parentCols = componentTypeId
     ? { component_type_id: componentTypeId }
     : { component_id: componentId! };
-  const visibleItems = liveChecklistItems(items);
+  const visibleItems = liveChecklistItems(
+    (items ?? []).filter((i: any) => !i.local_line_id || (currentLine && i.local_line_id === currentLine.lineId))
+  );
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const { clip, lockTo } = useClipboard();
