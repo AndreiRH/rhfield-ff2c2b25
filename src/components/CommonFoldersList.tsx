@@ -411,7 +411,7 @@ function FolderItem({
   );
 }
 
-function FolderContents({ folder, canEdit, userId, onCountsChange }: any) {
+function FolderContents({ folder, canEdit, userId, onCountsChange, onAddChild }: any) {
   const [atts, setAtts] = useState<Attachment[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
 
