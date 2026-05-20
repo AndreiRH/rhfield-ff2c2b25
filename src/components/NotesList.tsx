@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight, Globe, Lock } from "lucide-react";
+import { Plus, Trash2, Camera, Paperclip, GripVertical, X, ChevronDown, ChevronRight, Share2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
@@ -250,7 +250,7 @@ function NoteRow({ note, canEdit, currentEquipmentId, onUpdate, onDelete, onRelo
             title={note.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
             className={`p-1 ${note.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {note.is_shared ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            {note.is_shared ? <Share2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
           </button>
         )}
         {canEdit && (

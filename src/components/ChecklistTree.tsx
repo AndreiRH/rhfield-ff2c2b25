@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X, Globe, Lock, ClipboardPaste, Check,
+  StickyNote, ListPlus, X, Share2, Lock, ClipboardPaste, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
@@ -550,7 +550,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                   aria-label={item.local_line_id ? "Make shared" : "Make local"}
                   className={`ml-auto inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded ${item.local_line_id ? "text-muted-foreground hover:bg-accent hover:text-foreground" : "text-primary hover:bg-accent"}`}
                 >
-                  {item.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+                  {item.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
                   {showLabels && <span>{item.local_line_id ? "Local" : "Shared"}</span>}
                 </button>
               )}
@@ -571,7 +571,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                     title={item.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${item.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
                   >
-                    {item.note_shared ? <><Globe className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
+                    {item.note_shared ? <><Share2 className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
                   </button>
                 )}
               </div>
@@ -724,7 +724,7 @@ export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared, g
           title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
           className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {isShared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {isShared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
         </button>
       )}
     </div>
@@ -750,7 +750,7 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
           title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
           className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {f.is_shared ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          {f.is_shared ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         </button>
       )}
       {canEdit && (
@@ -790,7 +790,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
           title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
           className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {isShared ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {isShared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
         </button>
       )}
       <button
@@ -844,7 +844,7 @@ function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
           title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
           className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
-          {f.is_shared ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          {f.is_shared ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         </button>
       )}
       {canEdit && (
