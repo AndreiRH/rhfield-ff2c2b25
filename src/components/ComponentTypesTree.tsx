@@ -201,63 +201,66 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        {/* Top action bar — single global controls. */}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {headerLeading && <div className="mr-auto">{headerLeading}</div>}
+        {/* Optional leading slot (e.g. Manual/Checklist toggle) — own row on top. */}
+        {headerLeading && <div className="flex">{headerLeading}</div>}
+        {/* Action bar — collapse/expand on the left, the rest on the right. */}
+        <div className="flex flex-wrap items-center gap-2">
           {types.length > 0 && (
-            <Button size="sm" variant="outline" className="mr-auto" onClick={allOpen ? collapseAll : expandAll} title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
+            <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll} title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
               {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
             </Button>
           )}
-          {canEdit && !adding && types.length > 0 && (
-            <>
-              <Button
-                size="sm"
-                variant={action.mode === "reorder" ? "default" : "outline"}
-                onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
-                title="Reorder"
-                aria-label="Reorder"
-              >
-                <GripVertical className="h-4 w-4" />
-                {action.mode === "reorder" && <span className="ml-1">Done</span>}
-              </Button>
-              <Button
-                size="sm"
-                variant={action.mode === "copy" ? "default" : "outline"}
-                onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
-                title="Copy"
-                aria-label="Copy"
-              >
-                <Copy className="h-4 w-4" />
-                {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
-              </Button>
-              {isAdmin && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {canEdit && !adding && types.length > 0 && (
+              <>
                 <Button
                   size="sm"
-                  variant={action.mode === "delete" ? "destructive" : "outline"}
-                  onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
-                  title="Delete"
-                  aria-label="Delete"
+                  variant={action.mode === "reorder" ? "default" : "outline"}
+                  onClick={() => action.setMode(action.mode === "reorder" ? "none" : "reorder")}
+                  title="Reorder"
+                  aria-label="Reorder"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                  <GripVertical className="h-4 w-4" />
+                  {action.mode === "reorder" && <span className="ml-1">Done</span>}
                 </Button>
-              )}
-            </>
-          )}
-          {canEdit && !adding && !inMode && (
-            <Button size="sm" onClick={() => setAdding(true)} title="Add type" aria-label="Add type">
-              <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add type</span>
-            </Button>
-          )}
-          {clip && !inMode && canEdit && clip.kind === "componentType" && (!clip.lockedAt || clip.lockedAt === typePasteLocationKey) && (
-            <Button size="sm" variant="outline" onClick={pasteTypeHere}
-              title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}
-              aria-label="Paste">
-              <ClipboardPaste className="h-4 w-4" />
-              {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
-            </Button>
-          )}
+                <Button
+                  size="sm"
+                  variant={action.mode === "copy" ? "default" : "outline"}
+                  onClick={action.mode === "copy" ? commitDone : () => action.setMode("copy")}
+                  title="Copy"
+                  aria-label="Copy"
+                >
+                  <Copy className="h-4 w-4" />
+                  {action.mode === "copy" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                </Button>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant={action.mode === "delete" ? "destructive" : "outline"}
+                    onClick={action.mode === "delete" ? commitDone : () => action.setMode("delete")}
+                    title="Delete"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {action.mode === "delete" && <span className="ml-1">Done{action.count ? ` ${action.count}` : ""}</span>}
+                  </Button>
+                )}
+              </>
+            )}
+            {canEdit && !adding && !inMode && (
+              <Button size="sm" onClick={() => setAdding(true)} title="Add type" aria-label="Add type">
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add type</span>
+              </Button>
+            )}
+            {clip && !inMode && canEdit && clip.kind === "componentType" && (!clip.lockedAt || clip.lockedAt === typePasteLocationKey) && (
+              <Button size="sm" variant="outline" onClick={pasteTypeHere}
+                title={`Paste ${clip.nodes.length} type${clip.nodes.length > 1 ? "s" : ""}`}
+                aria-label="Paste">
+                <ClipboardPaste className="h-4 w-4" />
+                {clip.nodes.length > 1 ? <span className="ml-1">{clip.nodes.length}</span> : null}
+              </Button>
+            )}
+          </div>
         </div>
 
         {adding && (
