@@ -765,7 +765,7 @@ function renderSection(s: Section, data: any, canEdit: boolean, userId: string |
       <div className="space-y-6">
         <ComponentTypesTree group={data.wiring} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
           emptyHint="No wiring categories yet. Add types like 'Sensors', 'Cabling', 'Junction boxes', 'Loops'…" />
-        <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} />
+        <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} section="wiring" />
       </div>
     );
   }
@@ -773,7 +773,7 @@ function renderSection(s: Section, data: any, canEdit: boolean, userId: string |
     <div className="space-y-6">
       <ComponentTypesTree group={data.cold} canEdit={canEdit} onChange={onChange} lineCount={data.lineCount}
         emptyHint="No cold commissioning categories yet. Add types like 'Loops', 'Drives', 'Interlocks'…" />
-      <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} />
+      <NotesList equipmentId={data.pe.id} canEdit={canEdit} userId={userId} section="cold_comm" />
     </div>
   );
 }
