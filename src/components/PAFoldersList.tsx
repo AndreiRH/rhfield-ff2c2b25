@@ -478,44 +478,13 @@ function AttFile({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolean
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) {
+function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [open, setOpen] = useState(false);
   useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
 
   const basePath = `pa-notes/${note.line_id}/${note.kind}/${note.id}`;
-
-  const uploadPhoto = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("photos", path, file);
-    const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("pa_notes").update({ photo_path: path }).eq("id", note.id);
-    onReload();
-  };
-  const uploadFile = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("files", path, file);
-    const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("pa_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
-    onReload();
-  };
-  const removePhoto = async () => {
-    if (!confirmSharedDelete(!!note.is_shared)) return;
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("pa_notes").update({ photo_path: null }).eq("id", note.id);
-    onReload();
-  };
-  const removeFile = async () => {
-    if (!confirmSharedDelete(!!note.is_shared)) return;
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("pa_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
-    onReload();
-  };
 
   return (
     <li data-nest className="rounded-md border bg-card">
@@ -560,33 +529,5 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload, gallery }: any) 
         </div>
       )}
     </li>
-  );
-}
-
-function NotePhoto({ path, canEdit, onRemove, gallery }: { path: string; canEdit: boolean; onRemove: () => void; gallery?: { bucket: string; path: string; name?: string }[] }) {
-  return (
-    <StoragePhoto
-      bucket="photos"
-      path={path}
-      imgClassName="max-h-40 w-full rounded border object-cover"
-      canEdit={canEdit}
-      onRemove={onRemove}
-      gallery={gallery}
-    />
-  );
-}
-
-function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
-  return (
-    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={() => openStorageFile("files", path, name)} className="flex flex-1 items-center gap-1 text-left hover:underline">
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-      </button>
-      {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
   );
 }
