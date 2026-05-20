@@ -33,6 +33,8 @@ import { localUuid } from "@/lib/local-id";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import { useCurrentLine } from "@/lib/current-line";
+import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import { confirmUnshareToOriginLine } from "@/lib/confirm-unshare";
 import { TypeNotesEditor } from "@/components/TypeNotesEditor";
 
 import { useAuth } from "@/hooks/use-auth";
