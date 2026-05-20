@@ -26,8 +26,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
 import { useCurrentLine } from "@/lib/current-line";
-import { confirmUnshareToOriginLine } from "@/lib/confirm-unshare";
+import { confirmUnshareToOriginLine, getUnshareWarning } from "@/lib/confirm-unshare";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
@@ -54,6 +58,12 @@ export function ChecklistTree({
   );
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
+  const [localConfirm, setLocalConfirm] = useState<{
+    originLineId: string;
+    originLabel: string;
+    otherLinesPhrase: string;
+    apply: () => Promise<void>;
+  } | null>(null);
   const { clip, lockTo } = useClipboard();
   const rootPasteLocationKey = `tree-root:${(parentCols as any).component_id ?? (parentCols as any).component_type_id ?? ""}`;
   const action = useTreeAction();
@@ -146,16 +156,36 @@ export function ChecklistTree({
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={visibleItems} canEdit={canEdit}
                 onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen}
-                canDeleteRoot={canDeleteRoot} />
+                canDeleteRoot={canDeleteRoot} requestLocalConfirm={setLocalConfirm} />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
+      <AlertDialog open={!!localConfirm} onOpenChange={(open) => { if (!open) setLocalConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Make item local?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This item was originally shared from <strong>{localConfirm?.originLabel}</strong>. If you confirm, it will only be accessible there and will be removed from {localConfirm?.otherLinesPhrase}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              const pending = localConfirm;
+              setLocalConfirm(null);
+              await pending?.apply();
+            }}>
+              Make local
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true, requestLocalConfirm }: any) {
   const currentLine = useCurrentLine();
   const action = useTreeAction();
   const mode = action?.mode ?? "none";
