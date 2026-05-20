@@ -606,7 +606,7 @@ function AttPhoto({ att, canEdit, onRemove }: { att: Attachment; canEdit: boolea
     <StoragePhoto
       bucket="photos"
       path={att.storage_path}
-      imgClassName="h-28 w-full rounded border object-cover"
+      imgClassName="aspect-square w-full rounded border object-cover"
       canEdit={canEdit}
       onRemove={onRemove}
     />

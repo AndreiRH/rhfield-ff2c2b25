@@ -452,7 +452,7 @@ function AttPhoto({ att, canEdit, onRemove, gallery }: { att: Attachment; canEdi
     <StoragePhoto
       bucket="photos"
       path={att.storage_path}
-      imgClassName="h-28 w-full rounded border object-cover"
+      imgClassName="aspect-square w-full rounded border object-cover"
       containerClassName="h-28"
       canEdit={canEdit}
       onRemove={onRemove}
