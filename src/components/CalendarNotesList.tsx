@@ -11,14 +11,11 @@ import {
   Camera,
   Paperclip,
   GripVertical,
-  X,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PhotoPicker } from "@/components/PhotoPicker";
-import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
-import { rememberLocalFile } from "@/lib/local-blobs";
+import { NoteAttachments } from "@/components/NoteAttachments";
 import { undoableDelete } from "@/lib/undoableDelete";
 import {
   DndContext,
@@ -45,16 +42,13 @@ interface CalendarNote {
   title: string;
   body: string;
   sort_order: number;
-  photo_path: string | null;
-  file_path: string | null;
-  file_name: string | null;
 }
 interface NoteRowProps {
   note: CalendarNote;
   canEdit: boolean;
+  userId?: string;
   onUpdate: (patch: Partial<CalendarNote>) => void;
   onDelete: () => void;
-  onReload: () => void;
 }
 
 export function CalendarNotesList({
@@ -114,8 +108,20 @@ export function CalendarNotesList({
       optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
       restore: load,
       commit: async () => {
-        if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
-        if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
+        const [{ data: photos }, { data: files }] = await Promise.all([
+          supabase.from("note_photos" as any).select("storage_path")
+            .eq("parent_kind", "calendar_note").eq("parent_id", n.id),
+          supabase.from("note_files" as any).select("storage_path")
+            .eq("parent_kind", "calendar_note").eq("parent_id", n.id),
+        ]);
+        const photoPaths = ((photos ?? []) as any[]).map((p) => p.storage_path).filter(Boolean);
+        const filePaths = ((files ?? []) as any[]).map((f) => f.storage_path).filter(Boolean);
+        if (photoPaths.length) await supabase.storage.from("photos").remove(photoPaths);
+        if (filePaths.length) await supabase.storage.from("files").remove(filePaths);
+        await supabase.from("note_photos" as any).delete()
+          .eq("parent_kind", "calendar_note").eq("parent_id", n.id);
+        await supabase.from("note_files" as any).delete()
+          .eq("parent_kind", "calendar_note").eq("parent_id", n.id);
         await supabase.from("calendar_notes").delete().eq("id", n.id);
       },
       afterCommit: load,
@@ -173,9 +179,9 @@ export function CalendarNotesList({
                       key={n.id}
                       note={n}
                       canEdit={canEdit}
+                      userId={userId}
                       onUpdate={(p: Partial<CalendarNote>) => update(n.id, p)}
                       onDelete={() => remove(n)}
-                      onReload={load}
                     />
                   ))}
                 </ul>
@@ -187,7 +193,7 @@ export function CalendarNotesList({
   );
 }
 
-function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) {
+function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: NoteRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: note.id,
   });
@@ -200,60 +206,13 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [counts, setCounts] = useState<{ photos: number; files: number }>({ photos: 0, files: 0 });
   useEffect(() => {
     setTitle(note.title);
     setBody(note.body);
   }, [note.title, note.body]);
 
-  const hasPhoto = !!note.photo_path;
-  const hasFile = !!note.file_name;
   const basePath = `calendar-notes/${note.project_id}/${note.scope}/${note.line_id ?? "global"}/${note.id}`;
-
-  const maybeAutoDelete = () => {
-    const titleEmpty = !title.trim() || title.trim() === "Note";
-    if (!body.trim() && titleEmpty && !hasPhoto && !hasFile) onDelete();
-  };
-
-  const uploadPhoto = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("photos", path, file);
-    const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) {
-      toast.error(toUserMessage(error));
-      return;
-    }
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("calendar_notes").update({ photo_path: path }).eq("id", note.id);
-    onReload();
-  };
-  const uploadFile = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("files", path, file);
-    const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) {
-      toast.error(toUserMessage(error));
-      return;
-    }
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase
-      .from("calendar_notes")
-      .update({ file_path: path, file_name: file.name })
-      .eq("id", note.id);
-    onReload();
-  };
-  const removePhoto = async () => {
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("calendar_notes").update({ photo_path: null }).eq("id", note.id);
-    onReload();
-  };
-  const removeFile = async () => {
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase
-      .from("calendar_notes")
-      .update({ file_path: null, file_name: null })
-      .eq("id", note.id);
-    onReload();
-  };
 
   return (
     <li ref={setNodeRef} style={style} data-nest className="rounded-md border bg-card">
@@ -282,7 +241,6 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) 
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => {
               if (title !== note.title) onUpdate({ title });
-              maybeAutoDelete();
             }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-sm font-medium shadow-none focus-visible:ring-0"
           />
@@ -293,14 +251,14 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) 
             className="flex flex-1 items-center gap-2 truncate px-1 text-left text-sm font-medium"
           >
             <span className="truncate">{note.title || "Untitled"}</span>
-            {hasPhoto && (
+            {counts.photos > 0 && (
               <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
-                <Camera className="h-3 w-3" /> 1
+                <Camera className="h-3 w-3" /> {counts.photos}
               </span>
             )}
-            {hasFile && (
+            {counts.files > 0 && (
               <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
-                <Paperclip className="h-3 w-3" /> 1
+                <Paperclip className="h-3 w-3" /> {counts.files}
               </span>
             )}
           </button>
@@ -319,93 +277,21 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: NoteRowProps) 
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => {
               if (body !== note.body) onUpdate({ body });
-              maybeAutoDelete();
             }}
             placeholder="Write something…"
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && (
-            <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />
-          )}
-          {note.file_name && (
-            <NoteFile
-              path={note.file_path}
-              name={note.file_name}
-              canEdit={canEdit}
-              onRemove={removeFile}
-            />
-          )}
-          {canEdit && (
-            <div className="flex gap-2">
-              <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                  <Camera className="h-3 w-3" /> Photo
-                </button>
-              </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Paperclip className="h-3 w-3" /> File
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) uploadFile(f);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-          )}
+          <NoteAttachments
+            parentKind="calendar_note"
+            parentId={note.id}
+            storagePrefix={basePath}
+            canEdit={canEdit}
+            userId={userId}
+            showSharedToggle={false}
+            onCountsChange={setCounts}
+          />
         </div>
       )}
     </li>
-  );
-}
-
-function NotePhoto({
-  path,
-  canEdit,
-  onRemove,
-}: {
-  path: string;
-  canEdit: boolean;
-  onRemove: () => void;
-}) {
-  return (
-    <StoragePhoto
-      bucket="photos"
-      path={path}
-      imgClassName="max-h-40 w-full rounded border object-cover"
-      canEdit={canEdit}
-      onRemove={onRemove}
-    />
-  );
-}
-
-function NoteFile({
-  path,
-  name,
-  canEdit,
-  onRemove,
-}: {
-  path: string | null;
-  name: string;
-  canEdit: boolean;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button
-        onClick={() => openStorageFile("files", path, name)}
-        className="flex flex-1 items-center gap-1 text-left hover:underline"
-      >
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-      </button>
-      {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
   );
 }
