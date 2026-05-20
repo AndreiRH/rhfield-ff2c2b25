@@ -57,7 +57,7 @@ export function undoableDelete({
       await commit();
       afterCommit?.();
     } catch (e) {
-      toast.error(toUserMessage(e));
+      toast.error(toUserMessage(e as any));
       try { restore?.(); } catch { /* noop */ }
     }
   }, duration);
