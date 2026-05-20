@@ -109,11 +109,19 @@ export function CalendarNotesList({
   };
 
   const remove = async (n: CalendarNote) => {
-    if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
-    if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
-    await supabase.from("calendar_notes").delete().eq("id", n.id);
-    load();
+    undoableDelete({
+      label: "Note deleted",
+      optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
+      restore: load,
+      commit: async () => {
+        if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
+        if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
+        await supabase.from("calendar_notes").delete().eq("id", n.id);
+      },
+      afterCommit: load,
+    });
   };
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
