@@ -87,20 +87,28 @@ export function PAFoldersList({
   };
 
   const deleteFolders = async (ids: string[]) => {
-    const { data: atts } = await supabase.from("pa_attachments").select("kind, storage_path").in("folder_id", ids);
-    const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
-    const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
-    const { data: notes } = await supabase.from("pa_notes").select("photo_path, file_path").in("folder_id", ids);
-    (notes ?? []).forEach((n: any) => {
-      if (n.photo_path) photos.push(n.photo_path);
-      if (n.file_path) files.push(n.file_path);
+    const label = ids.length > 1 ? `${ids.length} folders deleted` : "Folder deleted";
+    undoableDelete({
+      label,
+      optimistic: () => { if (openId && ids.includes(openId)) setOpenId(null); },
+      restore: load,
+      commit: async () => {
+        const { data: atts } = await supabase.from("pa_attachments").select("kind, storage_path").in("folder_id", ids);
+        const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
+        const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
+        const { data: notes } = await supabase.from("pa_notes").select("photo_path, file_path").in("folder_id", ids);
+        (notes ?? []).forEach((n: any) => {
+          if (n.photo_path) photos.push(n.photo_path);
+          if (n.file_path) files.push(n.file_path);
+        });
+        if (photos.length) await supabase.storage.from("photos").remove(photos);
+        if (files.length) await supabase.storage.from("files").remove(files);
+        await supabase.from("pa_folders").delete().in("id", ids);
+      },
+      afterCommit: load,
     });
-    if (photos.length) await supabase.storage.from("photos").remove(photos);
-    if (files.length) await supabase.storage.from("files").remove(files);
-    await supabase.from("pa_folders").delete().in("id", ids);
-    if (openId && ids.includes(openId)) setOpenId(null);
-    await load();
   };
+
 
   const toggleSelect = (id: string) => {
     setSelected((s) => {
