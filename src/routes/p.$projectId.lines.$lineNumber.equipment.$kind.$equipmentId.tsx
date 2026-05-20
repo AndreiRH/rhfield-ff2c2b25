@@ -124,6 +124,9 @@ export async function fetchEquipmentDetail(
   const lineCount = lineCountRes.count;
   const siblings = siblingsRes.data;
 
+  const visibleChecklistItems = (items: any[] | null | undefined) =>
+    (items ?? []).filter((i: any) => !i.deleted_at && (!i.local_line_id || i.local_line_id === line.id));
+
   const stripDeleted = (gs: any[] | null | undefined): any[] =>
     (gs ?? []).map((g) => ({
       ...g,
@@ -131,18 +134,18 @@ export async function fetchEquipmentDetail(
         .filter((c: any) => !c.deleted_at)
         .map((c: any) => ({
           ...c,
-          checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+          checklist_items: visibleChecklistItems(c.checklist_items),
         })),
       component_types: (g.component_types ?? [])
         .filter((t: any) => !t.deleted_at)
         .map((t: any) => ({
           ...t,
-          checklist_items: (t.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+          checklist_items: visibleChecklistItems(t.checklist_items),
           components: (t.components ?? [])
             .filter((c: any) => !c.deleted_at)
             .map((c: any) => ({
               ...c,
-              checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+              checklist_items: visibleChecklistItems(c.checklist_items),
             })),
         })),
     }));
