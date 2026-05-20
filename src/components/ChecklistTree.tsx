@@ -463,16 +463,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         >{item.label}</span>
       )}
       {!editingLabel && <span className="flex-1 min-w-0 self-stretch" />}
-      {!inMode && canEdit && currentLine && (
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleLocalLine(); }}
-          title={item.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
-          className={`shrink-0 inline-flex h-6 w-6 items-center justify-center rounded ${item.local_line_id ? "text-muted-foreground hover:text-foreground" : "text-primary"}`}
-          aria-label={item.local_line_id ? "Make shared" : "Make local"}
-        >
-          {item.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
-        </button>
-      )}
       {/* Always-visible content indicators */}
       <span className="flex items-center gap-2">
         {subsTotal > 0 && (
