@@ -395,16 +395,6 @@ function FolderItem({
             <Paperclip className="h-3 w-3" /> {fileCount}
           </span>
         )}
-        {!deleteMode && canEdit && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onAddChild(); }}
-            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Add subfolder"
-            aria-label="Add subfolder"
-          >
-            <FolderPlus className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {open && (
