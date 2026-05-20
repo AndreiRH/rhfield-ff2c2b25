@@ -34,6 +34,7 @@ export function ItemNotesEditor({
   userId?: string;
 }) {
   const [notes, setNotes] = useState<ItemNote[]>([]);
+  const [autoOpenId, setAutoOpenId] = useState<string | null>(null);
 
   const load = async () => {
     let siblingIds: string[] = [];
@@ -55,11 +56,13 @@ export function ItemNotesEditor({
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [itemId, itemTemplateId]);
 
   const addNote = async () => {
-    const { error } = await supabase.from("item_notes" as any).insert({
+    const { data, error } = await supabase.from("item_notes" as any).insert({
       item_id: itemId, title: "Note", body: "",
       sort_order: notes.length, created_by: userId,
-    } as any);
-    if (error) toast.error(toUserMessage(error)); else load();
+    } as any).select("id").single();
+    if (error) { toast.error(toUserMessage(error)); return; }
+    setAutoOpenId((data as any)?.id ?? null);
+    load();
   };
 
   const update = (id: string, patch: Partial<ItemNote>) => {
