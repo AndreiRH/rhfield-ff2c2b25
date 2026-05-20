@@ -139,7 +139,7 @@ export async function fetchEquipmentDetail(
           checklist_items: visibleChecklistItems(c.checklist_items),
         })),
       component_types: (g.component_types ?? [])
-        .filter((t: any) => !t.deleted_at)
+        .filter((t: any) => !t.deleted_at && (!t.local_line_id || t.local_line_id === line.id))
         .map((t: any) => ({
           ...t,
           checklist_items: visibleChecklistItems(t.checklist_items),
