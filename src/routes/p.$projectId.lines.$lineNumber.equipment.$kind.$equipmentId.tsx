@@ -81,18 +81,18 @@ export async function fetchEquipmentDetail(
         id, name, sort_order, deleted_at, note, note_shared,
         component_photos(id, storage_path),
         component_files(id, storage_path, file_name),
-        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, local_line_id,
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
           item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order))
       ),
       component_types(
         id, name, sort_order, deleted_at,
-        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id, local_line_id,
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id, template_id, local_line_id, origin_line_id,
           item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order)),
         components(
           id, name, sort_order, deleted_at, note, note_shared,
           component_photos(id, storage_path),
           component_files(id, storage_path, file_name),
-          checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, local_line_id,
+          checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
             item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order))
         )
       )
