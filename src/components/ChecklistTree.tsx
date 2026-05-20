@@ -3,7 +3,7 @@ import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
@@ -32,6 +32,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ItemNotesEditor } from "@/components/ItemNotesEditor";
+
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
@@ -233,11 +235,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
-  const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
 
-  useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
+
 
   const [editingLabel, setEditingLabel] = useState(false);
   const [label, setLabel] = useState(item.label);
@@ -320,11 +321,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       setOpen(true);
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
-  };
-  const saveNote = async () => {
-    if (note === (item.note ?? "")) return;
-    const { error } = await supabase.from("checklist_items").update({ note: note || null }).eq("id", item.id);
-    if (error) toast.error(toUserMessage(error)); else onChange();
   };
   const addSub = async () => {
     if (!subText.trim()) return;
@@ -680,29 +676,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           )}
 
           {showNoteEditor && (
-            <div className="space-y-1 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Note</span>
-                {canEdit && (
-                  <button
-                    onClick={async () => {
-                      const { error } = await supabase.from("checklist_items")
-                        .update({ note_shared: !item.note_shared }).eq("id", item.id);
-                      if (error) toast.error(toUserMessage(error)); else onChange();
-                    }}
-                    title={item.note_shared ? "Note shared across all production lines — click to make local" : "Note local to this production line — click to share across all production lines"}
-                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${item.note_shared ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"}`}
-                  >
-                    {item.note_shared ? <><Share2 className="h-3 w-3" /> Shared</> : <><Lock className="h-3 w-3" /> Local</>}
-                  </button>
-                )}
-              </div>
-              <Textarea value={note} disabled={!canEdit} autoFocus
-                onChange={(e) => setNote(e.target.value)}
-                onBlur={() => { saveNote(); if (!note.trim()) setShowNoteEditor(false); }}
-                placeholder="Note…" className="min-h-[50px] text-xs" />
-            </div>
+            <ItemNotesEditor
+              itemId={item.id}
+              itemTemplateId={item.template_id}
+              canEdit={canEdit}
+              userId={undefined}
+            />
           )}
+
 
           {showPhotos && photos.length > 0 && (() => {
             const photoGallery = photos.map((p: any) => ({ bucket: "photos", path: p.storage_path }));

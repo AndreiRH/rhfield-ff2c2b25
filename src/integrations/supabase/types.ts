@@ -803,6 +803,45 @@ export type Database = {
           },
         ]
       }
+      item_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_shared: boolean
+          item_id: string
+          origin_line_id: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean
+          item_id: string
+          origin_line_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean
+          item_id?: string
+          origin_line_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       item_photos: {
         Row: {
           id: string
@@ -947,6 +986,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      note_files: {
+        Row: {
+          file_name: string
+          id: string
+          is_shared: boolean
+          parent_id: string
+          parent_kind: string
+          sort_order: number
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          is_shared?: boolean
+          parent_id: string
+          parent_kind: string
+          sort_order?: number
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          is_shared?: boolean
+          parent_id?: string
+          parent_kind?: string
+          sort_order?: number
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      note_photos: {
+        Row: {
+          id: string
+          is_shared: boolean
+          parent_id: string
+          parent_kind: string
+          sort_order: number
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_shared?: boolean
+          parent_id: string
+          parent_kind: string
+          sort_order?: number
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_shared?: boolean
+          parent_id?: string
+          parent_kind?: string
+          sort_order?: number
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
       }
       pa_attachments: {
         Row: {
