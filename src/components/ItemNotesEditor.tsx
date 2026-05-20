@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { toUserMessage } from "@/lib/errors";
@@ -34,6 +34,7 @@ export function ItemNotesEditor({
   userId?: string;
 }) {
   const [notes, setNotes] = useState<ItemNote[]>([]);
+  const [autoOpenId, setAutoOpenId] = useState<string | null>(null);
 
   const load = async () => {
     let siblingIds: string[] = [];
@@ -55,11 +56,13 @@ export function ItemNotesEditor({
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [itemId, itemTemplateId]);
 
   const addNote = async () => {
-    const { error } = await supabase.from("item_notes" as any).insert({
+    const { data, error } = await supabase.from("item_notes" as any).insert({
       item_id: itemId, title: "Note", body: "",
       sort_order: notes.length, created_by: userId,
-    } as any);
-    if (error) toast.error(toUserMessage(error)); else load();
+    } as any).select("id").single();
+    if (error) { toast.error(toUserMessage(error)); return; }
+    setAutoOpenId((data as any)?.id ?? null);
+    load();
   };
 
   const update = (id: string, patch: Partial<ItemNote>) => {
@@ -102,6 +105,7 @@ export function ItemNotesEditor({
         <ul className="space-y-2">
           {notes.map((n) => (
             <NoteRow key={n.id} note={n} canEdit={canEdit} userId={userId}
+              autoOpen={autoOpenId === n.id}
               onUpdate={(p: Partial<ItemNote>) => update(n.id, p)} onDelete={() => remove(n)} />
           ))}
         </ul>
@@ -110,11 +114,18 @@ export function ItemNotesEditor({
   );
 }
 
-function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: any) {
-  const [open, setOpen] = useState(false);
+function NoteRow({ note, canEdit, userId, autoOpen, onUpdate, onDelete }: any) {
+  const [open, setOpen] = useState(!!autoOpen);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
+  useEffect(() => {
+    if (autoOpen) {
+      setOpen(true);
+      requestAnimationFrame(() => { titleRef.current?.focus(); titleRef.current?.select(); });
+    }
+  }, [autoOpen]);
 
   return (
     <li className="rounded-md border bg-card">
@@ -124,7 +135,7 @@ function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: any) {
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {open ? (
-          <Input value={title} disabled={!canEdit}
+          <Input ref={titleRef} value={title} disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => { if (title !== note.title) onUpdate({ title }); }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-xs font-medium shadow-none focus-visible:ring-0" />
