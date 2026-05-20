@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, FileText, ChevronDown, Check, FolderPlus, ChevronsUpDown, ChevronsDownUp,
+  Plus, Trash2, Camera, Paperclip, X, Folder, FolderOpen, ChevronRight, ChevronDown, FileText, Check, FolderPlus, ChevronsUpDown, ChevronsDownUp, StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,6 +55,9 @@ export function CommonFoldersList({
   const [deleteMode, setDeleteMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [photoCounts, setPhotoCounts] = useState<Map<string, number>>(new Map());
+  const [fileCounts, setFileCounts] = useState<Map<string, number>>(new Map());
+  const [noteCounts, setNoteCounts] = useState<Map<string, number>>(new Map());
 
   const load = async () => {
     const { data } = await supabase
@@ -63,7 +66,24 @@ export function CommonFoldersList({
       .eq("project_id", projectId)
       .order("sort_order")
       .order("created_at");
-    setFolders((data ?? []) as FolderRow[]);
+    const rows = (data ?? []) as FolderRow[];
+    setFolders(rows);
+    const ids = rows.map((r) => r.id);
+    if (ids.length === 0) {
+      setPhotoCounts(new Map()); setFileCounts(new Map()); setNoteCounts(new Map());
+      return;
+    }
+    const [{ data: atts }, { data: ns }] = await Promise.all([
+      supabase.from("common_folder_attachments").select("folder_id, kind").in("folder_id", ids),
+      supabase.from("common_folder_notes").select("folder_id").in("folder_id", ids),
+    ]);
+    const ph = new Map<string, number>(), fl = new Map<string, number>(), nt = new Map<string, number>();
+    (atts ?? []).forEach((a: any) => {
+      const m = a.kind === "photo" ? ph : fl;
+      m.set(a.folder_id, (m.get(a.folder_id) ?? 0) + 1);
+    });
+    (ns ?? []).forEach((n: any) => nt.set(n.folder_id, (nt.get(n.folder_id) ?? 0) + 1));
+    setPhotoCounts(ph); setFileCounts(fl); setNoteCounts(nt);
   };
   useEffect(() => { load(); }, [projectId]);
 
@@ -206,6 +226,11 @@ export function CommonFoldersList({
         deleteMode={deleteMode}
         selected={selected.has(f.id)}
         onSelectToggle={() => toggleSelect(f.id)}
+        subCount={kids.length}
+        photoCount={photoCounts.get(f.id) ?? 0}
+        fileCount={fileCounts.get(f.id) ?? 0}
+        noteCount={noteCounts.get(f.id) ?? 0}
+        onContentsChanged={load}
         childrenContent={kids.length > 0 ? (
           <ul className="space-y-2">
             {kids.map((c) => renderFolder(c, depth + 1))}
@@ -292,6 +317,7 @@ export function CommonFoldersList({
 function FolderItem({
   folder, depth, open, onToggle, canEdit, userId, onRename, onAddChild,
   deleteMode, selected, onSelectToggle, childrenContent,
+  subCount, photoCount, fileCount, noteCount, onContentsChanged,
 }: any) {
   const [name, setName] = useState(folder.name);
   const [editing, setEditing] = useState(false);
@@ -349,6 +375,26 @@ function FolderItem({
             </span>
           )}
         </button>
+        {subCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${subCount} subfolder${subCount > 1 ? "s" : ""}`}>
+            <Folder className="h-3 w-3" /> {subCount}
+          </span>
+        )}
+        {noteCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${noteCount} note${noteCount > 1 ? "s" : ""}`}>
+            <StickyNote className="h-3 w-3" /> {noteCount}
+          </span>
+        )}
+        {photoCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${photoCount} photo${photoCount > 1 ? "s" : ""}`}>
+            <Camera className="h-3 w-3" /> {photoCount}
+          </span>
+        )}
+        {fileCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${fileCount} file${fileCount > 1 ? "s" : ""}`}>
+            <Paperclip className="h-3 w-3" /> {fileCount}
+          </span>
+        )}
         {!deleteMode && canEdit && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddChild(); }}
@@ -362,10 +408,10 @@ function FolderItem({
       </div>
 
       {open && (
-        <div className="space-y-3 border-t bg-muted/20 p-3">
-          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} />}
+        <div className="border-t bg-muted/20">
+          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} />}
           {childrenContent && (
-            <div className="pl-3 border-l-2 border-muted">
+            <div className="p-3 pl-6 border-l-2 border-muted">
               {childrenContent}
             </div>
           )}
@@ -375,7 +421,7 @@ function FolderItem({
   );
 }
 
-function FolderContents({ folder, canEdit, userId }: any) {
+function FolderContents({ folder, canEdit, userId, onCountsChange }: any) {
   const [atts, setAtts] = useState<Attachment[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
 
@@ -386,6 +432,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
     ]);
     setAtts((a.data ?? []) as Attachment[]);
     setNotes((n.data ?? []) as Note[]);
+    onCountsChange?.();
   };
   useEffect(() => { load(); }, [folder.id]);
 
@@ -425,6 +472,7 @@ function FolderContents({ folder, canEdit, userId }: any) {
       folder_id: folder.id, project_id: folder.project_id,
       title: "Note", body: "", sort_order: notes.length, created_by: userId,
     });
+    setNotesOpen(true);
     load();
   };
 
@@ -456,78 +504,54 @@ function FolderContents({ folder, canEdit, userId }: any) {
   const [filesOpen, setFilesOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
 
-  const SectionHeader = ({ open, onToggle, label, count, action }: any) => (
-    <div className="flex items-center justify-between">
-      <button onClick={onToggle} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        {label} <span className="font-mono normal-case tracking-normal">({count})</span>
-      </button>
-      {action}
-    </div>
-  );
-
   return (
-    <div className="space-y-4">
-      <section className="space-y-2">
-        <SectionHeader
-          open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)}
-          label="Photos" count={photos.length}
-          action={canEdit && (
+    <>
+      <div className="flex flex-nowrap items-center gap-1 border-b border-dashed px-2 py-1 sm:px-3 sm:py-1.5">
+        {notes.length === 0 ? (
+          canEdit && (
+            <button onClick={addNote} title="Add note"
+              className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <StickyNote className="h-3.5 w-3.5" />
+            </button>
+          )
+        ) : (
+          <button onClick={() => setNotesOpen((v) => !v)} title={notesOpen ? "Hide notes" : "Show notes"}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${notesOpen ? "text-primary" : "text-primary/70"}`}>
+            <StickyNote className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{notes.length}</span>
+          </button>
+        )}
+        {photos.length === 0 ? (
+          canEdit && (
             <PhotoPicker onPick={(f) => uploadAttachment(f, "photo")}>
-              <button className="inline-flex cursor-pointer items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
-                <Camera className="h-3 w-3" /> Add photo
+              <button title="Add photo" className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <Camera className="h-3.5 w-3.5" />
               </button>
             </PhotoPicker>
-          )}
-        />
-        {photosOpen && (photos.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No photos.</p>
+          )
         ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {photos.map((p) => (
-              <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} />
-            ))}
-          </div>
-        ))}
-      </section>
-
-      <section className="space-y-2">
-        <SectionHeader
-          open={filesOpen} onToggle={() => setFilesOpen((o) => !o)}
-          label="Files" count={files.length}
-          action={canEdit && (
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
-              <Paperclip className="h-3 w-3" /> Add file
+          <button onClick={() => setPhotosOpen((v) => !v)} title={photosOpen ? "Hide photos" : "Show photos"}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${photosOpen ? "text-primary" : "text-primary/70"}`}>
+            <Camera className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{photos.length}</span>
+          </button>
+        )}
+        {files.length === 0 ? (
+          canEdit && (
+            <label title="Add file" className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Paperclip className="h-3.5 w-3.5" />
               <input type="file" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAttachment(f, "file"); e.target.value = ""; }} />
             </label>
-          )}
-        />
-        {filesOpen && (files.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No files.</p>
+          )
         ) : (
-          <ul className="space-y-1">
-            {files.map((f) => (
-              <AttFile key={f.id} att={f} canEdit={canEdit} onRemove={() => removeAttachment(f)} />
-            ))}
-          </ul>
-        ))}
-      </section>
+          <button onClick={() => setFilesOpen((v) => !v)} title={filesOpen ? "Hide files" : "Show files"}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-accent hover:text-foreground ${filesOpen ? "text-primary" : "text-primary/70"}`}>
+            <Paperclip className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{files.length}</span>
+          </button>
+        )}
+      </div>
 
-      <section className="space-y-2">
-        <SectionHeader
-          open={notesOpen} onToggle={() => setNotesOpen((o) => !o)}
-          label="Notes" count={notes.length}
-          action={canEdit && (
-            <button onClick={addNote}
-              className="inline-flex items-center gap-1 rounded border bg-card px-2 py-1 text-xs hover:bg-accent">
-              <FileText className="h-3 w-3" /> Add note
-            </button>
-          )}
-        />
-        {notesOpen && (notes.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No notes.</p>
-        ) : (
+      {notesOpen && notes.length > 0 && (
+        <div className="space-y-2 px-3 py-2">
           <ul className="space-y-2">
             {notes.map((n) => (
               <NoteRow key={n.id} note={n} canEdit={canEdit}
@@ -535,9 +559,49 @@ function FolderContents({ folder, canEdit, userId }: any) {
                 onDelete={() => deleteNote(n)} onReload={load} />
             ))}
           </ul>
-        ))}
-      </section>
-    </div>
+          {canEdit && (
+            <button onClick={addNote}
+              className="inline-flex items-center gap-1 rounded border border-dashed px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Plus className="h-3 w-3" /> Add note
+            </button>
+          )}
+        </div>
+      )}
+
+      {photosOpen && photos.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 px-3 py-2 sm:grid-cols-3">
+          {photos.map((p) => (
+            <AttPhoto key={p.id} att={p} canEdit={canEdit} onRemove={() => removeAttachment(p)} />
+          ))}
+          {canEdit && (
+            <PhotoPicker onPick={(f) => uploadAttachment(f, "photo")}>
+              <button title="Add another photo"
+                className="inline-flex items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <Plus className="h-4 w-4" />
+              </button>
+            </PhotoPicker>
+          )}
+        </div>
+      )}
+
+      {filesOpen && files.length > 0 && (
+        <div className="space-y-1 px-3 py-2">
+          <ul className="space-y-1">
+            {files.map((f) => (
+              <AttFile key={f.id} att={f} canEdit={canEdit} onRemove={() => removeAttachment(f)} />
+            ))}
+          </ul>
+          {canEdit && (
+            <label title="Add file"
+              className="inline-flex cursor-pointer items-center justify-center rounded border border-dashed p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Plus className="h-4 w-4" />
+              <input type="file" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAttachment(f, "file"); e.target.value = ""; }} />
+            </label>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
