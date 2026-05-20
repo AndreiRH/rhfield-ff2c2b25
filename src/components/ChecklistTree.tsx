@@ -349,9 +349,46 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
   };
+  const resolveItemOriginLine = async (it: any): Promise<string | null> => {
+    try {
+      if (it.component_id) {
+        const { data: c } = await supabase
+          .from("components").select("equipment_id, component_type_id").eq("id", it.component_id).maybeSingle();
+        if (c?.equipment_id) {
+          const { data: pe } = await supabase.from("plant_equipment").select("line_id").eq("id", c.equipment_id).maybeSingle();
+          if (pe?.line_id) return pe.line_id;
+        }
+        if (c?.component_type_id) {
+          const { data: ct } = await supabase.from("component_types").select("equipment_group_id").eq("id", c.component_type_id).maybeSingle();
+          if (ct?.equipment_group_id) {
+            const { data: g } = await supabase.from("equipment_groups").select("line_id").eq("id", ct.equipment_group_id).maybeSingle();
+            if (g?.line_id) return g.line_id;
+          }
+        }
+      }
+      if (it.component_type_id) {
+        const { data: ct } = await supabase.from("component_types").select("equipment_group_id").eq("id", it.component_type_id).maybeSingle();
+        if (ct?.equipment_group_id) {
+          const { data: g } = await supabase.from("equipment_groups").select("line_id").eq("id", ct.equipment_group_id).maybeSingle();
+          if (g?.line_id) return g.line_id;
+        }
+      }
+    } catch {}
+    return null;
+  };
   const toggleLocalLine = async () => {
     if (!currentLine) return;
-    const next = item.local_line_id ? null : currentLine.lineId;
+    let next: string | null;
+    if (item.local_line_id) {
+      next = null;
+    } else {
+      const origin = await resolveItemOriginLine(item) ?? currentLine.lineId;
+      if (origin !== currentLine.lineId) {
+        const ok = await confirmUnshareToOriginLine(origin, currentLine.lineId);
+        if (!ok) return;
+      }
+      next = origin;
+    }
     const { error } = await supabase.from("checklist_items").update({ local_line_id: next }).eq("id", item.id);
     if (error) toast.error(toUserMessage(error)); else onChange();
   };
