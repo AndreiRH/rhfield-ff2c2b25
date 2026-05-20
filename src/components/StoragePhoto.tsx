@@ -137,8 +137,27 @@ function Lightbox({ state, onClose }: { state: NonNullable<LightboxState>; onClo
   const [index, setIndex] = useState(state.index);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panStartRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
   const cacheRef = useRef<Map<string, string>>(new Map());
   const objectUrlsRef = useRef<Set<string>>(new Set());
+
+  // Lock background scroll while open
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouch;
+    };
+  }, []);
+
+  // Reset zoom when switching images
+  useEffect(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, [index]);
   const gallery = state.gallery;
   const current = gallery[index];
 
