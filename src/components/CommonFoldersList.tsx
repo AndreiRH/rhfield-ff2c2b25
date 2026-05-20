@@ -17,6 +17,7 @@ import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import { undoableDelete } from "@/lib/undoableDelete";
 
 interface FolderRow {
   id: string;
@@ -119,34 +120,40 @@ export function CommonFoldersList({
   };
 
   const deleteFolders = async (ids: string[]) => {
-    // Expand to include all descendants so we can clean up storage
     const all = new Set<string>();
     for (const id of ids) {
       all.add(id);
       for (const d of collectDescendants(id)) all.add(d);
     }
     const allIds = Array.from(all);
-    const { data: atts } = await supabase.from("common_folder_attachments")
-      .select("kind, storage_path").in("folder_id", allIds);
-    const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
-    const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
-    const { data: notes } = await supabase.from("common_folder_notes")
-      .select("photo_path, file_path").in("folder_id", allIds);
-    (notes ?? []).forEach((n: any) => {
-      if (n.photo_path) photos.push(n.photo_path);
-      if (n.file_path) files.push(n.file_path);
+    const label = ids.length > 1 ? `${ids.length} folders deleted` : "Folder deleted";
+    undoableDelete({
+      label,
+      optimistic: () => setOpenIds((s) => {
+        const next = new Set(s);
+        allIds.forEach((id) => next.delete(id));
+        return next;
+      }),
+      restore: load,
+      commit: async () => {
+        const { data: atts } = await supabase.from("common_folder_attachments")
+          .select("kind, storage_path").in("folder_id", allIds);
+        const photos = (atts ?? []).filter((a: any) => a.kind === "photo").map((a: any) => a.storage_path);
+        const files = (atts ?? []).filter((a: any) => a.kind === "file").map((a: any) => a.storage_path);
+        const { data: notes } = await supabase.from("common_folder_notes")
+          .select("photo_path, file_path").in("folder_id", allIds);
+        (notes ?? []).forEach((n: any) => {
+          if (n.photo_path) photos.push(n.photo_path);
+          if (n.file_path) files.push(n.file_path);
+        });
+        if (photos.length) await supabase.storage.from("photos").remove(photos);
+        if (files.length) await supabase.storage.from("files").remove(files);
+        await supabase.from("common_folders").delete().in("id", ids);
+      },
+      afterCommit: load,
     });
-    if (photos.length) await supabase.storage.from("photos").remove(photos);
-    if (files.length) await supabase.storage.from("files").remove(files);
-    // CASCADE will remove descendant rows when we delete the top-level selected ids
-    await supabase.from("common_folders").delete().in("id", ids);
-    setOpenIds((s) => {
-      const next = new Set(s);
-      allIds.forEach((id) => next.delete(id));
-      return next;
-    });
-    await load();
   };
+
 
   const toggleSelect = (id: string) => {
     setSelected((s) => {
@@ -400,10 +407,17 @@ function FolderContents({ folder, canEdit, userId }: any) {
 
   const removeAttachment = async (a: Attachment) => {
     if (!confirmSharedDelete(true)) return;
-    const bucket = a.kind === "photo" ? "photos" : "files";
-    await supabase.storage.from(bucket).remove([a.storage_path]);
-    await supabase.from("common_folder_attachments").delete().eq("id", a.id);
-    load();
+    undoableDelete({
+      label: a.kind === "photo" ? "Photo deleted" : "File deleted",
+      optimistic: () => setAtts((s) => s.filter((x) => x.id !== a.id)),
+      restore: load,
+      commit: async () => {
+        const bucket = a.kind === "photo" ? "photos" : "files";
+        await supabase.storage.from(bucket).remove([a.storage_path]);
+        await supabase.from("common_folder_attachments").delete().eq("id", a.id);
+      },
+      afterCommit: load,
+    });
   };
 
   const addNote = async () => {
@@ -421,11 +435,19 @@ function FolderContents({ folder, canEdit, userId }: any) {
 
   const deleteNote = async (n: Note) => {
     if (!confirmSharedDelete(true)) return;
-    if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
-    if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
-    await supabase.from("common_folder_notes").delete().eq("id", n.id);
-    load();
+    undoableDelete({
+      label: "Note deleted",
+      optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
+      restore: load,
+      commit: async () => {
+        if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
+        if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
+        await supabase.from("common_folder_notes").delete().eq("id", n.id);
+      },
+      afterCommit: load,
+    });
   };
+
 
   const photos = atts.filter((a) => a.kind === "photo");
   const files = atts.filter((a) => a.kind === "file");
