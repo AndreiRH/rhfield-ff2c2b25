@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
+import { CurrentLineProvider } from "@/lib/current-line";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -171,7 +172,9 @@ function PlantEquipmentList() {
             lineNumber={lineNumber}
           />
         ) : (
-          <ExtraWorkChapterView group={data.extraGroup} canEdit={canEdit} onChange={invalidate} />
+          <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number }}>
+            <ExtraWorkChapterView group={data.extraGroup} canEdit={canEdit} onChange={invalidate} />
+          </CurrentLineProvider>
         )}
       </main>
     </div>
