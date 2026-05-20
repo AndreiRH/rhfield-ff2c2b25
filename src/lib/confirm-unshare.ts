@@ -1,28 +1,48 @@
 import { supabase } from "@/integrations/supabase/client";
 
-async function fetchLineLabel(lineId: string): Promise<string> {
+async function fetchLineInfo(lineId: string): Promise<{ label: string; projectId: string | null }> {
   try {
     const { data } = await supabase
       .from("lines")
-      .select("number, name")
+      .select("number, name, project_id")
       .eq("id", lineId)
       .maybeSingle();
-    if (!data) return "its original production line";
+    if (!data) return { label: "its original production line", projectId: null };
     const num = data.number != null ? `Line ${String(data.number).padStart(2, "0")}` : null;
-    if (data.name && num) return `${num} (${data.name})`;
-    return data.name ?? num ?? "its original production line";
+    const label = data.name && num ? `${num} (${data.name})` : (data.name ?? num ?? "its original production line");
+    return { label, projectId: data.project_id ?? null };
   } catch {
-    return "its original production line";
+    return { label: "its original production line", projectId: null };
   }
 }
 
-function promptUnshare(label: string): boolean {
+async function fetchOtherLineCount(projectId: string | null, originLineId: string): Promise<number | null> {
+  if (!projectId) return null;
+  try {
+    const { count } = await supabase
+      .from("lines")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .neq("id", originLineId);
+    return count ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function promptUnshare(label: string, otherCount: number | null): boolean {
   if (typeof window === "undefined") return true;
+  const linesPhrase =
+    otherCount == null
+      ? "all other production lines"
+      : otherCount === 1
+        ? "1 other production line"
+        : `all other ${otherCount} production lines`;
   return window.confirm(
     `Make local to ${label}?\n\n` +
     `This item was originally shared from ${label}. ` +
-    `After switching it to local, it will be visible only on ${label} ` +
-    `and will disappear from this production line.\n\n` +
+    `If you mark it as local, it will be available only on ${label} ` +
+    `and will be removed from ${linesPhrase}.\n\n` +
     `Do you want to continue?`,
   );
 }
@@ -33,8 +53,9 @@ export async function confirmUnshareToOriginLine(
   currentLineId: string | null | undefined,
 ): Promise<boolean> {
   if (!originLineId || originLineId === currentLineId) return true;
-  const label = await fetchLineLabel(originLineId);
-  return promptUnshare(label);
+  const { label, projectId } = await fetchLineInfo(originLineId);
+  const otherCount = await fetchOtherLineCount(projectId, originLineId);
+  return promptUnshare(label, otherCount);
 }
 
 /** Confirm un-sharing a note, whose origin we know by equipment id. */
@@ -44,13 +65,18 @@ export async function confirmUnshareFromEquipment(
 ): Promise<boolean> {
   if (!originEquipmentId || originEquipmentId === currentEquipmentId) return true;
   let label = "its original production line";
+  let otherCount: number | null = null;
   try {
     const { data } = await supabase
       .from("plant_equipment")
       .select("line_id")
       .eq("id", originEquipmentId)
       .maybeSingle();
-    if (data?.line_id) label = await fetchLineLabel(data.line_id);
+    if (data?.line_id) {
+      const info = await fetchLineInfo(data.line_id);
+      label = info.label;
+      otherCount = await fetchOtherLineCount(info.projectId, data.line_id);
+    }
   } catch {}
-  return promptUnshare(label);
+  return promptUnshare(label, otherCount);
 }
