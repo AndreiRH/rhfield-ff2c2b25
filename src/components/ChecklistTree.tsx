@@ -302,6 +302,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.from("checklist_items").insert({
       id: localUuid(), ...itemParentCols, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
+      local_line_id: item.local_line_id ?? null,
     });
     if (error) { toast.error(toUserMessage(error)); return; }
     await unmarkSelfAndAncestors();
