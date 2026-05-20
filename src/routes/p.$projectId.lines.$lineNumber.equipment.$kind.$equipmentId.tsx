@@ -66,7 +66,7 @@ export async function fetchEquipmentDetail(
 
   const { data: pe, error: peErr } = await supabase
     .from("plant_equipment")
-    .select("id, name, kind, mech_mode, mech_manual_pct, mech_notes")
+    .select("id, name, kind")
     .eq("id", equipmentId).single();
   if (peErr) throw peErr;
 
