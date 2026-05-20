@@ -91,6 +91,7 @@ export type Database = {
           local_line_id: string | null
           note: string | null
           note_shared: boolean
+          origin_line_id: string | null
           parent_item_id: string | null
           sort_order: number
           template_id: string | null
@@ -109,6 +110,7 @@ export type Database = {
           local_line_id?: string | null
           note?: string | null
           note_shared?: boolean
+          origin_line_id?: string | null
           parent_item_id?: string | null
           sort_order?: number
           template_id?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           local_line_id?: string | null
           note?: string | null
           note_shared?: boolean
+          origin_line_id?: string | null
           parent_item_id?: string | null
           sort_order?: number
           template_id?: string | null
