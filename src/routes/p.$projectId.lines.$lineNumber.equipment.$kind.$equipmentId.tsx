@@ -81,18 +81,18 @@ export async function fetchEquipmentDetail(
         id, name, sort_order, deleted_at, note, note_shared,
         component_photos(id, storage_path),
         component_files(id, storage_path, file_name),
-        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, local_line_id,
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
           item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order))
       ),
       component_types(
         id, name, sort_order, deleted_at,
-        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id, local_line_id,
+        checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, component_type_id, template_id, local_line_id, origin_line_id,
           item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order)),
         components(
           id, name, sort_order, deleted_at, note, note_shared,
           component_photos(id, storage_path),
           component_files(id, storage_path, file_name),
-          checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, local_line_id,
+          checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
             item_photos(id, storage_path, is_shared, origin_line_id, sort_order), item_files(id, storage_path, file_name, is_shared, origin_line_id, sort_order))
         )
       )
@@ -124,6 +124,9 @@ export async function fetchEquipmentDetail(
   const lineCount = lineCountRes.count;
   const siblings = siblingsRes.data;
 
+  const visibleChecklistItems = (items: any[] | null | undefined) =>
+    (items ?? []).filter((i: any) => !i.deleted_at && (!i.local_line_id || i.local_line_id === line.id));
+
   const stripDeleted = (gs: any[] | null | undefined): any[] =>
     (gs ?? []).map((g) => ({
       ...g,
@@ -131,18 +134,18 @@ export async function fetchEquipmentDetail(
         .filter((c: any) => !c.deleted_at)
         .map((c: any) => ({
           ...c,
-          checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+          checklist_items: visibleChecklistItems(c.checklist_items),
         })),
       component_types: (g.component_types ?? [])
         .filter((t: any) => !t.deleted_at)
         .map((t: any) => ({
           ...t,
-          checklist_items: (t.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+          checklist_items: visibleChecklistItems(t.checklist_items),
           components: (t.components ?? [])
             .filter((c: any) => !c.deleted_at)
             .map((c: any) => ({
               ...c,
-              checklist_items: (c.checklist_items ?? []).filter((i: any) => !i.deleted_at),
+              checklist_items: visibleChecklistItems(c.checklist_items),
             })),
         })),
     }));

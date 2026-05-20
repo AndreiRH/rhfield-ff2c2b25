@@ -400,14 +400,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     if (item.local_line_id) {
       next = null;
     } else {
-      const origin = await resolveItemOriginLine(item) ?? currentLine.lineId;
+      const origin = item.origin_line_id ?? await resolveItemOriginLine(item) ?? currentLine.lineId;
       if (origin !== currentLine.lineId) {
         const ok = await confirmUnshareToOriginLine(origin, currentLine.lineId);
         if (!ok) return;
       }
       next = origin;
     }
-    const { error } = await supabase.from("checklist_items").update({ local_line_id: next }).eq("id", item.id);
+    const query = supabase.from("checklist_items").update({ local_line_id: next });
+    const { error } = item.template_id
+      ? await query.eq("template_id", item.template_id)
+      : await query.eq("id", item.id);
     if (error) toast.error(toUserMessage(error)); else onChange();
   };
 

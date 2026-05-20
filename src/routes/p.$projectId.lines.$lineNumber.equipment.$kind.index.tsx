@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
+import { CurrentLineProvider } from "@/lib/current-line";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -63,11 +64,11 @@ function PlantEquipmentList() {
             id, name, sort_order, deleted_at, mech_mode, mech_manual_pct,
             equipment_groups(
               id, chapter, deleted_at,
-              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
+              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id, local_line_id)),
               component_types(
                 id, deleted_at,
-                checklist_items(id, done, deleted_at, parent_item_id),
-                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+                checklist_items(id, done, deleted_at, parent_item_id, local_line_id),
+                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id, local_line_id))
               )
             )
           `)
@@ -77,7 +78,7 @@ function PlantEquipmentList() {
           .order("sort_order", { ascending: true });
         if (pErr) throw pErr;
         const cleanItems = (items: any[] | null | undefined) =>
-          (items ?? []).filter((i: any) => !i.deleted_at);
+          (items ?? []).filter((i: any) => !i.deleted_at && (!i.local_line_id || i.local_line_id === line.id));
         const cleanComponents = (comps: any[] | null | undefined) =>
           (comps ?? [])
             .filter((c: any) => !c.deleted_at)
@@ -108,7 +109,7 @@ function PlantEquipmentList() {
               id, name, sort_order, deleted_at, note, note_shared,
               component_photos(id, storage_path),
               component_files(id, storage_path, file_name),
-              checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id,
+              checklist_items(id, label, done, note, note_shared, sort_order, deleted_at, completed_at, parent_item_id, component_id, template_id, local_line_id, origin_line_id,
                 item_photos(id, storage_path, is_shared), item_files(id, storage_path, file_name, is_shared))
             )
           `)
@@ -171,7 +172,9 @@ function PlantEquipmentList() {
             lineNumber={lineNumber}
           />
         ) : (
-          <ExtraWorkChapterView group={data.extraGroup} canEdit={canEdit} onChange={invalidate} />
+          <CurrentLineProvider value={{ lineId: data.line.id, lineNumber: data.line.number }}>
+            <ExtraWorkChapterView group={data.extraGroup} canEdit={canEdit} onChange={invalidate} />
+          </CurrentLineProvider>
         )}
       </main>
     </div>
