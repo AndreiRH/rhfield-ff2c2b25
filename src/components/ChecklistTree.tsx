@@ -32,6 +32,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ItemNotesEditor } from "@/components/ItemNotesEditor";
+
 
 export function ChecklistTree({
   componentId, componentTypeId, items, canEdit, onChange,
