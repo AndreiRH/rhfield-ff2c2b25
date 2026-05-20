@@ -114,11 +114,18 @@ export function ItemNotesEditor({
   );
 }
 
-function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: any) {
-  const [open, setOpen] = useState(false);
+function NoteRow({ note, canEdit, userId, autoOpen, onUpdate, onDelete }: any) {
+  const [open, setOpen] = useState(!!autoOpen);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setTitle(note.title); setBody(note.body); }, [note.title, note.body]);
+  useEffect(() => {
+    if (autoOpen) {
+      setOpen(true);
+      requestAnimationFrame(() => { titleRef.current?.focus(); titleRef.current?.select(); });
+    }
+  }, [autoOpen]);
 
   return (
     <li className="rounded-md border bg-card">
@@ -128,7 +135,7 @@ function NoteRow({ note, canEdit, userId, onUpdate, onDelete }: any) {
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {open ? (
-          <Input value={title} disabled={!canEdit}
+          <Input ref={titleRef} value={title} disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => { if (title !== note.title) onUpdate({ title }); }}
             className="h-7 flex-1 border-0 bg-transparent px-1 text-xs font-medium shadow-none focus-visible:ring-0" />
