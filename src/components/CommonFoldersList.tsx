@@ -226,6 +226,11 @@ export function CommonFoldersList({
         deleteMode={deleteMode}
         selected={selected.has(f.id)}
         onSelectToggle={() => toggleSelect(f.id)}
+        subCount={kids.length}
+        photoCount={photoCounts.get(f.id) ?? 0}
+        fileCount={fileCounts.get(f.id) ?? 0}
+        noteCount={noteCounts.get(f.id) ?? 0}
+        onContentsChanged={load}
         childrenContent={kids.length > 0 ? (
           <ul className="space-y-2">
             {kids.map((c) => renderFolder(c, depth + 1))}
