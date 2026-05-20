@@ -420,7 +420,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     };
     collect(item.id);
 
-    const updates: Promise<any>[] = [];
+    const updates: PromiseLike<any>[] = [];
     const baseUpd = { local_line_id: next };
     if (item.template_id) {
       updates.push(supabase.from("checklist_items").update(baseUpd).eq("template_id", item.template_id));
