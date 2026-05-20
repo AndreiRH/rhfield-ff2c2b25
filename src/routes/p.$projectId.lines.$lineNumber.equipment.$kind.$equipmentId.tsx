@@ -229,7 +229,12 @@ function EquipmentDetail() {
     initialDataUpdatedAt: () => qc.getQueryState(queryKey)?.dataUpdatedAt,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["equipment-detail", projectId, lineNumber, kind, equipmentId] });
+    qc.invalidateQueries({ queryKey: ["plant-equip-list", projectId, lineNumber, kind] });
+    qc.invalidateQueries({ queryKey: ["line-detail", projectId, lineNumber] });
+    qc.invalidateQueries({ queryKey: ["project-detail", projectId] });
+  };
 
   if (isChildRoute) return <Outlet />;
 
@@ -872,7 +877,7 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
   const savePct = async () => {
     const n = pct === "" ? null : Math.max(0, Math.min(100, parseInt(pct, 10) || 0));
     const { error } = await supabase.from("plant_equipment")
-      .update({ mech_manual_pct: n }).eq("id", pe.id);
+      .update({ mech_manual_pct: n, mech_mode: "manual" }).eq("id", pe.id);
     if (error) toast.error(toUserMessage(error)); else { toast.success("Saved"); onChange(); }
   };
 
