@@ -235,11 +235,10 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
-  const [note, setNote] = useState(item.note ?? "");
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
 
-  useEffect(() => { setNote(item.note ?? ""); }, [item.note]);
+
 
   const [editingLabel, setEditingLabel] = useState(false);
   const [label, setLabel] = useState(item.label);
