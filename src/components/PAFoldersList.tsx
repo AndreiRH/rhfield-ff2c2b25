@@ -304,10 +304,17 @@ function FolderContents({ folder, canEdit, userId }: any) {
   };
 
   const removeAttachment = async (a: Attachment) => {
-    const bucket = a.kind === "photo" ? "photos" : "files";
-    await supabase.storage.from(bucket).remove([a.storage_path]);
-    await supabase.from("pa_attachments").delete().eq("id", a.id);
-    load();
+    undoableDelete({
+      label: a.kind === "photo" ? "Photo deleted" : "File deleted",
+      optimistic: () => setAtts((s) => s.filter((x) => x.id !== a.id)),
+      restore: load,
+      commit: async () => {
+        const bucket = a.kind === "photo" ? "photos" : "files";
+        await supabase.storage.from(bucket).remove([a.storage_path]);
+        await supabase.from("pa_attachments").delete().eq("id", a.id);
+      },
+      afterCommit: load,
+    });
   };
 
   const addNote = async () => {
@@ -325,11 +332,19 @@ function FolderContents({ folder, canEdit, userId }: any) {
 
   const deleteNote = async (n: Note) => {
     if (!confirmSharedDelete(!!n.is_shared)) return;
-    if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
-    if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
-    await supabase.from("pa_notes").delete().eq("id", n.id);
-    load();
+    undoableDelete({
+      label: "Note deleted",
+      optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
+      restore: load,
+      commit: async () => {
+        if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
+        if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
+        await supabase.from("pa_notes").delete().eq("id", n.id);
+      },
+      afterCommit: load,
+    });
   };
+
 
   const photos = atts.filter((a) => a.kind === "photo");
   const files = atts.filter((a) => a.kind === "file");
