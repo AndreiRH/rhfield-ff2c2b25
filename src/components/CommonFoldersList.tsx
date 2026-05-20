@@ -399,7 +399,7 @@ function FolderItem({
 
       {open && (
         <div className="border-t bg-muted/20">
-          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} />}
+          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} onAddChild={onAddChild} />}
           {childrenContent && (
             <div className="p-3 pl-6 border-l-2 border-muted">
               {childrenContent}
