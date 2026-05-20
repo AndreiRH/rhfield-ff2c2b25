@@ -17,6 +17,7 @@ import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import { undoableDelete } from "@/lib/undoableDelete";
 
 interface FolderRow {
   id: string;
