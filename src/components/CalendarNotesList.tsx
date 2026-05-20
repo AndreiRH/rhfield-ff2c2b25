@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
 import { rememberLocalFile } from "@/lib/local-blobs";
+import { undoableDelete } from "@/lib/undoableDelete";
 import {
   DndContext,
   closestCenter,
