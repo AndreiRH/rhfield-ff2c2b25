@@ -538,6 +538,12 @@ function FolderContents({ folder, canEdit, userId, onCountsChange, onAddChild }:
             <Paperclip className="h-3.5 w-3.5" /><span className="ml-0.5 text-[10px]">{files.length}</span>
           </button>
         )}
+        {canEdit && onAddChild && (
+          <button onClick={onAddChild} title="Add subfolder" aria-label="Add subfolder"
+            className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <FolderPlus className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {notesOpen && notes.length > 0 && (
