@@ -894,10 +894,10 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex">{modeToggle}</div>
-          {mode === "manual" ? (
+      {mode === "manual" ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex">{modeToggle}</div>
             <div className="flex items-center gap-2">
               <Input
                 type="number" min={0} max={100} value={pct}
@@ -908,12 +908,12 @@ function MechanicalView({ pe, assemblyGroup, canEdit, userId, onChange, lineCoun
               <span className="text-sm text-muted-foreground">%</span>
               {canEdit && <Button size="sm" onClick={savePct}>Save</Button>}
             </div>
-          ) : (
-            <ComponentTypesTree group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
-              emptyHint="No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…" />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <FlatChecklist group={assemblyGroup} canEdit={canEdit} onChange={onChange} lineCount={lineCount}
+          headerLeading={modeToggle} />
+      )}
 
       <NotesList equipmentId={pe.id} canEdit={canEdit} userId={userId} section="assembly" />
     </div>
