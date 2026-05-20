@@ -317,6 +317,7 @@ export function CommonFoldersList({
 function FolderItem({
   folder, depth, open, onToggle, canEdit, userId, onRename, onAddChild,
   deleteMode, selected, onSelectToggle, childrenContent,
+  subCount, photoCount, fileCount, noteCount, onContentsChanged,
 }: any) {
   const [name, setName] = useState(folder.name);
   const [editing, setEditing] = useState(false);
@@ -374,6 +375,26 @@ function FolderItem({
             </span>
           )}
         </button>
+        {subCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${subCount} subfolder${subCount > 1 ? "s" : ""}`}>
+            <Folder className="h-3 w-3" /> {subCount}
+          </span>
+        )}
+        {noteCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${noteCount} note${noteCount > 1 ? "s" : ""}`}>
+            <StickyNote className="h-3 w-3" /> {noteCount}
+          </span>
+        )}
+        {photoCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${photoCount} photo${photoCount > 1 ? "s" : ""}`}>
+            <Camera className="h-3 w-3" /> {photoCount}
+          </span>
+        )}
+        {fileCount > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title={`${fileCount} file${fileCount > 1 ? "s" : ""}`}>
+            <Paperclip className="h-3 w-3" /> {fileCount}
+          </span>
+        )}
         {!deleteMode && canEdit && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddChild(); }}
@@ -387,10 +408,10 @@ function FolderItem({
       </div>
 
       {open && (
-        <div className="space-y-3 border-t bg-muted/20 p-3">
-          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} />}
+        <div className="border-t bg-muted/20">
+          {!deleteMode && <FolderContents folder={folder} canEdit={canEdit} userId={userId} onCountsChange={onContentsChanged} />}
           {childrenContent && (
-            <div className="pl-3 border-l-2 border-muted">
+            <div className="p-3 pl-6 border-l-2 border-muted">
               {childrenContent}
             </div>
           )}
