@@ -71,8 +71,8 @@ export function NoteAttachments({
         .eq("parent_kind", parentKind).eq("parent_id", parentId)
         .order("sort_order").order("uploaded_at"),
     ]);
-    const nextPhotos = (ph ?? []) as NotePhoto[];
-    const nextFiles = (fl ?? []) as NoteFile[];
+    const nextPhotos = ((ph ?? []) as unknown) as NotePhoto[];
+    const nextFiles = ((fl ?? []) as unknown) as NoteFile[];
     setPhotos(nextPhotos);
     setFiles(nextFiles);
     onCountsChange?.({ photos: nextPhotos.length, files: nextFiles.length });
