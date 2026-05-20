@@ -614,9 +614,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         item.done ? "border-success/40 bg-success/10" : ""
       }`}>
       {row}
-      {open && !inMode && (
+      {open && (
         <div className="border-t bg-muted/10">
-          {canEdit && (
+          {!inMode && canEdit && (
             <div className="flex flex-nowrap items-center gap-1 border-b border-dashed px-2 py-1 sm:px-3 sm:py-1.5">
               <ActionBtn onClick={() => setShowNoteEditor((v) => !v)}
                 icon={<StickyNote className="h-3.5 w-3.5" />} label="Note" active={ownNote} iconOnly={!showLabels} />
@@ -675,7 +675,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
 
-          {showNoteEditor && (
+          {!inMode && showNoteEditor && (
             <ItemNotesEditor
               itemId={item.id}
               itemTemplateId={item.template_id}
@@ -685,7 +685,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           )}
 
 
-          {showPhotos && photos.length > 0 && (() => {
+          {!inMode && showPhotos && photos.length > 0 && (() => {
             const photoGallery = photos.map((p: any) => ({ bucket: "photos", path: p.storage_path }));
             return (
             <div className="space-y-1 px-3 pb-2">
@@ -722,7 +722,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             );
           })()}
 
-          {showFiles && files.length > 0 && (
+          {!inMode && showFiles && files.length > 0 && (
             <div className="space-y-1 px-3 pb-2">
               {files.length > 1 && canEdit ? (
                 <DndContext id={`files-${item.id}`} sensors={attachSensors} collisionDetection={closestCenter} onDragEnd={reorderFiles}>
@@ -748,17 +748,19 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
 
-          {(subs.length > 0 || addingSub) && (
+          {(subs.length > 0 || (addingSub && !inMode)) && (
             <div className="ml-4 mt-2 space-y-1 rounded border-l-2 border-primary/30 bg-muted/20 px-2 py-2">
-              <ul className="space-y-1">
-                {subs.map((s: any) => (
-                  <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                    onChange={onChange} depth={depth + 1} sortable={false} showLabels={false}
-                    canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen}
-                    requestLocalConfirm={requestLocalConfirm} />
-                ))}
-              </ul>
-              {addingSub && (
+              <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
+                <ul className="space-y-1">
+                  {subs.map((s: any) => (
+                    <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
+                      onChange={onChange} depth={depth + 1} sortable showLabels={false}
+                      canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen}
+                      requestLocalConfirm={requestLocalConfirm} />
+                  ))}
+                </ul>
+              </SortableContext>
+              {!inMode && addingSub && (
                 <div className="flex gap-1">
                   <Input value={subText} autoFocus onChange={(e) => setSubText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addSub()}
@@ -771,20 +773,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             </div>
           )}
         </div>
-      )}
-
-      {/* Render subs in any action mode so they're visible/targetable */}
-      {inMode && open && subs.length > 0 && (
-        <SortableContext items={subs.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
-          <ul className="ml-4 mt-2 space-y-1 rounded border-l-2 border-primary/30 bg-muted/20 px-2 py-2">
-            {subs.map((s: any) => (
-              <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
-                onChange={onChange} depth={depth + 1} sortable showLabels={false}
-                canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen}
-                requestLocalConfirm={requestLocalConfirm} />
-            ))}
-          </ul>
-        </SortableContext>
       )}
     </li>
   );
