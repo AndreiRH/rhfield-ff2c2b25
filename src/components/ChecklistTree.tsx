@@ -805,7 +805,7 @@ export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared, g
       <StoragePhoto
         bucket="photos"
         path={path}
-        imgClassName="h-16 w-full rounded border object-cover"
+        imgClassName="aspect-square w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
         gallery={gallery}
@@ -879,7 +879,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
       <StoragePhoto
         bucket="photos"
         path={path}
-        imgClassName="h-16 w-full rounded border object-cover"
+        imgClassName="aspect-square w-full rounded border object-cover"
         canEdit={canEdit}
         onRemove={onRemove}
         gallery={gallery}

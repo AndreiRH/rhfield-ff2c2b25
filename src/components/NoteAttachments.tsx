@@ -151,7 +151,7 @@ export function NoteAttachments({
               <StoragePhoto
                 bucket="photos"
                 path={p.storage_path}
-                imgClassName="h-20 w-full rounded border object-cover"
+                imgClassName="aspect-square w-full rounded border object-cover"
                 canEdit={canEdit}
                 onRemove={() => removePhoto(p)}
                 gallery={photoGallery as any}
