@@ -47,7 +47,7 @@ export function ComponentTypesTree(props: any) {
   );
 }
 
-function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount }: any) {
+function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCount, headerLeading }: any) {
   const { isAdmin } = useAuth();
   const types = (group?.component_types ?? [])
     .filter((t: any) => !t.deleted_at)
@@ -203,6 +203,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
       <CardContent className="space-y-3 p-4">
         {/* Top action bar — single global controls. */}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {headerLeading && <div className="mr-auto">{headerLeading}</div>}
           {types.length > 0 && (
             <Button size="sm" variant="outline" className="mr-auto" onClick={allOpen ? collapseAll : expandAll} title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
               {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
