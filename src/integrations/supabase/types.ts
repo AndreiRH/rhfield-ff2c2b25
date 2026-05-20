@@ -434,12 +434,133 @@ export type Database = {
           },
         ]
       }
+      component_type_files: {
+        Row: {
+          component_type_id: string
+          file_name: string
+          id: string
+          is_shared: boolean
+          origin_id: string | null
+          origin_line_id: string | null
+          sort_order: number
+          storage_path: string
+          template_id: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          component_type_id: string
+          file_name: string
+          id?: string
+          is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
+          sort_order?: number
+          storage_path: string
+          template_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          component_type_id?: string
+          file_name?: string
+          id?: string
+          is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
+          sort_order?: number
+          storage_path?: string
+          template_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      component_type_notes: {
+        Row: {
+          body: string
+          component_type_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_shared: boolean
+          origin_line_id: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          component_type_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean
+          origin_line_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          component_type_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean
+          origin_line_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      component_type_photos: {
+        Row: {
+          component_type_id: string
+          id: string
+          is_shared: boolean
+          origin_id: string | null
+          origin_line_id: string | null
+          sort_order: number
+          storage_path: string
+          template_id: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          component_type_id: string
+          id?: string
+          is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
+          sort_order?: number
+          storage_path: string
+          template_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          component_type_id?: string
+          id?: string
+          is_shared?: boolean
+          origin_id?: string | null
+          origin_line_id?: string | null
+          sort_order?: number
+          storage_path?: string
+          template_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       component_types: {
         Row: {
           created_at: string
           deleted_at: string | null
           equipment_group_id: string
           id: string
+          local_line_id: string | null
           name: string
           sort_order: number
           template_id: string | null
@@ -450,6 +571,7 @@ export type Database = {
           deleted_at?: string | null
           equipment_group_id: string
           id?: string
+          local_line_id?: string | null
           name: string
           sort_order?: number
           template_id?: string | null
@@ -460,6 +582,7 @@ export type Database = {
           deleted_at?: string | null
           equipment_group_id?: string
           id?: string
+          local_line_id?: string | null
           name?: string
           sort_order?: number
           template_id?: string | null
