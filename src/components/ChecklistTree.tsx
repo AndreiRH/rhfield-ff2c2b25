@@ -266,10 +266,27 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const itemParentCols = item.component_type_id
     ? { component_type_id: item.component_type_id as string }
     : { component_id: item.component_id as string };
+  const unmarkSelfAndAncestors = async () => {
+    const ids: string[] = [];
+    if (item.done) ids.push(item.id);
+    let parentId: string | null = item.parent_item_id ?? null;
+    while (parentId) {
+      const parent: any = allItems.find((i: any) => i.id === parentId);
+      if (!parent) break;
+      if (parent.done) ids.push(parentId);
+      parentId = parent.parent_item_id ?? null;
+    }
+    if (ids.length) {
+      const { error } = await supabase.from("checklist_items")
+        .update({ done: false, completed_at: null }).in("id", ids);
+      if (error) toast.error(toUserMessage(error));
+    }
+  };
   const pasteAsSub = async () => {
     if (clip?.kind !== "item") return;
     try {
       await pasteItem(clip, { ...itemParentCols, parent_item_id: item.id, sort_order: subs.length });
+      await unmarkSelfAndAncestors();
       lockTo(subPasteLocationKey);
       setOpen(true);
       toast.success("Pasted"); onChange();
@@ -286,8 +303,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       id: localUuid(), ...itemParentCols, label: subText.trim(),
       parent_item_id: item.id, sort_order: subs.length,
     });
-    if (error) toast.error(toUserMessage(error));
-    else { setSubText(""); setAddingSub(false); setOpen(true); onChange(); }
+    if (error) { toast.error(toUserMessage(error)); return; }
+    await unmarkSelfAndAncestors();
+    setSubText(""); setAddingSub(false); setOpen(true); onChange();
   };
   const uploadPhoto = async (file: File) => {
     const path = `checklist/${item.id}/${Date.now()}-${file.name}`;
