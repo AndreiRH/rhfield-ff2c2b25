@@ -156,6 +156,7 @@ export function ChecklistTree({
 }
 
 function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
+  const currentLine = useCurrentLine();
   const action = useTreeAction();
   const mode = action?.mode ?? "none";
   const inMode = mode !== "none";
