@@ -322,11 +322,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       toast.success("Pasted"); onChange();
     } catch (e: any) { toast.error(e.message ?? "Paste failed"); }
   };
-  const saveNote = async () => {
-    if (note === (item.note ?? "")) return;
-    const { error } = await supabase.from("checklist_items").update({ note: note || null }).eq("id", item.id);
-    if (error) toast.error(toUserMessage(error)); else onChange();
-  };
   const addSub = async () => {
     if (!subText.trim()) return;
     const { error } = await supabase.from("checklist_items").insert({
