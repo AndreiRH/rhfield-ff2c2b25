@@ -46,6 +46,7 @@ export function NoteAttachments({
   userId,
   defaultShared = false,
   showSharedToggle = true,
+  onCountsChange,
 }: {
   parentKind: NoteParentKind;
   parentId: string;
@@ -54,6 +55,7 @@ export function NoteAttachments({
   userId?: string;
   defaultShared?: boolean;
   showSharedToggle?: boolean;
+  onCountsChange?: (counts: { photos: number; files: number }) => void;
 }) {
   const [photos, setPhotos] = useState<NotePhoto[]>([]);
   const [files, setFiles] = useState<NoteFile[]>([]);
@@ -69,8 +71,11 @@ export function NoteAttachments({
         .eq("parent_kind", parentKind).eq("parent_id", parentId)
         .order("sort_order").order("uploaded_at"),
     ]);
-    setPhotos((ph ?? []) as any);
-    setFiles((fl ?? []) as any);
+    const nextPhotos = ((ph ?? []) as unknown) as NotePhoto[];
+    const nextFiles = ((fl ?? []) as unknown) as NoteFile[];
+    setPhotos(nextPhotos);
+    setFiles(nextFiles);
+    onCountsChange?.({ photos: nextPhotos.length, files: nextFiles.length });
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [parentKind, parentId]);
 
@@ -190,4 +195,28 @@ export function NoteAttachments({
       )}
     </div>
   );
+}
+
+/**
+ * Delete every photo + file attachment belonging to a note (from storage AND
+ * the polymorphic note_photos/note_files tables). Call this BEFORE deleting
+ * the parent note row — the polymorphic rows have no FK cascade.
+ */
+export async function deleteNoteAttachments(parentKind: NoteParentKind, parentId: string) {
+  const [{ data: ph }, { data: fl }] = await Promise.all([
+    supabase.from("note_photos" as any).select("storage_path")
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+    supabase.from("note_files" as any).select("storage_path")
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+  ]);
+  const photoPaths = ((ph ?? []) as any[]).map((x) => x.storage_path).filter(Boolean);
+  const filePaths = ((fl ?? []) as any[]).map((x) => x.storage_path).filter(Boolean);
+  if (photoPaths.length) await supabase.storage.from("photos").remove(photoPaths);
+  if (filePaths.length) await supabase.storage.from("files").remove(filePaths);
+  await Promise.all([
+    supabase.from("note_photos" as any).delete()
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+    supabase.from("note_files" as any).delete()
+      .eq("parent_kind", parentKind).eq("parent_id", parentId),
+  ]);
 }
