@@ -12,15 +12,15 @@ export function PhotoPicker({
   onPick,
   children,
 }: {
-  onPick: (file: File) => void;
+  onPick: (file: File, index?: number) => void | Promise<void>;
   children: React.ReactNode;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) onPick(f);
+  const handle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    for (const [index, file] of files.entries()) await onPick(file, index);
     e.target.value = "";
   };
 
@@ -49,6 +49,7 @@ export function PhotoPicker({
         ref={galleryRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handle}
       />
