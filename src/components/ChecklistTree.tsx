@@ -543,6 +543,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                     (clip.nodes.length > 1 ? <span className="ml-0.5 text-[10px]">{clip.nodes.length}</span> : null)}
                 </button>
               )}
+              {currentLine && (
+                <button
+                  onClick={toggleLocalLine}
+                  title={item.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
+                  aria-label={item.local_line_id ? "Make shared" : "Make local"}
+                  className={`ml-auto inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded ${item.local_line_id ? "text-muted-foreground hover:bg-accent hover:text-foreground" : "text-primary hover:bg-accent"}`}
+                >
+                  {item.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+                  {showLabels && <span>{item.local_line_id ? "Local" : "Shared"}</span>}
+                </button>
+              )}
             </div>
           )}
 
