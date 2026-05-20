@@ -14,6 +14,7 @@ export type NoteParentKind =
   | "equipment_note"
   | "calendar_note"
   | "common_folder_note"
+  | "component_type_note"
   | "pa_note";
 
 export interface NotePhoto {
@@ -48,6 +49,10 @@ export function NoteAttachments({
   defaultShared = false,
   showSharedToggle = true,
   onCountsChange,
+  legacyPhotoPath,
+  legacyFilePath,
+  legacyFileName,
+  onLegacyMigrated,
 }: {
   parentKind: NoteParentKind;
   parentId: string;
@@ -57,6 +62,10 @@ export function NoteAttachments({
   defaultShared?: boolean;
   showSharedToggle?: boolean;
   onCountsChange?: (counts: { photos: number; files: number }) => void;
+  legacyPhotoPath?: string | null;
+  legacyFilePath?: string | null;
+  legacyFileName?: string | null;
+  onLegacyMigrated?: (patch: { photo_path?: null; file_path?: null; file_name?: null }) => void;
 }) {
   const [photos, setPhotos] = useState<NotePhoto[]>([]);
   const [files, setFiles] = useState<NoteFile[]>([]);
@@ -80,26 +89,64 @@ export function NoteAttachments({
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [parentKind, parentId]);
 
-  const uploadPhoto = async (file: File) => {
-    const path = `${storagePrefix}/${Date.now()}-${file.name}`;
+  useEffect(() => {
+    if (!legacyPhotoPath && !legacyFilePath) return;
+    let cancelled = false;
+    const migrate = async () => {
+      const patch: { photo_path?: null; file_path?: null; file_name?: null } = {};
+      if (legacyPhotoPath) {
+        const { data: existing } = await supabase.from("note_photos" as any).select("id")
+          .eq("parent_kind", parentKind).eq("parent_id", parentId).eq("storage_path", legacyPhotoPath).limit(1);
+        if (!existing?.length) {
+          await supabase.from("note_photos" as any).insert({
+            parent_kind: parentKind, parent_id: parentId, storage_path: legacyPhotoPath,
+            sort_order: photos.length, is_shared: defaultShared, uploaded_by: userId,
+          } as any);
+        }
+        patch.photo_path = null;
+      }
+      if (legacyFilePath) {
+        const { data: existing } = await supabase.from("note_files" as any).select("id")
+          .eq("parent_kind", parentKind).eq("parent_id", parentId).eq("storage_path", legacyFilePath).limit(1);
+        if (!existing?.length) {
+          await supabase.from("note_files" as any).insert({
+            parent_kind: parentKind, parent_id: parentId, storage_path: legacyFilePath, file_name: legacyFileName ?? "file",
+            sort_order: files.length, is_shared: defaultShared, uploaded_by: userId,
+          } as any);
+        }
+        patch.file_path = null;
+        patch.file_name = null;
+      }
+      if (!cancelled) {
+        onLegacyMigrated?.(patch);
+        load();
+      }
+    };
+    migrate();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyPhotoPath, legacyFilePath, parentKind, parentId]);
+
+  const uploadPhoto = async (file: File, index = 0) => {
+    const path = `${storagePrefix}/${Date.now()}-${index}-${file.name}`;
     rememberLocalFile("photos", path, file);
     const { error: upErr } = await supabase.storage.from("photos").upload(path, file);
     if (upErr) { toast.error(toUserMessage(upErr)); return; }
     const { error } = await supabase.from("note_photos" as any).insert({
       parent_kind: parentKind, parent_id: parentId, storage_path: path,
-      sort_order: photos.length, is_shared: defaultShared, uploaded_by: userId,
+      sort_order: photos.length + index, is_shared: defaultShared, uploaded_by: userId,
     } as any);
     if (error) toast.error(toUserMessage(error));
     load();
   };
-  const uploadFile = async (file: File) => {
-    const path = `${storagePrefix}/${Date.now()}-${file.name}`;
+  const uploadFile = async (file: File, index = 0) => {
+    const path = `${storagePrefix}/${Date.now()}-${index}-${file.name}`;
     rememberLocalFile("files", path, file);
     const { error: upErr } = await supabase.storage.from("files").upload(path, file);
     if (upErr) { toast.error(toUserMessage(upErr)); return; }
     const { error } = await supabase.from("note_files" as any).insert({
       parent_kind: parentKind, parent_id: parentId, storage_path: path, file_name: file.name,
-      sort_order: files.length, is_shared: defaultShared, uploaded_by: userId,
+      sort_order: files.length + index, is_shared: defaultShared, uploaded_by: userId,
     } as any);
     if (error) toast.error(toUserMessage(error));
     load();
@@ -204,8 +251,8 @@ export function NoteAttachments({
           </PhotoPicker>
           <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
             <Paperclip className="h-3 w-3" /> File
-            <input type="file" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+      <input type="file" multiple className="hidden"
+              onChange={async (e) => { const picked = Array.from(e.target.files ?? []); for (const [i, f] of picked.entries()) await uploadFile(f, i); e.target.value = ""; }} />
           </label>
         </div>
       )}

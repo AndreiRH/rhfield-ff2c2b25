@@ -4,10 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Camera, Paperclip, X, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
-import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
-import { rememberLocalFile } from "@/lib/local-blobs";
+import { NoteAttachments, deleteNoteAttachments } from "@/components/NoteAttachments";
 import { undoableDelete } from "@/lib/undoableDelete";
 
 interface Note {
@@ -52,6 +51,7 @@ export function NotesBoard({ equipmentId, canEdit, userId }: { equipmentId: stri
       optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
       restore: load,
       commit: async () => {
+        await deleteNoteAttachments("equipment_note", n.id);
         if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
         if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
         await supabase.from("equipment_notes").delete().eq("id", n.id);
@@ -155,26 +155,6 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
   const saveTitle = () => { if (title !== note.title) onUpdate({ title }); };
   const saveBody = () => { if (body !== note.body) onUpdate({ body }); };
 
-  const uploadPhoto = async (file: File) => {
-    const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
-    rememberLocalFile("photos", path, file);
-    const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("equipment_notes").update({ photo_path: path }).eq("id", note.id);
-    onReload();
-  };
-
-  const uploadFile = async (file: File) => {
-    const path = `equipment-notes/${note.equipment_id}/${note.id}/${Date.now()}-${file.name}`;
-    rememberLocalFile("files", path, file);
-    const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("equipment_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
-    onReload();
-  };
-
   return (
     <div
       className="absolute w-[260px] rounded-md border bg-card shadow-md"
@@ -208,43 +188,18 @@ function NoteCard({ note, canEdit, userId, boardRef, onUpdate, onDelete, onReloa
           onChange={(e) => setBody(e.target.value)}
           onBlur={saveBody}
           placeholder="Write something…"
-          className="min-h-[80px] resize-none text-xs"
+          data-resize-key={`equipment-note-board:${note.id}`}
+          className="min-h-[80px] resize-y text-xs"
         />
-        {note.photo_path && <NotePhoto path={note.photo_path} />}
-        {note.file_name && <NoteFile path={note.file_path} name={note.file_name} />}
-        {canEdit && (
-          <div className="flex gap-1">
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent">
-              <Camera className="h-3 w-3" />
-              <input type="file" accept="image/*" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
-            </label>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-accent">
-              <Paperclip className="h-3 w-3" />
-              <input type="file" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-            </label>
-          </div>
-        )}
+        <NoteAttachments
+          parentKind="equipment_note"
+          parentId={note.id}
+          storagePrefix={`equipment-notes/${note.equipment_id}/${note.id}`}
+          canEdit={canEdit}
+          userId={userId}
+          showSharedToggle={false}
+        />
       </div>
     </div>
-  );
-}
-
-function NotePhoto({ path }: { path: string }) {
-  return (
-    <StoragePhoto
-      bucket="photos"
-      path={path}
-      imgClassName="max-h-32 w-full rounded border object-cover"
-    />
-  );
-}
-
-function NoteFile({ path, name }: { path: string | null; name: string }) {
-  return (
-    <button onClick={() => openStorageFile("files", path, name)} className="flex w-full items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-left text-[11px] hover:bg-accent">
-      <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-    </button>
   );
 }

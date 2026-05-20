@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { StoragePhoto, openStorageFile } from "@/components/StoragePhoto";
+import { NoteAttachments, deleteNoteAttachments } from "@/components/NoteAttachments";
 import { rememberLocalFile } from "@/lib/local-blobs";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
 import { undoableDelete } from "@/lib/undoableDelete";
@@ -478,6 +479,7 @@ function FolderContents({ folder, canEdit, userId, onCountsChange, onAddChild }:
       optimistic: () => setNotes((s) => s.filter((x) => x.id !== n.id)),
       restore: load,
       commit: async () => {
+        await deleteNoteAttachments("common_folder_note", n.id);
         if (n.photo_path) await supabase.storage.from("photos").remove([n.photo_path]);
         if (n.file_path) await supabase.storage.from("files").remove([n.file_path]);
         await supabase.from("common_folder_notes").delete().eq("id", n.id);
@@ -636,37 +638,6 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
 
   const basePath = `common-notes/${note.project_id}/${note.id}`;
 
-  const uploadPhoto = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("photos", path, file);
-    const { error } = await supabase.storage.from("photos").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("common_folder_notes").update({ photo_path: path }).eq("id", note.id);
-    onReload();
-  };
-  const uploadFile = async (file: File) => {
-    const path = `${basePath}/${Date.now()}-${file.name}`;
-    rememberLocalFile("files", path, file);
-    const { error } = await supabase.storage.from("files").upload(path, file);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("common_folder_notes").update({ file_path: path, file_name: file.name }).eq("id", note.id);
-    onReload();
-  };
-  const removePhoto = async () => {
-    if (!confirmSharedDelete(true)) return;
-    if (note.photo_path) await supabase.storage.from("photos").remove([note.photo_path]);
-    await supabase.from("common_folder_notes").update({ photo_path: null }).eq("id", note.id);
-    onReload();
-  };
-  const removeFile = async () => {
-    if (!confirmSharedDelete(true)) return;
-    if (note.file_path) await supabase.storage.from("files").remove([note.file_path]);
-    await supabase.from("common_folder_notes").update({ file_path: null, file_name: null }).eq("id", note.id);
-    onReload();
-  };
-
   return (
     <li className="rounded-md border bg-card">
       <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-1">
@@ -700,54 +671,17 @@ function NoteRow({ note, canEdit, onUpdate, onDelete, onReload }: any) {
             onChange={(e) => setBody(e.target.value)}
             onBlur={() => body !== note.body && onUpdate({ body })}
             placeholder="Write something…"
+            data-resize-key={`common-folder-note:${note.id}`}
             className="min-h-[60px] resize-y text-sm"
           />
-          {note.photo_path && <NotePhoto path={note.photo_path} canEdit={canEdit} onRemove={removePhoto} />}
-          {note.file_name && <NoteFile path={note.file_path} name={note.file_name} canEdit={canEdit} onRemove={removeFile} />}
-          {canEdit && (
-            <div className="flex gap-2">
-              <PhotoPicker onPick={uploadPhoto}>
-                <button className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                  <Camera className="h-3 w-3" /> Photo
-                </button>
-              </PhotoPicker>
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
-                <Paperclip className="h-3 w-3" /> File
-                <input type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-              </label>
-            </div>
-          )}
+          <NoteAttachments parentKind="common_folder_note" parentId={note.id} storagePrefix={basePath}
+            canEdit={canEdit} showSharedToggle={false}
+            legacyPhotoPath={note.photo_path} legacyFilePath={note.file_path} legacyFileName={note.file_name}
+            onLegacyMigrated={(p) => { supabase.from("common_folder_notes").update(p as any).eq("id", note.id).then(); onUpdate(p); onReload(); }} />
         </div>
       )}
     </li>
   );
 }
 
-function NotePhoto({ path, canEdit, onRemove }: { path: string; canEdit: boolean; onRemove: () => void }) {
-  return (
-    <StoragePhoto
-      bucket="photos"
-      path={path}
-      imgClassName="max-h-40 w-full rounded border object-cover"
-      canEdit={canEdit}
-      onRemove={onRemove}
-    />
-  );
-}
-
-function NoteFile({ path, name, canEdit, onRemove }: { path: string | null; name: string; canEdit: boolean; onRemove: () => void }) {
-  return (
-    <div className="flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs">
-      <button onClick={() => openStorageFile("files", path, name)} className="flex flex-1 items-center gap-1 text-left hover:underline">
-        <Paperclip className="h-3 w-3" /> <span className="truncate">{name}</span>
-      </button>
-      {canEdit && (
-        <button onClick={onRemove} className="text-destructive hover:opacity-80">
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
-}
 

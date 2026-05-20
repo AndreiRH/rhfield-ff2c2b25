@@ -433,7 +433,7 @@ function ComponentBlock({ component, canEdit, onChange, open: openProp, onToggle
               <Textarea value={note} disabled={!canEdit} autoFocus
                 onChange={(e) => setNote(e.target.value)}
                 onBlur={() => { saveNote(); if (!note.trim()) setShowNoteEditor(false); }}
-                placeholder="Component note…" className="min-h-[50px] text-xs" />
+                placeholder="Component note…" data-resize-key={`component-note:${component.id}`} className="min-h-[50px] resize-y text-xs" />
             </div>
           )}
 
