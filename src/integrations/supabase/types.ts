@@ -88,6 +88,7 @@ export type Database = {
           done: boolean
           id: string
           label: string
+          local_line_id: string | null
           note: string | null
           note_shared: boolean
           parent_item_id: string | null
@@ -105,6 +106,7 @@ export type Database = {
           done?: boolean
           id?: string
           label: string
+          local_line_id?: string | null
           note?: string | null
           note_shared?: boolean
           parent_item_id?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           done?: boolean
           id?: string
           label?: string
+          local_line_id?: string | null
           note?: string | null
           note_shared?: boolean
           parent_item_id?: string | null

@@ -45,10 +45,13 @@ export function ChecklistTree({
   canDeleteRoot?: boolean;
   hideRootAdd?: boolean;
 }) {
+  const currentLine = useCurrentLine();
   const parentCols = componentTypeId
     ? { component_type_id: componentTypeId }
     : { component_id: componentId! };
-  const visibleItems = liveChecklistItems(items);
+  const visibleItems = liveChecklistItems(
+    (items ?? []).filter((i: any) => !i.local_line_id || (currentLine && i.local_line_id === currentLine.lineId))
+  );
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const { clip, lockTo } = useClipboard();
@@ -153,6 +156,7 @@ export function ChecklistTree({
 }
 
 function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true }: any) {
+  const currentLine = useCurrentLine();
   const action = useTreeAction();
   const mode = action?.mode ?? "none";
   const inMode = mode !== "none";
@@ -345,7 +349,13 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       if (!undone && !f.is_shared) await supabase.storage.from("files").remove([f.storage_path]);
     }, 3500);
   };
-  const currentLine = useCurrentLine();
+  const toggleLocalLine = async () => {
+    if (!currentLine) return;
+    const next = item.local_line_id ? null : currentLine.lineId;
+    const { error } = await supabase.from("checklist_items").update({ local_line_id: next }).eq("id", item.id);
+    if (error) toast.error(toUserMessage(error)); else onChange();
+  };
+
   const toggleSharePhoto = async (p: any) => {
     if (p.is_shared && !(await confirmUnshareToOriginLine(p.origin_line_id, currentLine?.lineId))) return;
     const { error } = await supabase.from("item_photos").update({ is_shared: !p.is_shared }).eq("id", p.id);
@@ -453,6 +463,16 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         >{item.label}</span>
       )}
       {!editingLabel && <span className="flex-1 min-w-0 self-stretch" />}
+      {!inMode && canEdit && currentLine && (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleLocalLine(); }}
+          title={item.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
+          className={`shrink-0 inline-flex h-6 w-6 items-center justify-center rounded ${item.local_line_id ? "text-muted-foreground hover:text-foreground" : "text-primary"}`}
+          aria-label={item.local_line_id ? "Make shared" : "Make local"}
+        >
+          {item.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+        </button>
+      )}
       {/* Always-visible content indicators */}
       <span className="flex items-center gap-2">
         {subsTotal > 0 && (
