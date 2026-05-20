@@ -11,14 +11,14 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check,
+  Camera, Paperclip, Check, ListPlus, Share2, Lock, X,
 } from "lucide-react";
 import {
-  useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType,
+  useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType, pasteItem,
 } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
-import { ChecklistTree } from "@/components/ChecklistTree";
+import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
 import { calcProgress, liveChecklistItems } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
@@ -30,6 +30,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { localUuid } from "@/lib/local-id";
+import { PhotoPicker } from "@/components/PhotoPicker";
+import { rememberLocalFile } from "@/lib/local-blobs";
+import { useCurrentLine } from "@/lib/current-line";
+import { TypeNotesEditor } from "@/components/TypeNotesEditor";
 
 import { useAuth } from "@/hooks/use-auth";
 
