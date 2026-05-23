@@ -1,25 +1,26 @@
-## Goal
+## Add Export button to calendar pages
 
-Make the **Assembly** section behave and look exactly like Wiring and Cold Commissioning: a single `ComponentTypesTree` (with component types as containers, items underneath, plus the per-row notes/photos/files/shared toggle system) followed by the section `NotesList`. No more "Manual %" mode and no flat checklist.
+Add an Export button in the top-right corner of both calendar pages:
+- `/p/$projectId/calendar` (global/all-lines calendar)
+- `/p/$projectId/lines/$lineNumber/calendar` (per-line calendar)
 
-## Changes
+### Export formats offered
+- **PDF** — printable timeline snapshot of the calendar view (landscape, current zoom/date range).
+- **XLSX** — structured workbook: one row per activity with line, activity name, start, end, duration, offset, follows, shared flag. For the global calendar, includes a `Line` column.
+- **CSV** — same columns as XLSX, single sheet, for spreadsheet/data tools.
+- **ICS (suggested addition)** — calendar feed users can import into Google Calendar / Outlook / Apple Calendar, with one VEVENT per activity. Useful for ops teams that already live in their calendar app.
 
-### 1. Equipment page route (`src/routes/p.$projectId.lines.$lineNumber.equipment.$kind.$equipmentId.tsx`)
+### UI
+- Reusable `<ExportMenu />` component (shadcn `DropdownMenu` + `Button` with download icon) placed in the page header's top-right.
+- Menu items: PDF, Excel (.xlsx), CSV, Calendar (.ics).
+- File name: `{projectName}-calendar[-line{N}]-{YYYY-MM-DD}.{ext}`.
 
-- In `renderSection`, replace the `MechanicalView` branch for `"assembly"` with the same JSX used by wiring/cold (ComponentTypesTree + NotesList), passing `data.assembly` and an assembly-flavored `emptyHint` (e.g. "No assembly categories yet. Add types like 'Frames', 'Drives', 'Mechanical groups'…"), and `section="assembly"` on the NotesList.
-- Delete the `MechanicalView` function and the now-unused imports it pulled in (`FlatChecklist`, `Card`/`CardContent`, `Input`, `Button`, `useState` if not used elsewhere in the file, and the `pe.mech_mode` / `pe.mech_manual_pct` selection in the loader).
-- Drop `mech_mode`, `mech_manual_pct`, `mech_notes` from the `plant_equipment` select.
+### Implementation
+- New `src/components/calendar/ExportMenu.tsx` taking `{ scope: "project" | "line", projectId, lineNumber?, activities, projectName }`.
+- New `src/lib/calendar-export.ts` with pure functions: `toCsv()`, `toXlsx()` (using `xlsx` package), `toIcs()`, `toPdf()` (using `jspdf` + `jspdf-autotable` for a table-style export — keeps it dependency-light vs. rasterizing the timeline).
+- Wire `<ExportMenu />` into both calendar route files, fed by the activity data they already load.
+- Add `xlsx`, `jspdf`, `jspdf-autotable` as dependencies.
 
-### 2. Progress calculation (`src/lib/progress.ts`)
-
-- In `equipmentProgress`, always compute `mech` from `calcProgress(itemsFromGroup(assemblyGroup)).pct` (same shape as wiring/cold). Remove the `pe.mech_mode === "checklist"` branch and the manual-% fallback.
-
-### 3. Out of scope
-
-- No database migration. The `mech_mode` / `mech_manual_pct` / `mech_notes` columns and any existing data stay in place (harmless once unused). Existing assembly groups, components, types, and items keep working — they already feed the same `equipment_groups` tree the other sections use.
-- No changes to `ComponentTypesTree`, `TypeNotesEditor`, `ChecklistTree`, settings, calendar, export, or AI search.
-- The `assembly_mode_*` localStorage keys become dead — leaving them in storage is fine; no cleanup needed.
-
-## Result
-
-Tapping the Assembly tab opens the exact same UI as Wiring: a Component Types tree with the per-row action bar (notes, add item, photos, files, Local/Shared) and the section notes list below — no Man %/Items toggle, no manual percent input.
+### Out of scope
+- Pixel-perfect screenshot of the gantt timeline (would require html2canvas; can add later if PDF table view isn't enough).
+- Server-side export / scheduled exports.

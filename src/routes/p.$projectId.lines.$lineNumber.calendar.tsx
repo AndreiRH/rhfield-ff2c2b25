@@ -16,6 +16,7 @@ import {
 } from "@/components/ActivityPlanner";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
 import { CalendarNotesList } from "@/components/CalendarNotesList";
+import { ExportMenu } from "@/components/calendar/ExportMenu";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
   component: LineCalendarPage,
@@ -41,19 +42,21 @@ function LineCalendarPage() {
         .single();
       if (error) throw error;
 
-      const [{ data: allLines }, { data: activities }] = await Promise.all([
+      const [{ data: allLines }, { data: activities }, { data: project }] = await Promise.all([
         supabase
           .from("lines")
           .select("id, number, name")
           .eq("project_id", projectId)
           .order("number"),
         supabase.from("line_activities").select("*").eq("line_id", line.id).order("sort_order").order("start_date"),
+        supabase.from("projects").select("name").eq("id", projectId).maybeSingle(),
       ]);
 
       return {
         line: line as LineInfo,
         allLines: (allLines ?? []) as LineLite[],
         activities: (activities ?? []) as LineActivity[],
+        projectName: (project?.name as string | undefined) ?? "project",
       };
     },
   });
@@ -88,7 +91,14 @@ function LineCalendarPage() {
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-semibold">{title}</h1>
-                <ProjectHotCalendarButton projectId={projectId} />
+                <div className="flex items-center gap-2">
+                  <ProjectHotCalendarButton projectId={projectId} />
+                  <ExportMenu
+                    activities={data.activities}
+                    projectName={data.projectName}
+                    scopeLabel={`Line ${String(data.line.number).padStart(2, "0")}`}
+                  />
+                </div>
               </div>
             </div>
             <ActivityPlanner
