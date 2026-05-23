@@ -16,6 +16,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CalendarNotesList } from "@/components/CalendarNotesList";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface LineLite {
   id: string;
@@ -29,6 +30,9 @@ interface Activity {
   end_date: string;
   name: string;
   color: string;
+  duration_days: number | null;
+  follows_activity_id: string | null;
+  offset_days: number | null;
 }
 
 const DAY_WIDTH = 28;
@@ -119,7 +123,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       }
       const { data: acts } = await supabase
         .from("line_activities")
-        .select("id, line_id, start_date, end_date, name, color, show_on_global")
+        .select("id, line_id, start_date, end_date, name, color, show_on_global, duration_days, follows_activity_id, offset_days")
         .in(
           "line_id",
           list.map((l) => l.id),
@@ -478,23 +482,52 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   const e = parseISO(a.end_date);
                   const left = dayToX(s);
                   const width = Math.max((differenceInCalendarDays(e, s) + 1) * DAY_WIDTH, 8);
+                  const duration = a.duration_days ?? (differenceInCalendarDays(e, s) + 1);
+                  const parent = a.follows_activity_id
+                    ? activities.find((x) => x.id === a.follows_activity_id)
+                    : null;
                   return (
-                    <div
-                      key={a.id}
-                      title={`Line ${String(l.number).padStart(2, "0")} · ${a.name} · ${format(s, "d MMM yyyy")} → ${format(e, "d MMM yyyy")}`}
-                      className="absolute rounded-full flex items-center px-2 overflow-hidden"
-                      style={{
-                        left,
-                        width,
-                        top: info.top + a.lane * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
-                        height: BAR_HEIGHT,
-                        background: a.color,
-                      }}
-                    >
-                      <span className="text-[10px] font-medium text-white truncate leading-none">
-                        {a.name}
-                      </span>
-                    </div>
+                    <Popover key={a.id}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="absolute rounded-full flex items-center px-2 overflow-hidden hover:ring-2 hover:ring-foreground/30 transition"
+                          style={{
+                            left,
+                            width,
+                            top: info.top + a.lane * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
+                            height: BAR_HEIGHT,
+                            background: a.color,
+                          }}
+                        >
+                          <span className="text-[10px] font-medium text-white truncate leading-none">
+                            {a.name}
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3 text-xs" align="start">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: a.color }} />
+                            <span className="font-semibold text-sm break-words">{a.name}</span>
+                          </div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Line {String(l.number).padStart(2, "0")}
+                          </div>
+                          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-muted-foreground">
+                            <span>Start</span><span className="text-foreground tabular-nums">{format(s, "d MMM yyyy")}</span>
+                            <span>Length</span><span className="text-foreground tabular-nums">{duration} day{duration === 1 ? "" : "s"}</span>
+                            <span>End</span><span className="text-foreground tabular-nums">{format(e, "d MMM yyyy")}</span>
+                            {parent && (
+                              <>
+                                <span>Follows</span><span className="text-foreground break-words">{parent.name}</span>
+                                <span>Delay</span><span className="text-foreground tabular-nums">{a.offset_days ?? 0} day{(a.offset_days ?? 0) === 1 ? "" : "s"}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   );
                 });
               })}
