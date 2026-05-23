@@ -515,13 +515,19 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                             Line {String(l.number).padStart(2, "0")}
                           </div>
                           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-muted-foreground">
-                            <span>Start</span><span className="text-foreground tabular-nums">{format(s, "d MMM yyyy")}</span>
-                            <span>Length</span><span className="text-foreground tabular-nums">{duration} day{duration === 1 ? "" : "s"}</span>
-                            <span>End</span><span className="text-foreground tabular-nums">{format(e, "d MMM yyyy")}</span>
-                            {parent && (
+                            {parent ? (
                               <>
                                 <span>Follows</span><span className="text-foreground break-words">{parent.name}</span>
-                                <span>Delay</span><span className="text-foreground tabular-nums">{a.offset_days ?? 0} day{(a.offset_days ?? 0) === 1 ? "" : "s"}</span>
+                                <span>Delay</span><span className="text-foreground tabular-nums">{a.offset_days ?? 1} day{(a.offset_days ?? 1) === 1 ? "" : "s"}</span>
+                                <span>Length</span><span className="text-foreground tabular-nums">{duration} day{duration === 1 ? "" : "s"}</span>
+                                <span>Start</span><span className="text-foreground tabular-nums">{format(s, "d MMM yyyy")}</span>
+                                <span>End</span><span className="text-foreground tabular-nums">{format(e, "d MMM yyyy")}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Length</span><span className="text-foreground tabular-nums">{duration} day{duration === 1 ? "" : "s"}</span>
+                                <span>Start</span><span className="text-foreground tabular-nums">{format(s, "d MMM yyyy")}</span>
+                                <span>End</span><span className="text-foreground tabular-nums">{format(e, "d MMM yyyy")}</span>
                               </>
                             )}
                           </div>
