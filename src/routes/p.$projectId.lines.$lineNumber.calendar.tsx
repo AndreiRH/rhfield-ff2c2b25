@@ -96,8 +96,10 @@ function LineCalendarPage() {
                   <ProjectHotCalendarButton projectId={projectId} />
                   <ExportMenu
                     activities={data.activities}
+                    lines={[data.line]}
                     projectName={data.projectName}
                     scopeLabel={`Line ${String(data.line.number).padStart(2, "0")}`}
+                    getCurrentRange={() => visibleRangeRef.current}
                   />
                 </div>
               </div>
@@ -108,6 +110,9 @@ function LineCalendarPage() {
               activities={data.activities}
               canEdit={canEdit}
               onChange={refetch}
+              onVisibleRangeChange={(r) => {
+                visibleRangeRef.current = r;
+              }}
             />
             <div className="mt-6">
               <CalendarNotesList
