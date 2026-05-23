@@ -231,6 +231,12 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   // Layout
   const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
   const labelW = 70;
+  const marginRight = marginX;
+  const gridLeft = marginX + labelW;
+  const gridTop = marginTop + 30;
+  const gridRight = pageW - marginRight;
+  const gridW = gridRight - gridLeft;
+  const dayW = gridW / totalDays;
   const headerYearH = 14;
   const headerMonthH = 14;
   const headerWeekdayH = dayW >= 6 ? 9 : 0;
@@ -238,12 +244,6 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   const headerH = headerYearH + headerMonthH + headerWeekdayH + headerDayH;
   const rowH = 18;
   const barH = 12;
-
-  const gridLeft = marginX + labelW;
-  const gridTop = marginTop + 30;
-  const gridRight = pageW - marginX;
-  const gridW = gridRight - gridLeft;
-  const dayW = gridW / totalDays;
   const dayToX = (d: Date) =>
     gridLeft + differenceInCalendarDays(d, range.start) * dayW;
 
