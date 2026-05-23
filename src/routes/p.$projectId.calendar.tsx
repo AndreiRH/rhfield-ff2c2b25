@@ -270,6 +270,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     const el = scrollRef.current;
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollLeft = target;
+    updateMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines.length]);
 
@@ -305,6 +306,18 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
         {/* Scrollable timeline */}
         <div className="relative min-w-0 flex-1">
+          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+            <div
+              ref={mobileYearRowRef}
+              className="flex overflow-hidden border-b border-border/40"
+              style={{ height: YEAR_HEADER_H }}
+            />
+            <div
+              ref={mobileMonthRowRef}
+              className="flex overflow-hidden"
+              style={{ height: MONTH_HEADER_H }}
+            />
+          </div>
           <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
@@ -323,7 +336,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
             {/* Full timeline header */}
             <div className="bg-card border-b">
               {/* Years */}
-              <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
+              <div className="relative hidden border-b md:block" style={{ height: YEAR_HEADER_H }}>
                 {years.map((y) => {
                   const left = dayToX(y.start);
                   const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
@@ -339,7 +352,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 })}
               </div>
               {/* Months */}
-              <div className="relative border-b" style={{ height: MONTH_HEADER_H }}>
+              <div className="relative hidden border-b md:block" style={{ height: MONTH_HEADER_H }}>
                 {months.map((m) => {
                   const mStart = m < RANGE_START ? RANGE_START : m;
                   const mEnd = endOfMonth(m) > RANGE_END ? RANGE_END : endOfMonth(m);
