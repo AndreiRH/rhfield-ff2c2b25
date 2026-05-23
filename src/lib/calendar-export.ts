@@ -224,37 +224,36 @@ export function exportPdf(opts: BuildOptions, range: CalendarRange) {
     doc.text(subtitle, marginX, marginTop + 14);
   };
 
-  // ===== Section 1: Activity list (all activities) =====
-  const { headers, rows } = buildRows(opts);
-  drawTitle(`Activities - Exported ${format(new Date(), "PPpp")}`);
-
-  autoTable(doc, {
-    head: [headers],
-    body: rows.map((r) => r.map((c) => String(c ?? ""))),
-    startY: marginTop + 26,
-    margin: { left: marginX, right: marginX },
-    styles: { fontSize: 8, cellPadding: 5, font: "helvetica", textColor: 40, lineColor: 220, lineWidth: 0.3 },
-    headStyles: { fillColor: [40, 44, 60], textColor: 255, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [248, 249, 252] },
+  // ===== Section 1: Calendar view =====
+  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
+  drawTitle(`Calendar view - ${rangeLabel}`);
+  const ganttEndY = drawGantt(doc, opts, range, {
+    marginX,
+    top: marginTop + 28,
+    pageH,
+    pageW,
   });
 
-  // ===== Section 2: Calendar view (gantt) — continues in same flow =====
-  const afterTableY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? marginTop + 26;
-  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
-  let ganttTop = afterTableY + 24;
-  if (ganttTop > pageH - 120) {
+  // ===== Section 2: Activity list (all activities) =====
+  const { headers, rows } = buildRows(opts);
+  let listTop = ganttEndY + 24;
+  if (listTop > pageH - 80) {
     doc.addPage();
-    ganttTop = marginTop;
+    listTop = marginTop;
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(20);
-  doc.text(`Calendar view - ${rangeLabel}`, marginX, ganttTop);
-  drawGantt(doc, opts, range, {
-    marginX,
-    top: ganttTop + 14,
-    pageH,
-    pageW,
+  doc.text(`Activities - Exported ${format(new Date(), "PPpp")}`, marginX, listTop);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows.map((r) => r.map((c) => String(c ?? ""))),
+    startY: listTop + 14,
+    margin: { left: marginX, right: marginX },
+    styles: { fontSize: 8, cellPadding: 5, font: "helvetica", textColor: 40, lineColor: 220, lineWidth: 0.3 },
+    headStyles: { fillColor: [40, 44, 60], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [248, 249, 252] },
   });
 
   doc.save(`${fileBase(opts)}.pdf`);
@@ -496,6 +495,7 @@ function drawGantt(
     const x = dayToX(d);
     doc.line(x, wkTop, x, firstRowY);
   }
+  return y;
 }
 
 // ---------- Combined Excel ----------
@@ -542,9 +542,8 @@ export async function exportXlsx(opts: BuildOptions, range: CalendarRange) {
     wch: h === "Activity" || h === "Follows" || h === "Line" ? 26 : 14,
   }));
   (wsList as Record<string, unknown>)["!sheetView"] = [{ state: "frozen", ySplit: 1 }];
-  XLSXStyle.utils.book_append_sheet(wb, wsList, "Activities");
 
-  // ===== Sheet 2: Calendar (gantt grid for range) =====
+  // ===== Sheet 1: Calendar (gantt grid for range) =====
   const days = buildCalendarDays(range);
   const grouped = groupByLine(opts);
   const LEFT = ["Line", "Activity", "Start", "End", "Days"];
@@ -667,6 +666,7 @@ export async function exportXlsx(opts: BuildOptions, range: CalendarRange) {
   });
 
   XLSXStyle.utils.book_append_sheet(wb, ws, "Calendar");
+  XLSXStyle.utils.book_append_sheet(wb, wsList, "Activities");
   XLSXStyle.writeFile(wb, `${fileBase(opts)}.xlsx`);
 }
 
@@ -679,20 +679,11 @@ export function exportCsv(opts: BuildOptions, range: CalendarRange) {
   };
   const out: string[] = [];
 
-  // Section 1: Activities
+  // Section 1: Calendar view
   out.push(`# ${opts.projectName} - ${opts.scopeLabel}`);
-  out.push(`# Section: Activities (full list)`);
-  out.push("");
-  const { headers, rows } = buildRows(opts);
-  out.push(headers.map(escape).join(","));
-  for (const r of rows) out.push(r.map(escape).join(","));
-
-  out.push("");
-  out.push("");
   out.push(`# Section: Calendar view (${format(range.start, "yyyy-MM-dd")} to ${format(range.end, "yyyy-MM-dd")})`);
   out.push("");
 
-  // Section 2: Calendar grid
   const days = buildCalendarDays(range);
   const grouped = groupByLine(opts);
   const LEFT = ["Line", "Activity", "Start", "End", "Days"];
@@ -737,6 +728,16 @@ export function exportCsv(opts: BuildOptions, range: CalendarRange) {
       out.push([...left, ...cells].map(escape).join(","));
     }
   }
+
+  out.push("");
+  out.push("");
+
+  // Section 2: Activities (full list)
+  out.push(`# Section: Activities (full list)`);
+  out.push("");
+  const { headers, rows } = buildRows(opts);
+  out.push(headers.map(escape).join(","));
+  for (const r of rows) out.push(r.map(escape).join(","));
 
   download(
     new Blob([BOM + out.join("\n")], { type: "text/csv;charset=utf-8" }),
