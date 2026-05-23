@@ -211,6 +211,11 @@ export function ActivityPlanner({
     PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[activities.length % PALETTE.length];
 
   // ---------- handlers ----------
+  const nextSortOrder = () =>
+    activities.length === 0
+      ? 0
+      : Math.max(...activities.map((a) => a.sort_order ?? 0)) + 1;
+
   const insertLocal = async (name: string, start: string, end: string, color?: string) => {
     const c = color ?? nextColor();
     const { error } = await supabase.from("line_activities").insert({
@@ -222,6 +227,7 @@ export function ActivityPlanner({
       is_shared: false,
       created_by: user?.id ?? null,
       show_on_global: false,
+      sort_order: nextSortOrder(),
     });
     if (error) toast.error(toUserMessage(error));
     else {
