@@ -273,7 +273,18 @@ function CombinedGantt({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const sync = () => updateMobileHeader();
+    const sync = () => {
+      updateMobileHeader();
+      if (onVisibleRangeChange) {
+        const startDay = Math.floor(el.scrollLeft / DAY_WIDTH);
+        const endDay = Math.ceil((el.scrollLeft + el.clientWidth) / DAY_WIDTH) - 1;
+        const start = new Date(RANGE_START);
+        start.setDate(start.getDate() + Math.max(0, startDay));
+        const end = new Date(RANGE_START);
+        end.setDate(end.getDate() + Math.max(startDay, endDay));
+        onVisibleRangeChange({ start, end });
+      }
+    };
     sync();
     el.addEventListener("scroll", sync, { passive: true });
     const ro = new ResizeObserver(sync);
@@ -282,7 +293,7 @@ function CombinedGantt({
       el.removeEventListener("scroll", sync);
       ro.disconnect();
     };
-  }, [lines.length, months, years]);
+  }, [lines.length, months, years, onVisibleRangeChange]);
 
   // Lane-pack activities per line so overlapping ones stack into multiple rows.
   const linePacks = useMemo(() => {
