@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { PillSwitcher, type PillItem } from "@/components/PillSwitcher";
 
 export const DAY_WIDTH = 28;
 const ROW_HEIGHT = 22;
