@@ -100,6 +100,8 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const [lines, setLines] = useState<LineLite[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileYearRowRef = useRef<HTMLDivElement>(null);
+  const mobileMonthRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -154,6 +156,77 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     }));
   }, [months]);
 
+  const updateMobileHeader = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const visibleLeft = el.scrollLeft;
+    const visibleRight = visibleLeft + el.clientWidth;
+    const renderRow = (
+      row: HTMLDivElement | null,
+      segments: { key: string; label: string; startX: number; endX: number }[],
+      textClass: string,
+    ) => {
+      if (!row) return;
+      const children = segments.flatMap((segment) => {
+        const left = Math.max(segment.startX, visibleLeft);
+        const right = Math.min(segment.endX, visibleRight);
+        const width = right - left;
+        if (width <= 0) return [];
+        const child = document.createElement("div");
+        child.className = `flex h-full min-w-0 flex-none items-center justify-center ${textClass}`;
+        child.style.width = `${width}px`;
+        child.dataset.segmentKey = segment.key;
+        const label = document.createElement("span");
+        label.className = "truncate px-1";
+        label.textContent = segment.label;
+        child.appendChild(label);
+        return [child];
+      });
+      children.forEach((child, index) => {
+        if (index > 0) child.classList.add("border-l", "border-border/40");
+      });
+      row.replaceChildren(...children);
+    };
+    renderRow(
+      mobileYearRowRef.current,
+      years.map((y) => ({
+        key: String(y.year),
+        label: String(y.year),
+        startX: dayToX(y.start),
+        endX: dayToX(y.end) + DAY_WIDTH,
+      })),
+      "text-xs font-semibold",
+    );
+    renderRow(
+      mobileMonthRowRef.current,
+      months.map((m) => {
+        const mStart = m < RANGE_START ? RANGE_START : m;
+        const mEnd = endOfMonth(m) > RANGE_END ? RANGE_END : endOfMonth(m);
+        return {
+          key: m.toISOString(),
+          label: format(m, "MMM"),
+          startX: dayToX(mStart),
+          endX: dayToX(mEnd) + DAY_WIDTH,
+        };
+      }),
+      "text-[11px] text-muted-foreground",
+    );
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const sync = () => updateMobileHeader();
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", sync);
+      ro.disconnect();
+    };
+  }, [lines.length, months, years]);
+
   // Lane-pack activities per line so overlapping ones stack into multiple rows.
   const linePacks = useMemo(() => {
     const result = new Map<string, { lanes: number; placed: (Activity & { lane: number })[] }>();
@@ -197,6 +270,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     const el = scrollRef.current;
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollLeft = target;
+    updateMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines.length]);
 
@@ -232,6 +306,18 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
         {/* Scrollable timeline */}
         <div className="relative min-w-0 flex-1">
+          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+            <div
+              ref={mobileYearRowRef}
+              className="flex overflow-hidden border-b border-border/40"
+              style={{ height: YEAR_HEADER_H }}
+            />
+            <div
+              ref={mobileMonthRowRef}
+              className="flex overflow-hidden"
+              style={{ height: MONTH_HEADER_H }}
+            />
+          </div>
           <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
@@ -257,7 +343,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`yr-${y.year}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
+                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
                       style={{ left, width, height: YEAR_HEADER_H }}
                     >
                       <span className="truncate px-1">{y.year}</span>
@@ -275,7 +361,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`mo-${m.toISOString()}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
+                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
                       style={{ left, width, height: MONTH_HEADER_H }}
                     >
                       <span className="truncate px-1">{format(m, "MMM")}</span>
