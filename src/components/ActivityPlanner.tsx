@@ -455,7 +455,7 @@ export function ActivityPlanner({
       <Card>
         <CardContent className="p-0">
           <div className="relative">
-            <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+            <div className="absolute left-0 right-0 top-0 z-30 overflow-hidden border-b bg-card md:hidden">
               <div
                 ref={mobileHeaderTrackRef}
                 className="relative will-change-transform"
