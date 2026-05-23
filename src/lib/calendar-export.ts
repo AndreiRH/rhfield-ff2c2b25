@@ -542,9 +542,8 @@ export async function exportXlsx(opts: BuildOptions, range: CalendarRange) {
     wch: h === "Activity" || h === "Follows" || h === "Line" ? 26 : 14,
   }));
   (wsList as Record<string, unknown>)["!sheetView"] = [{ state: "frozen", ySplit: 1 }];
-  XLSXStyle.utils.book_append_sheet(wb, wsList, "Activities");
 
-  // ===== Sheet 2: Calendar (gantt grid for range) =====
+  // ===== Sheet 1: Calendar (gantt grid for range) =====
   const days = buildCalendarDays(range);
   const grouped = groupByLine(opts);
   const LEFT = ["Line", "Activity", "Start", "End", "Days"];
