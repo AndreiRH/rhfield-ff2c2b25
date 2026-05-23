@@ -154,7 +154,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       el.removeEventListener("scroll", update);
       ro.disconnect();
     };
-  }, []);
+  }, [lines.length]);
   const visibleSegments = useMemo(() => {
     const buildEmpty = (label: string) => [{ key: label, label, days: 1 }];
     if (viewport.width === 0) {
