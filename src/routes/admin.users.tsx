@@ -26,6 +26,13 @@ import { useState } from "react";
 type Role = "admin" | "engineer" | "pm" | "viewer";
 const ALL_ROLES: Role[] = ["admin", "engineer", "pm", "viewer"];
 
+const ROLE_LABEL: Record<Role, string> = {
+  admin: "adm",
+  engineer: "eng",
+  pm: "pm",
+  viewer: "view",
+};
+
 export const Route = createFileRoute("/admin/users")({ component: UsersPage });
 
 function UsersPage() {
