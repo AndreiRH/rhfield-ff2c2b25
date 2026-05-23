@@ -135,6 +135,10 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const months = useMemo(() => eachMonthOfInterval({ start: RANGE_START, end: RANGE_END }), []);
   const days = useMemo(() => eachDayOfInterval({ start: RANGE_START, end: RANGE_END }), []);
   const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
+  const weekendDays = useMemo(
+    () => days.filter((d) => d.getDay() === 0 || d.getDay() === 6),
+    [days],
+  );
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
