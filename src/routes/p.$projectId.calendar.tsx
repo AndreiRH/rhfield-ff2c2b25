@@ -230,7 +230,22 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         </div>
 
         {/* Scrollable timeline */}
-        <div ref={scrollRef} className="overflow-x-auto flex-1">
+        <div className="relative min-w-0 flex-1">
+          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+            <div
+              className="flex items-center justify-center border-b border-border/40 text-xs font-semibold"
+              style={{ height: YEAR_HEADER_H }}
+            >
+              <span className="truncate px-1">{format(RANGE_START, "yyyy")}</span>
+            </div>
+            <div
+              className="flex items-center justify-center text-[11px] text-muted-foreground"
+              style={{ height: MONTH_HEADER_H }}
+            >
+              <span className="truncate px-1">{format(RANGE_START, "MMM")}</span>
+            </div>
+          </div>
+          <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
               <div
@@ -245,7 +260,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
               />
             ))}
 
-            {/* Full timeline header — scrolls as one piece with the body */}
+            {/* Full timeline header */}
             <div className="bg-card border-b">
               {/* Years */}
               <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
@@ -255,7 +270,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`yr-${y.year}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
+                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
                       style={{ left, width, height: YEAR_HEADER_H }}
                     >
                       <span className="truncate px-1">{y.year}</span>
@@ -273,7 +288,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`mo-${m.toISOString()}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
+                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
                       style={{ left, width, height: MONTH_HEADER_H }}
                     >
                       <span className="truncate px-1">{format(m, "MMM")}</span>
@@ -407,6 +422,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 });
               })}
             </div>
+          </div>
           </div>
         </div>
       </div>

@@ -427,7 +427,22 @@ export function ActivityPlanner({
       {/* Gantt timeline */}
       <Card>
         <CardContent className="p-0">
-          <div ref={scrollRef} className="overflow-x-auto">
+          <div className="relative">
+            <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+              <div
+                className="flex items-center justify-center border-b border-border/40 text-xs font-semibold"
+                style={{ height: YEAR_HEADER_H }}
+              >
+                <span className="truncate px-1">{format(rangeStart, "yyyy")}</span>
+              </div>
+              <div
+                className="flex items-center justify-center text-[11px] text-muted-foreground"
+                style={{ height: MONTH_HEADER_H }}
+              >
+                <span className="truncate px-1">{format(rangeStart, "MMM")}</span>
+              </div>
+            </div>
+            <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {mondays.map((d) => (
                 <div
@@ -442,7 +457,7 @@ export function ActivityPlanner({
                 />
               ))}
 
-              {/* Full timeline header — scrolls as one piece with the body */}
+              {/* Full timeline header */}
               <div className="border-b bg-card">
                 {/* Years */}
                 <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
@@ -452,7 +467,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`yr-${y.year}`}
-                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
+                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
                         style={{ left, width, height: YEAR_HEADER_H }}
                       >
                         <span className="truncate px-1">{y.year}</span>
@@ -470,7 +485,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`mo-${m.toISOString()}`}
-                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
+                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
                         style={{ left, width, height: MONTH_HEADER_H }}
                       >
                         <span className="truncate px-1">{format(m, "MMM")}</span>
@@ -627,6 +642,7 @@ export function ActivityPlanner({
                   </div>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </CardContent>
