@@ -415,7 +415,6 @@ export function ActivityPlanner({
 
   const bodyHeight = Math.max(sorted.length * ROW_HEIGHT, 120);
   const headerHeight = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H + DAY_NUMBERS_HEADER_H;
-  const timelineContentHeight = headerHeight + bodyHeight;
   const weekSeparatorTop = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H;
   const weekSeparatorHeight = DAY_NUMBERS_HEADER_H + bodyHeight;
 
