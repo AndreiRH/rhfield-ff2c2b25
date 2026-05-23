@@ -1361,7 +1361,7 @@ function EditActivityDialog({
       error = res.error;
     }
     setBusy(false);
-    if (error) toast.error(toUserMessage(error));
+    if (error) toast.error(toUserMessage(error as Parameters<typeof toUserMessage>[0]));
     else {
       toast.success("Activity updated");
       onSaved();
