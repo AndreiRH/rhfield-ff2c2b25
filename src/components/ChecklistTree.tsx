@@ -296,6 +296,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     }
     onChange();
   };
+  // Toggle the "problem / needs attention" flag on this item AND cascade to all
+  // sublayers below it (so a flagged subtask group can be cleared in one click).
+  const toggleFlag = async () => {
+    const next = !item.flagged;
+    const ids = [item.id, ...descendants.map((d: any) => d.id)];
+    const { error } = await supabase.from("checklist_items")
+      .update({ flagged: next }).in("id", ids);
+    if (error) toast.error(toUserMessage(error)); else onChange();
+  };
   const itemParentCols = item.component_type_id
     ? { component_type_id: item.component_type_id as string }
     : { component_id: item.component_id as string };
