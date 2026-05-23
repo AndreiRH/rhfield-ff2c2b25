@@ -453,7 +453,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`yr-${y.year}`}
-                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
+                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
                         style={{ left, width, height: YEAR_HEADER_H }}
                       >
                         <span className="truncate px-1">{y.year}</span>
@@ -471,7 +471,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`mo-${m.toISOString()}`}
-                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
+                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
                         style={{ left, width, height: MONTH_HEADER_H }}
                       >
                         <span className="truncate px-1">{format(m, "MMM")}</span>
