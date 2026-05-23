@@ -23,15 +23,7 @@ export interface ExportLine {
   name?: string | null;
 }
 
-export type ExportFormat =
-  | "pdf"
-  | "xlsx"
-  | "csv"
-  | "ics"
-  | "calendar-pdf"
-  | "calendar-xlsx"
-  | "calendar-csv"
-  | "calendar-ics";
+export type ExportFormat = "pdf" | "xlsx" | "csv" | "ics";
 
 interface BuildOptions {
   activities: ExportActivity[];
@@ -117,84 +109,7 @@ function download(blob: Blob, filename: string) {
 
 const BOM = "\uFEFF";
 
-export function exportCsv(opts: BuildOptions) {
-  const { headers, rows } = buildRows(opts);
-  const escape = (v: unknown) => {
-    const s = String(v ?? "");
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = BOM + [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
-  download(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${fileBase(opts)}.csv`);
-}
-
-export function exportXlsx(opts: BuildOptions) {
-  const { headers, rows } = buildRows(opts);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Calendar");
-  XLSX.writeFile(wb, `${fileBase(opts)}.xlsx`);
-}
-
-export function exportPdf(opts: BuildOptions) {
-  const { headers, rows } = buildRows(opts);
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-  doc.setFontSize(14);
-  doc.text(`${opts.projectName} - ${opts.scopeLabel} calendar`, 40, 36);
-  doc.setFontSize(9);
-  doc.setTextColor(120);
-  doc.text(`Exported ${format(new Date(), "PPpp")}`, 40, 52);
-  autoTable(doc, {
-    head: [headers],
-    body: rows.map((r) => r.map((c) => String(c ?? ""))),
-    startY: 64,
-    styles: { fontSize: 8, cellPadding: 4 },
-    headStyles: { fillColor: [30, 30, 30] },
-  });
-  doc.save(`${fileBase(opts)}.pdf`);
-}
-
-function icsDate(d: string) {
-  return d.replace(/-/g, "");
-}
-function icsEscape(s: string) {
-  return s.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, "\\n");
-}
-
-export function exportIcs(opts: BuildOptions) {
-  const includeLine = !!opts.lines;
-  const stamp = format(new Date(), "yyyyMMdd'T'HHmmss");
-  const sorted = sortForExport(opts);
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Lovable//Calendar Export//EN",
-    "CALSCALE:GREGORIAN",
-  ];
-  for (const a of sorted) {
-    const end = new Date(`${a.end_date}T00:00:00Z`);
-    end.setUTCDate(end.getUTCDate() + 1);
-    const dtend = format(end, "yyyyMMdd");
-    const summary = includeLine
-      ? `${lineLabel(a.line_id, opts.lines)} - ${a.name}`
-      : a.name;
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:${a.id}@lovable-calendar`,
-      `DTSTAMP:${stamp}Z`,
-      `DTSTART;VALUE=DATE:${icsDate(a.start_date)}`,
-      `DTEND;VALUE=DATE:${dtend}`,
-      `SUMMARY:${icsEscape(summary)}`,
-      "END:VEVENT",
-    );
-  }
-  lines.push("END:VCALENDAR");
-  download(
-    new Blob([BOM + lines.join("\r\n")], { type: "text/calendar;charset=utf-8" }),
-    `${fileBase(opts)}.ics`,
-  );
-}
-
-// ---------- Visual calendar PDF (gantt-style) ----------
+// ---------- Color helpers ----------
 
 function hexToRgb(hex?: string): [number, number, number] {
   if (!hex) return [99, 102, 241];
@@ -213,41 +128,152 @@ function relLuminance([r, g, b]: [number, number, number]) {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
 
-export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
+// ---------- ICS ----------
+
+function icsDate(d: string) {
+  return d.replace(/-/g, "");
+}
+function icsEscape(s: string) {
+  return s.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, "\\n");
+}
+
+export function exportIcs(opts: BuildOptions) {
+  const includeLine = !!opts.lines;
+  const stamp = format(new Date(), "yyyyMMdd'T'HHmmss");
+  const sorted = sortForExport(opts);
+  const out = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Lovable//Calendar Export//EN",
+    "CALSCALE:GREGORIAN",
+  ];
+  for (const a of sorted) {
+    const end = new Date(`${a.end_date}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    const dtend = format(end, "yyyyMMdd");
+    const summary = includeLine
+      ? `${lineLabel(a.line_id, opts.lines)} - ${a.name}`
+      : a.name;
+    out.push(
+      "BEGIN:VEVENT",
+      `UID:${a.id}@lovable-calendar`,
+      `DTSTAMP:${stamp}Z`,
+      `DTSTART;VALUE=DATE:${icsDate(a.start_date)}`,
+      `DTEND;VALUE=DATE:${dtend}`,
+      `SUMMARY:${icsEscape(summary)}`,
+      "END:VEVENT",
+    );
+  }
+  out.push("END:VCALENDAR");
+  download(
+    new Blob([BOM + out.join("\r\n")], { type: "text/calendar;charset=utf-8" }),
+    `${fileBase(opts)}.ics`,
+  );
+}
+
+// ---------- Calendar gantt helpers ----------
+
+function buildCalendarDays(range: CalendarRange): Date[] {
+  const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
+  const out: Date[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(range.start);
+    d.setDate(d.getDate() + i);
+    out.push(d);
+  }
+  return out;
+}
+
+function groupByLine(opts: BuildOptions) {
+  const sorted = sortForExport(opts);
+  const lines = opts.lines ?? [];
+  const byLine = new Map<string, ExportActivity[]>();
+  for (const a of sorted) {
+    const key = a.line_id ?? "_";
+    if (!byLine.has(key)) byLine.set(key, []);
+    byLine.get(key)!.push(a);
+  }
+  const ordered: { line?: ExportLine; activities: ExportActivity[] }[] = [];
+  if (lines.length > 0) {
+    for (const l of lines) {
+      ordered.push({ line: l, activities: byLine.get(l.id) ?? [] });
+    }
+  } else {
+    ordered.push({ activities: sorted });
+  }
+  return ordered;
+}
+
+// ---------- Combined PDF ----------
+
+export function exportPdf(opts: BuildOptions, range: CalendarRange) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX = 32;
+  const marginTop = 32;
+
+  const drawTitle = (subtitle: string) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(20);
+    doc.text(`${opts.projectName} - ${opts.scopeLabel}`, marginX, marginTop);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(110);
+    doc.text(subtitle, marginX, marginTop + 14);
+  };
+
+  // ===== Section 1: Activity list (all activities) =====
+  const { headers, rows } = buildRows(opts);
+  drawTitle(`Activities - Exported ${format(new Date(), "PPpp")}`);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows.map((r) => r.map((c) => String(c ?? ""))),
+    startY: marginTop + 26,
+    margin: { left: marginX, right: marginX },
+    styles: { fontSize: 8, cellPadding: 5, font: "helvetica", textColor: 40, lineColor: 220, lineWidth: 0.3 },
+    headStyles: { fillColor: [40, 44, 60], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [248, 249, 252] },
+  });
+
+  // ===== Section 2: Calendar view (gantt, range-filtered visual) =====
+  doc.addPage();
+  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
+  drawTitle(`Calendar view - ${rangeLabel}`);
+  drawGantt(doc, opts, range, {
+    marginX,
+    top: marginTop + 28,
+    pageH,
+    pageW,
+  });
+
+  doc.save(`${fileBase(opts)}.pdf`);
+}
+
+function drawGantt(
+  doc: jsPDF,
+  opts: BuildOptions,
+  range: CalendarRange,
+  layout: { marginX: number; top: number; pageH: number; pageW: number },
+) {
   const sorted = sortForExport(opts);
   const lines = opts.lines ?? (() => {
-    // single line case: synthesize one bucket from scopeLabel
     const id = sorted[0]?.line_id ?? "_";
     return [{ id, number: 1, name: opts.scopeLabel }] as ExportLine[];
   })();
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const marginX = 28;
-  const marginTop = 28;
-
-  // Title
-  doc.setFontSize(13);
-  doc.setTextColor(20);
-  doc.text(`${opts.projectName} - ${opts.scopeLabel} calendar`, marginX, marginTop);
-  doc.setFontSize(8);
-  doc.setTextColor(120);
-  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
-  doc.text(`${rangeLabel}  -  Exported ${format(new Date(), "PPpp")}`, marginX, marginTop + 12);
-
-  // Layout
+  const { marginX, pageH, pageW } = layout;
   const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
-  const labelW = 70;
-  const marginRight = marginX;
+  const labelW = 80;
   const gridLeft = marginX + labelW;
-  const gridTop = marginTop + 30;
-  const gridRight = pageW - marginRight;
+  const gridRight = pageW - marginX;
   const gridW = gridRight - gridLeft;
   const dayW = gridW / totalDays;
   const headerYearH = 14;
   const headerMonthH = 14;
-  const headerWeekdayH = dayW >= 6 ? 9 : 0;
+  const headerWeekdayH = dayW >= 6 ? 10 : 0;
   const headerDayH = 12;
   const headerH = headerYearH + headerMonthH + headerWeekdayH + headerDayH;
   const rowH = 18;
@@ -255,15 +281,8 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   const dayToX = (d: Date) =>
     gridLeft + differenceInCalendarDays(d, range.start) * dayW;
 
-  // Precompute days
-  const days: Date[] = [];
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(range.start);
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
+  const days: Date[] = buildCalendarDays(range);
 
-  // Per-line lane packing + row layout (compute first so we know body height)
   type Placed = ExportActivity & { lane: number };
   const linePacks = new Map<string, { lanes: number; placed: Placed[] }>();
   for (const l of lines) {
@@ -292,14 +311,25 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   }
 
   const drawHeader = (top: number) => {
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.5);
-    doc.setFillColor(245, 245, 247);
+    doc.setFont("helvetica", "normal");
+    doc.setDrawColor(210);
+    doc.setLineWidth(0.4);
+    doc.setFillColor(244, 245, 248);
     doc.rect(gridLeft, top, gridW, headerH, "F");
+
+    // Label column header
+    doc.setFillColor(40, 44, 60);
+    doc.rect(marginX, top, labelW, headerH, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Line", marginX + 6, top + headerH / 2 + 3);
+    doc.setFont("helvetica", "normal");
 
     // Years
     doc.setTextColor(40);
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
     for (const [year, { s, e }] of yearMap.entries()) {
       const x = dayToX(s);
       const w = (differenceInCalendarDays(e, s) + 1) * dayW;
@@ -307,7 +337,8 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.text(String(year), x + w / 2, top + 10, { align: "center" });
     }
     // Months
-    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
     for (const m of months) {
       const ms = m < range.start ? range.start : m;
       const me = endOfMonth(m) > range.end ? range.end : endOfMonth(m);
@@ -316,86 +347,84 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.rect(x, top + headerYearH, w, headerMonthH, "S");
       if (w > 14) doc.text(format(m, "MMM"), x + w / 2, top + headerYearH + 10, { align: "center" });
     }
-    // Weekday letters band
     const wdTop = top + headerYearH + headerMonthH;
     const dayTop = wdTop + headerWeekdayH;
     if (headerWeekdayH > 0) {
       const letters = ["S", "M", "T", "W", "T", "F", "S"];
-      doc.setFontSize(5.5);
+      doc.setFontSize(6);
       for (const d of days) {
         const dow = d.getDay();
         const x = dayToX(d);
         if (dow === 0 || dow === 6) {
-          doc.setFillColor(232, 234, 240);
+          doc.setFillColor(228, 232, 240);
           doc.rect(x, wdTop, dayW, headerWeekdayH, "F");
-          doc.setTextColor(80, 95, 140);
+          doc.setTextColor(70, 90, 140);
         } else {
           doc.setTextColor(120);
         }
-        if (dayW >= 5) doc.text(letters[dow], x + dayW / 2, wdTop + 6.5, { align: "center" });
+        if (dayW >= 5) doc.text(letters[dow], x + dayW / 2, wdTop + 7, { align: "center" });
       }
     }
-    // Day numbers
     if (dayW >= 8) {
-      doc.setFontSize(5.5);
+      doc.setFontSize(6);
       for (const d of days) {
         const dow = d.getDay();
         const x = dayToX(d);
         if (dow === 0 || dow === 6) {
-          doc.setFillColor(238, 240, 246);
+          doc.setFillColor(234, 238, 246);
           doc.rect(x, dayTop, dayW, headerDayH, "F");
-          doc.setTextColor(80);
+          doc.setTextColor(70);
         } else {
           doc.setTextColor(110);
         }
         doc.text(String(d.getDate()), x + dayW / 2, dayTop + 8, { align: "center" });
       }
-    } else {
-      doc.setFontSize(5.5);
-      doc.setTextColor(110);
-      for (const m of months) {
-        const ms = m < range.start ? range.start : m;
-        const x = dayToX(ms);
-        doc.text("1", x + 2, dayTop + 8);
-      }
     }
+    doc.setDrawColor(210);
+    doc.setLineWidth(0.4);
+    doc.rect(gridLeft, top, gridW, headerH, "S");
   };
 
-  drawHeader(gridTop);
+  drawHeader(layout.top);
+  let y = layout.top + headerH;
+  const firstRowY = y;
 
-  // Rows
-  let y = gridTop + headerH;
-  const rowStartY = y;
-  doc.setFontSize(7);
   for (const l of lines) {
     const pack = linePacks.get(l.id) ?? { lanes: 1, placed: [] as Placed[] };
     const lineRowH = pack.lanes * rowH;
 
-    if (y + lineRowH > pageH - 24) {
-      // Overflow: new page with re-drawn headers
+    if (y + lineRowH > pageH - 28) {
       doc.addPage();
-      drawHeader(marginTop);
-      y = marginTop + headerH;
+      drawHeader(layout.top);
+      y = layout.top + headerH;
     }
 
-    // Label background
-    doc.setFillColor(252, 252, 253);
+    // Label
+    doc.setFillColor(250, 250, 252);
     doc.rect(marginX, y, labelW, lineRowH, "F");
     doc.setDrawColor(220);
     doc.rect(marginX, y, labelW, lineRowH, "S");
-    doc.setTextColor(60);
+    doc.setTextColor(40);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(`Line ${String(l.number).padStart(2, "0")}`, marginX + 4, y + 11);
+    doc.text(`Line ${String(l.number).padStart(2, "0")}`, marginX + 6, y + 11);
+    if (l.name) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(110);
+      const sub = doc.splitTextToSize(l.name, labelW - 12)[0];
+      doc.text(String(sub), marginX + 6, y + 22);
+    }
 
-    // Grid background per line
+    // Grid body background
     doc.setFillColor(255, 255, 255);
     doc.rect(gridLeft, y, gridW, lineRowH, "F");
 
-    // Weekend column shading inside body row
+    // Weekend shading
     for (const d of days) {
       const dow = d.getDay();
       if (dow !== 0 && dow !== 6) continue;
-      doc.setFillColor(243, 245, 250);
+      doc.setFillColor(243, 246, 251);
       doc.rect(dayToX(d), y, dayW, lineRowH, "F");
     }
 
@@ -407,8 +436,8 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.line(x, y, x, y + lineRowH);
     }
 
-    // Weekly (Monday) vertical lines
-    doc.setDrawColor(190);
+    // Weekly Monday lines
+    doc.setDrawColor(200);
     doc.setLineWidth(0.2);
     for (const d of days) {
       if (d.getDay() !== 1) continue;
@@ -416,12 +445,10 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.line(x, y, x, y + lineRowH);
     }
 
-    // Row border
-    doc.setDrawColor(235);
+    doc.setDrawColor(225);
     doc.setLineWidth(0.4);
     doc.rect(gridLeft, y, gridW, lineRowH, "S");
 
-    // Bars
     for (const a of pack.placed) {
       const s = parseISO(a.start_date);
       const e = parseISO(a.end_date);
@@ -436,93 +463,95 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.setDrawColor(Math.max(0, r - 40), Math.max(0, g - 40), Math.max(0, b - 40));
       doc.setLineWidth(0.3);
       doc.roundedRect(bx, by, bw, barH, 2, 2, "FD");
-
-      const text = a.name;
       const textColor = relLuminance([r, g, b]) > 0.5 ? 20 : 245;
       doc.setTextColor(textColor);
       doc.setFontSize(6.5);
       const maxTextW = bw - 4;
       if (maxTextW > 10) {
-        const lines2 = doc.splitTextToSize(text, maxTextW);
+        const lines2 = doc.splitTextToSize(a.name, maxTextW);
         doc.text(String(lines2[0]), bx + 3, by + barH / 2 + 2);
       } else {
         doc.setTextColor(60);
-        doc.text(text, bx + bw + 2, by + barH / 2 + 2);
+        doc.text(a.name, bx + bw + 2, by + barH / 2 + 2);
       }
     }
 
     y += lineRowH;
   }
 
-  // Weekly Monday lines through the header day band to tie header to body
+  // Header-to-body weekly lines
   doc.setDrawColor(180);
   doc.setLineWidth(0.2);
-  const wkTop = gridTop + headerYearH + headerMonthH;
+  const wkTop = layout.top + headerYearH + headerMonthH;
   for (const d of days) {
     if (d.getDay() !== 1) continue;
     const x = dayToX(d);
-    doc.line(x, wkTop, x, rowStartY);
+    doc.line(x, wkTop, x, firstRowY);
   }
-
-  doc.save(`${fileBase(opts)}-view.pdf`);
 }
 
-// ---------- Calendar-view: spreadsheet/text variants ----------
+// ---------- Combined Excel ----------
 
-function buildCalendarDays(range: CalendarRange): Date[] {
-  const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
-  const out: Date[] = [];
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(range.start);
-    d.setDate(d.getDate() + i);
-    out.push(d);
-  }
-  return out;
-}
-
-function buildCalendarRows(opts: BuildOptions, range: CalendarRange) {
-  const sorted = sortForExport(opts).filter((a) => {
-    const s = parseISO(a.start_date);
-    const e = parseISO(a.end_date);
-    return e >= range.start && s <= range.end;
-  });
-  const lines = opts.lines ?? [];
-  const byLine = new Map<string, ExportActivity[]>();
-  for (const a of sorted) {
-    const key = a.line_id ?? "_";
-    if (!byLine.has(key)) byLine.set(key, []);
-    byLine.get(key)!.push(a);
-  }
-  const ordered: { line?: ExportLine; activity: ExportActivity }[] = [];
-  if (lines.length > 0) {
-    for (const l of lines) {
-      const acts = byLine.get(l.id) ?? [];
-      for (const a of acts) ordered.push({ line: l, activity: a });
-    }
-  } else {
-    for (const a of sorted) ordered.push({ activity: a });
-  }
-  return ordered;
-}
-
-const LEFT_HEADERS = ["Line", "Activity", "Start", "End", "Days"];
-
-export async function exportCalendarXlsx(opts: BuildOptions, range: CalendarRange) {
+export async function exportXlsx(opts: BuildOptions, range: CalendarRange) {
   const XLSXStyle = (await import("xlsx-js-style")).default;
+  const wb = XLSXStyle.utils.book_new();
+
+  // ===== Sheet 1: Activities (full list) =====
+  const { headers, rows } = buildRows(opts);
+  const listAoa: (string | number)[][] = [headers, ...rows.map((r) => r.map((c) => (c ?? "") as string | number))];
+  const wsList = XLSXStyle.utils.aoa_to_sheet(listAoa);
+
+  const borderThin = { style: "thin", color: { rgb: "DDDDDD" } };
+  const fullBorder = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
+  const headFill = { patternType: "solid", fgColor: { rgb: "282C3C" } };
+  const altFill = { patternType: "solid", fgColor: { rgb: "F8F9FC" } };
+
+  for (let c = 0; c < headers.length; c++) {
+    const ref = XLSXStyle.utils.encode_cell({ r: 0, c });
+    const cell = wsList[ref] ?? { v: headers[c], t: "s" };
+    cell.s = {
+      font: { sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+      fill: headFill,
+      alignment: { vertical: "center", horizontal: "left" },
+      border: fullBorder,
+    };
+    wsList[ref] = cell;
+  }
+  for (let r = 1; r <= rows.length; r++) {
+    for (let c = 0; c < headers.length; c++) {
+      const ref = XLSXStyle.utils.encode_cell({ r, c });
+      const cell = wsList[ref] ?? { v: "", t: "s" };
+      cell.s = {
+        font: { sz: 9 },
+        fill: r % 2 === 0 ? altFill : { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
+        alignment: { vertical: "center" },
+        border: fullBorder,
+      };
+      wsList[ref] = cell;
+    }
+  }
+  wsList["!cols"] = headers.map((h) => ({
+    wch: h === "Activity" || h === "Follows" || h === "Line" ? 26 : 14,
+  }));
+  (wsList as Record<string, unknown>)["!sheetView"] = [{ state: "frozen", ySplit: 1 }];
+  XLSXStyle.utils.book_append_sheet(wb, wsList, "Activities");
+
+  // ===== Sheet 2: Calendar (gantt grid for range) =====
   const days = buildCalendarDays(range);
-  const rows = buildCalendarRows(opts, range);
-  const leftCols = LEFT_HEADERS.length;
+  const grouped = groupByLine(opts);
+  const LEFT = ["Line", "Activity", "Start", "End", "Days"];
+  const leftCols = LEFT.length;
 
   const aoa: (string | number | null)[][] = [];
-  aoa.push([...LEFT_HEADERS.map(() => ""), ...days.map((d) => d.getFullYear())]);
-  aoa.push([...LEFT_HEADERS.map(() => ""), ...days.map((d) => format(d, "MMM"))]);
-  aoa.push([...LEFT_HEADERS.map(() => ""), ...days.map((d) => d.getDate())]);
-  aoa.push([
-    ...LEFT_HEADERS,
-    ...days.map((d) => ["S", "M", "T", "W", "T", "F", "S"][d.getDay()]),
-  ]);
+  aoa.push([...LEFT.map(() => ""), ...days.map((d) => d.getFullYear())]);
+  aoa.push([...LEFT.map(() => ""), ...days.map((d) => format(d, "MMM"))]);
+  aoa.push([...LEFT.map(() => ""), ...days.map((d) => d.getDate())]);
+  aoa.push([...LEFT, ...days.map((d) => ["S", "M", "T", "W", "T", "F", "S"][d.getDay()])]);
 
-  for (const { line, activity } of rows) {
+  const flat: { line?: ExportLine; activity: ExportActivity }[] = [];
+  for (const g of grouped) for (const a of g.activities) flat.push({ line: g.line, activity: a });
+
+  for (const { line, activity } of flat) {
     const lineLabelText = line
       ? `Line ${String(line.number).padStart(2, "0")}${line.name ? ` - ${line.name}` : ""}`
       : "";
@@ -535,81 +564,80 @@ export async function exportCalendarXlsx(opts: BuildOptions, range: CalendarRang
     ];
     const s = parseISO(activity.start_date);
     const e = parseISO(activity.end_date);
-    const cs = s < range.start ? range.start : s;
-    const ce = e > range.end ? range.end : e;
-    const startIdx = differenceInCalendarDays(cs, range.start);
-    const endIdx = differenceInCalendarDays(ce, range.start);
-    for (let i = 0; i < days.length; i++) {
-      dataRow.push(i >= startIdx && i <= endIdx ? "" : null);
+    const inRange = !(e < range.start || s > range.end);
+    if (!inRange) {
+      for (let i = 0; i < days.length; i++) dataRow.push(null);
+    } else {
+      const cs = s < range.start ? range.start : s;
+      const ce = e > range.end ? range.end : e;
+      const startIdx = differenceInCalendarDays(cs, range.start);
+      const endIdx = differenceInCalendarDays(ce, range.start);
+      for (let i = 0; i < days.length; i++) {
+        dataRow.push(i >= startIdx && i <= endIdx ? "" : null);
+      }
     }
     aoa.push(dataRow);
   }
 
   const ws = XLSXStyle.utils.aoa_to_sheet(aoa);
-
-  const headerFill = { patternType: "solid", fgColor: { rgb: "F4F4F7" } };
   const weekendFill = { patternType: "solid", fgColor: { rgb: "E8EAF0" } };
-  const borderThin = { style: "thin", color: { rgb: "DDDDDD" } };
-  const fullBorder = { top: borderThin, bottom: borderThin, left: borderThin, right: borderThin };
-  const headerFont = { sz: 9, bold: true, color: { rgb: "333333" } };
+  const ganttHeadFill = { patternType: "solid", fgColor: { rgb: "F4F4F7" } };
+  const labelHeadFill = { patternType: "solid", fgColor: { rgb: "282C3C" } };
 
   const cellRef = (r: number, c: number) => XLSXStyle.utils.encode_cell({ r, c });
 
-  // Header rows
   for (let c = 0; c < leftCols + days.length; c++) {
     for (let r = 0; r < 4; r++) {
       const ref = cellRef(r, c);
       const cell = ws[ref] ?? { v: "", t: "s" };
       const isDayCol = c >= leftCols;
       const isWeekend = isDayCol && (days[c - leftCols].getDay() === 0 || days[c - leftCols].getDay() === 6);
+      const isLabelHeader = !isDayCol && r === 3;
       cell.s = {
-        font: headerFont,
-        alignment: { horizontal: r === 3 && !isDayCol ? "left" : "center", vertical: "center" },
-        fill: isWeekend ? weekendFill : headerFill,
+        font: isLabelHeader
+          ? { sz: 9, bold: true, color: { rgb: "FFFFFF" } }
+          : { sz: 9, bold: r === 0, color: { rgb: "333333" } },
+        alignment: { horizontal: isLabelHeader ? "left" : "center", vertical: "center" },
+        fill: isLabelHeader ? labelHeadFill : isWeekend ? weekendFill : ganttHeadFill,
         border: fullBorder,
       };
       ws[ref] = cell;
     }
   }
 
-  // Data rows
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 0; i < flat.length; i++) {
     const r = 4 + i;
-    const { activity } = rows[i];
+    const { activity } = flat[i];
     const colorHex = (activity.color ?? "#6366F1").replace("#", "").toUpperCase().padEnd(6, "0").slice(0, 6);
     const [rr, gg, bb] = hexToRgb(`#${colorHex}`);
     const textRgb = relLuminance([rr, gg, bb]) > 0.5 ? "1A1A1A" : "FFFFFF";
+    const altRowFill = i % 2 === 1 ? altFill : { patternType: "solid", fgColor: { rgb: "FFFFFF" } };
 
     for (let c = 0; c < leftCols; c++) {
       const ref = cellRef(r, c);
       const cell = ws[ref] ?? { v: "", t: "s" };
-      cell.s = { font: { sz: 9 }, alignment: { vertical: "center" }, border: fullBorder };
+      cell.s = { font: { sz: 9 }, alignment: { vertical: "center" }, fill: altRowFill, border: fullBorder };
       ws[ref] = cell;
     }
-
     for (let c = leftCols; c < leftCols + days.length; c++) {
       const day = days[c - leftCols];
       const isWeekend = day.getDay() === 0 || day.getDay() === 6;
       const ref = cellRef(r, c);
       const cell = ws[ref] ?? { v: null, t: "z" };
       const filled = cell.v === "";
-      if (filled) {
-        cell.v = "";
-        cell.t = "s";
-        cell.s = {
-          fill: { patternType: "solid", fgColor: { rgb: colorHex } },
-          font: { sz: 8, color: { rgb: textRgb } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: fullBorder,
-        };
-      } else {
-        cell.v = "";
-        cell.t = "s";
-        cell.s = {
-          fill: isWeekend ? weekendFill : { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
-          border: fullBorder,
-        };
-      }
+      cell.v = "";
+      cell.t = "s";
+      cell.s = filled
+        ? {
+            fill: { patternType: "solid", fgColor: { rgb: colorHex } },
+            font: { sz: 8, color: { rgb: textRgb } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: fullBorder,
+          }
+        : {
+            fill: isWeekend ? weekendFill : altRowFill,
+            border: fullBorder,
+          };
       ws[ref] = cell;
     }
   }
@@ -622,110 +650,106 @@ export async function exportCalendarXlsx(opts: BuildOptions, range: CalendarRang
     { wch: 6 },
     ...days.map(() => ({ wch: 3 })),
   ];
-  // Freeze panes
   (ws as Record<string, unknown>)["!sheetView"] = [
     { state: "frozen", xSplit: leftCols, ySplit: 4 },
   ];
-
   ws["!ref"] = XLSXStyle.utils.encode_range({
     s: { r: 0, c: 0 },
-    e: { r: 3 + rows.length, c: leftCols + days.length - 1 },
+    e: { r: 3 + flat.length, c: leftCols + days.length - 1 },
   });
 
-  const wb = XLSXStyle.utils.book_new();
   XLSXStyle.utils.book_append_sheet(wb, ws, "Calendar");
-  XLSXStyle.writeFile(wb, `${fileBase(opts)}-view.xlsx`);
+  XLSXStyle.writeFile(wb, `${fileBase(opts)}.xlsx`);
 }
 
-export function exportCalendarCsv(opts: BuildOptions, range: CalendarRange) {
-  const days = buildCalendarDays(range);
-  const rows = buildCalendarRows(opts, range);
+// ---------- Combined CSV ----------
 
+export function exportCsv(opts: BuildOptions, range: CalendarRange) {
   const escape = (v: unknown) => {
     const s = String(v ?? "");
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-
   const out: string[] = [];
-  const pad = LEFT_HEADERS.map(() => "");
+
+  // Section 1: Activities
+  out.push(`# ${opts.projectName} - ${opts.scopeLabel}`);
+  out.push(`# Section: Activities (full list)`);
+  out.push("");
+  const { headers, rows } = buildRows(opts);
+  out.push(headers.map(escape).join(","));
+  for (const r of rows) out.push(r.map(escape).join(","));
+
+  out.push("");
+  out.push("");
+  out.push(`# Section: Calendar view (${format(range.start, "yyyy-MM-dd")} to ${format(range.end, "yyyy-MM-dd")})`);
+  out.push("");
+
+  // Section 2: Calendar grid
+  const days = buildCalendarDays(range);
+  const grouped = groupByLine(opts);
+  const LEFT = ["Line", "Activity", "Start", "End", "Days"];
+  const pad = LEFT.map(() => "");
   out.push([...pad, ...days.map((d) => String(d.getFullYear()))].map(escape).join(","));
   out.push([...pad, ...days.map((d) => format(d, "MMM"))].map(escape).join(","));
   out.push([...pad, ...days.map((d) => String(d.getDate()))].map(escape).join(","));
-  out.push(
-    [
-      ...LEFT_HEADERS,
-      ...days.map((d) => ["S", "M", "T", "W", "T", "F", "S"][d.getDay()]),
-    ]
-      .map(escape)
-      .join(","),
-  );
+  out.push([...LEFT, ...days.map((d) => ["S", "M", "T", "W", "T", "F", "S"][d.getDay()])].map(escape).join(","));
 
-  for (const { line, activity } of rows) {
-    const lineLabelText = line
-      ? `Line ${String(line.number).padStart(2, "0")}${line.name ? ` - ${line.name}` : ""}`
-      : "";
-    const left = [
-      lineLabelText,
-      activity.name,
-      activity.start_date,
-      activity.end_date,
-      activity.duration_days ?? "",
-    ];
-    const s = parseISO(activity.start_date);
-    const e = parseISO(activity.end_date);
-    const cs = s < range.start ? range.start : s;
-    const ce = e > range.end ? range.end : e;
-    const startIdx = differenceInCalendarDays(cs, range.start);
-    const endIdx = differenceInCalendarDays(ce, range.start);
-    const span = endIdx - startIdx + 1;
-    const text = activity.name;
-    const cells: string[] = [];
-    for (let i = 0; i < days.length; i++) {
-      if (i < startIdx || i > endIdx) cells.push("");
-      else if (span >= text.length) {
-        const local = i - startIdx;
-        cells.push(local < text.length ? text[local] : "");
-      } else cells.push("X");
+  for (const g of grouped) {
+    for (const activity of g.activities) {
+      const lineLabelText = g.line
+        ? `Line ${String(g.line.number).padStart(2, "0")}${g.line.name ? ` - ${g.line.name}` : ""}`
+        : "";
+      const left = [
+        lineLabelText,
+        activity.name,
+        activity.start_date,
+        activity.end_date,
+        activity.duration_days ?? "",
+      ];
+      const s = parseISO(activity.start_date);
+      const e = parseISO(activity.end_date);
+      const cells: string[] = [];
+      if (e < range.start || s > range.end) {
+        for (let i = 0; i < days.length; i++) cells.push("");
+      } else {
+        const cs = s < range.start ? range.start : s;
+        const ce = e > range.end ? range.end : e;
+        const startIdx = differenceInCalendarDays(cs, range.start);
+        const endIdx = differenceInCalendarDays(ce, range.start);
+        const span = endIdx - startIdx + 1;
+        const text = activity.name;
+        for (let i = 0; i < days.length; i++) {
+          if (i < startIdx || i > endIdx) cells.push("");
+          else if (span >= text.length) {
+            const local = i - startIdx;
+            cells.push(local < text.length ? text[local] : "");
+          } else cells.push("X");
+        }
+      }
+      out.push([...left, ...cells].map(escape).join(","));
     }
-    out.push([...left, ...cells].map(escape).join(","));
   }
 
   download(
     new Blob([BOM + out.join("\n")], { type: "text/csv;charset=utf-8" }),
-    `${fileBase(opts)}-view.csv`,
+    `${fileBase(opts)}.csv`,
   );
 }
 
-export function exportCalendarIcs(opts: BuildOptions, range: CalendarRange) {
-  const filtered = sortForExport(opts).filter((a) => {
-    const s = parseISO(a.start_date);
-    const e = parseISO(a.end_date);
-    return e >= range.start && s <= range.end;
-  });
-  exportIcs({ ...opts, activities: filtered });
-}
+// ---------- Dispatcher ----------
 
 export function runExport(fmt: ExportFormat, opts: BuildOptions, range?: CalendarRange) {
   switch (fmt) {
-    case "csv":
-      return exportCsv(opts);
-    case "xlsx":
-      return exportXlsx(opts);
-    case "pdf":
-      return exportPdf(opts);
     case "ics":
       return exportIcs(opts);
-    case "calendar-pdf":
-      if (!range) throw new Error("Calendar PDF export requires a date range");
-      return exportCalendarPdf(opts, range);
-    case "calendar-xlsx":
-      if (!range) throw new Error("Calendar Excel export requires a date range");
-      return exportCalendarXlsx(opts, range);
-    case "calendar-csv":
-      if (!range) throw new Error("Calendar CSV export requires a date range");
-      return exportCalendarCsv(opts, range);
-    case "calendar-ics":
-      if (!range) throw new Error("Calendar ICS export requires a date range");
-      return exportCalendarIcs(opts, range);
+    case "pdf":
+      if (!range) throw new Error("PDF export requires a date range");
+      return exportPdf(opts, range);
+    case "xlsx":
+      if (!range) throw new Error("Excel export requires a date range");
+      return exportXlsx(opts, range);
+    case "csv":
+      if (!range) throw new Error("CSV export requires a date range");
+      return exportCsv(opts, range);
   }
 }
