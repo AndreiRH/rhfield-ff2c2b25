@@ -679,20 +679,11 @@ export function exportCsv(opts: BuildOptions, range: CalendarRange) {
   };
   const out: string[] = [];
 
-  // Section 1: Activities
+  // Section 1: Calendar view
   out.push(`# ${opts.projectName} - ${opts.scopeLabel}`);
-  out.push(`# Section: Activities (full list)`);
-  out.push("");
-  const { headers, rows } = buildRows(opts);
-  out.push(headers.map(escape).join(","));
-  for (const r of rows) out.push(r.map(escape).join(","));
-
-  out.push("");
-  out.push("");
   out.push(`# Section: Calendar view (${format(range.start, "yyyy-MM-dd")} to ${format(range.end, "yyyy-MM-dd")})`);
   out.push("");
 
-  // Section 2: Calendar grid
   const days = buildCalendarDays(range);
   const grouped = groupByLine(opts);
   const LEFT = ["Line", "Activity", "Start", "End", "Days"];
@@ -737,6 +728,16 @@ export function exportCsv(opts: BuildOptions, range: CalendarRange) {
       out.push([...left, ...cells].map(escape).join(","));
     }
   }
+
+  out.push("");
+  out.push("");
+
+  // Section 2: Activities (full list)
+  out.push(`# Section: Activities (full list)`);
+  out.push("");
+  const { headers, rows } = buildRows(opts);
+  out.push(headers.map(escape).join(","));
+  for (const r of rows) out.push(r.map(escape).join(","));
 
   download(
     new Blob([BOM + out.join("\n")], { type: "text/csv;charset=utf-8" }),
