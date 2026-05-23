@@ -354,6 +354,14 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 );
               })}
 
+              {weekendDays.map((d) => (
+                <div
+                  key={`we-body-${d.toISOString()}`}
+                  className="absolute top-0 bottom-0 pointer-events-none bg-muted/40"
+                  style={{ left: dayToX(d), width: DAY_WIDTH }}
+                />
+              ))}
+
               {lineRowInfo.map((info) => (
                 <div
                   key={`sep-${info.id}`}
