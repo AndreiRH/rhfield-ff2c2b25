@@ -551,8 +551,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
         inReorder ? "bg-muted/30" :
-        item.flagged ? "bg-destructive/15" :
-        descFlagged > 0 ? "bg-destructive/5" : ""
+        allFlagged ? "bg-destructive/15" : ""
       }`}
       onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
