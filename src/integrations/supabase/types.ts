@@ -86,6 +86,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           done: boolean
+          flagged: boolean
           id: string
           label: string
           local_line_id: string | null
@@ -105,6 +106,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           done?: boolean
+          flagged?: boolean
           id?: string
           label: string
           local_line_id?: string | null
@@ -124,6 +126,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           done?: boolean
+          flagged?: boolean
           id?: string
           label?: string
           local_line_id?: string | null

@@ -1,0 +1,2 @@
+ALTER TABLE public.checklist_items ADD COLUMN IF NOT EXISTS flagged boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS checklist_items_flagged_idx ON public.checklist_items (flagged) WHERE flagged = true;
