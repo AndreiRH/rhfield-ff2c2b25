@@ -100,7 +100,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const [lines, setLines] = useState<LineLite[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mobileHeaderTrackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -141,30 +140,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     [days],
   );
 
-  const syncMobileHeader = () => {
-    const el = scrollRef.current;
-    const track = mobileHeaderTrackRef.current;
-    if (!el || !track) return;
-    track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    const track = mobileHeaderTrackRef.current;
-    if (!el || !track) return;
-    const apply = () => {
-      track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
-    };
-    apply();
-    const onScroll = () => apply();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      ro.disconnect();
-    };
-  }, [lines.length]);
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
@@ -222,7 +197,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     const el = scrollRef.current;
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollLeft = target;
-    syncMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines.length]);
 
