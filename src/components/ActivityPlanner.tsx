@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   format,
   parseISO,
@@ -1095,7 +1095,7 @@ function SortableActivityRow({
     id: a.id,
     disabled,
   });
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     borderColor: a.color,
