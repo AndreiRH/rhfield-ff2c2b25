@@ -271,7 +271,18 @@ export function ActivityPlanner({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const sync = () => updateMobileHeader();
+    const sync = () => {
+      updateMobileHeader();
+      if (onVisibleRangeChange) {
+        const startDay = Math.floor(el.scrollLeft / DAY_WIDTH);
+        const endDay = Math.ceil((el.scrollLeft + el.clientWidth) / DAY_WIDTH) - 1;
+        const s = new Date(rangeStart);
+        s.setDate(s.getDate() + Math.max(0, startDay));
+        const e = new Date(rangeStart);
+        e.setDate(e.getDate() + Math.max(startDay, endDay));
+        onVisibleRangeChange({ start: s, end: e });
+      }
+    };
     sync();
     el.addEventListener("scroll", sync, { passive: true });
     const ro = new ResizeObserver(sync);
@@ -280,7 +291,7 @@ export function ActivityPlanner({
       el.removeEventListener("scroll", sync);
       ro.disconnect();
     };
-  }, [months, years]);
+  }, [months, years, onVisibleRangeChange, rangeStart]);
 
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
