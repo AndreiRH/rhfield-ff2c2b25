@@ -141,9 +141,15 @@ export function ActivityPlanner({
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<LineActivity | null>(null);
   const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState<"idle" | "copy" | "delete" | "reorder">("idle");
 
   const sorted = useMemo(
-    () => [...activities].sort((a, b) => a.start_date.localeCompare(b.start_date)),
+    () =>
+      [...activities].sort((a, b) => {
+        const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        if (so !== 0) return so;
+        return a.start_date.localeCompare(b.start_date);
+      }),
     [activities],
   );
 
