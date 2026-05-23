@@ -557,6 +557,15 @@ export function ActivityPlanner({
                   );
                 })}
 
+                {/* Weekend column shading */}
+                {weekendDays.map((d) => (
+                  <div
+                    key={`we-body-${d.toISOString()}`}
+                    className="absolute top-0 bottom-0 pointer-events-none bg-muted/40"
+                    style={{ left: dayToX(d), width: DAY_WIDTH }}
+                  />
+                ))}
+
                 {/* Hot planned band */}
                 {line.hot_planned_start && line.hot_planned_end && (
                   <div
