@@ -502,6 +502,18 @@ export function ActivityPlanner({
       <Card>
         <CardContent className="p-0">
           <div className="relative">
+            <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+              <div
+                ref={mobileYearRowRef}
+                className="flex overflow-hidden border-b border-border/40"
+                style={{ height: YEAR_HEADER_H }}
+              />
+              <div
+                ref={mobileMonthRowRef}
+                className="flex overflow-hidden"
+                style={{ height: MONTH_HEADER_H }}
+              />
+            </div>
             <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {mondays.map((d) => (
@@ -520,7 +532,7 @@ export function ActivityPlanner({
               {/* Full timeline header */}
               <div className="border-b bg-card">
                 {/* Years */}
-                <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
+                <div className="relative hidden border-b md:block" style={{ height: YEAR_HEADER_H }}>
                   {years.map((y) => {
                     const left = dayToX(y.start);
                     const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
@@ -536,7 +548,7 @@ export function ActivityPlanner({
                   })}
                 </div>
                 {/* Months */}
-                <div className="relative border-b" style={{ height: MONTH_HEADER_H }}>
+                <div className="relative hidden border-b md:block" style={{ height: MONTH_HEADER_H }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
