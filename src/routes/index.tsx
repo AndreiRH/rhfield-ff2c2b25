@@ -79,7 +79,6 @@ function ProjectsPage() {
               const pct = lineParts.length === 0
                 ? 0
                 : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
-              const flagCount = flaggedInProject(p.lines ?? []);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
@@ -88,7 +87,6 @@ function ProjectsPage() {
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
                           <div className={`flex items-center gap-2 ${isAdmin ? "mr-20" : ""}`}>
-                            <FlagBadge count={flagCount} />
                             <span className="text-xs tabular-nums text-muted-foreground">{p.lines?.length ?? 0} lines</span>
                           </div>
                         </div>
