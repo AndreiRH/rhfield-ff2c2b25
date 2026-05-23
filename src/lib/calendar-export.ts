@@ -224,37 +224,36 @@ export function exportPdf(opts: BuildOptions, range: CalendarRange) {
     doc.text(subtitle, marginX, marginTop + 14);
   };
 
-  // ===== Section 1: Activity list (all activities) =====
-  const { headers, rows } = buildRows(opts);
-  drawTitle(`Activities - Exported ${format(new Date(), "PPpp")}`);
-
-  autoTable(doc, {
-    head: [headers],
-    body: rows.map((r) => r.map((c) => String(c ?? ""))),
-    startY: marginTop + 26,
-    margin: { left: marginX, right: marginX },
-    styles: { fontSize: 8, cellPadding: 5, font: "helvetica", textColor: 40, lineColor: 220, lineWidth: 0.3 },
-    headStyles: { fillColor: [40, 44, 60], textColor: 255, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [248, 249, 252] },
+  // ===== Section 1: Calendar view =====
+  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
+  drawTitle(`Calendar view - ${rangeLabel}`);
+  const ganttEndY = drawGantt(doc, opts, range, {
+    marginX,
+    top: marginTop + 28,
+    pageH,
+    pageW,
   });
 
-  // ===== Section 2: Calendar view (gantt) — continues in same flow =====
-  const afterTableY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? marginTop + 26;
-  const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
-  let ganttTop = afterTableY + 24;
-  if (ganttTop > pageH - 120) {
+  // ===== Section 2: Activity list (all activities) =====
+  const { headers, rows } = buildRows(opts);
+  let listTop = ganttEndY + 24;
+  if (listTop > pageH - 80) {
     doc.addPage();
-    ganttTop = marginTop;
+    listTop = marginTop;
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(20);
-  doc.text(`Calendar view - ${rangeLabel}`, marginX, ganttTop);
-  drawGantt(doc, opts, range, {
-    marginX,
-    top: ganttTop + 14,
-    pageH,
-    pageW,
+  doc.text(`Activities - Exported ${format(new Date(), "PPpp")}`, marginX, listTop);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows.map((r) => r.map((c) => String(c ?? ""))),
+    startY: listTop + 14,
+    margin: { left: marginX, right: marginX },
+    styles: { fontSize: 8, cellPadding: 5, font: "helvetica", textColor: 40, lineColor: 220, lineWidth: 0.3 },
+    headStyles: { fillColor: [40, 44, 60], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [248, 249, 252] },
   });
 
   doc.save(`${fileBase(opts)}.pdf`);
