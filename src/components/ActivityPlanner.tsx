@@ -429,18 +429,6 @@ export function ActivityPlanner({
         <CardContent className="p-0">
           <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
-              {weekendDays.map((d) => (
-                <div
-                  key={`we-hdr-${d.toISOString()}`}
-                  className="absolute z-10 pointer-events-none bg-muted/40"
-                  style={{
-                    left: dayToX(d),
-                    top: weekSeparatorTop,
-                    width: DAY_WIDTH,
-                    height: DAY_NUMBERS_HEADER_H,
-                  }}
-                />
-              ))}
               {mondays.map((d) => (
                 <div
                   key={`wk-full-${d.toISOString()}`}
