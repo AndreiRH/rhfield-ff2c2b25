@@ -18,10 +18,25 @@ import {
   CalendarIcon,
   Share2,
   ArrowUpDown,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
   X,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { toUserMessage } from "@/lib/errors";
@@ -378,12 +393,18 @@ export function ActivityPlanner({
     await insertLocal(a.name, a.start_date, a.end_date);
   };
 
-  const moveActivity = async (a: LineActivity, direction: -1 | 1) => {
-    const idx = sorted.findIndex((x) => x.id === a.id);
-    const swapIdx = idx + direction;
-    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
-    const next = [...sorted];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = sorted.findIndex((x) => x.id === active.id);
+    const newIdx = sorted.findIndex((x) => x.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(sorted, oldIdx, newIdx);
     const updates = await Promise.all(
       next.map((row, i) =>
         supabase.from("line_activities").update({ sort_order: i }).eq("id", row.id),
@@ -663,138 +684,46 @@ export function ActivityPlanner({
           <p className="mb-2 text-[11px] text-muted-foreground">
             {mode === "copy" && "Click an activity to duplicate it on this line."}
             {mode === "delete" && "Click an activity to delete it."}
-            {mode === "reorder" && "Use the arrows to reorder. The calendar follows this order."}
+            {mode === "reorder" && "Drag an activity by the handle to reorder. The calendar follows this order."}
           </p>
         )}
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
-          <ul className="space-y-1">
-            {sorted.map((a, idx) => {
-              const rowClick =
-                mode === "copy"
-                  ? () => doDuplicate(a)
-                  : mode === "delete"
-                  ? () => setConfirmDelete(a)
-                  : mode === "reorder"
-                  ? undefined
-                  : () => scrollToActivity(a);
-              return (
-              <li
-                key={a.id}
-                className={cn(
-                  "rounded-md border-2 bg-card px-2 py-0.5 text-xs transition",
-                  rowClick && "cursor-pointer hover:brightness-105",
-                  mode === "copy" && "hover:bg-primary/5",
-                  mode === "delete" && "hover:bg-destructive/10",
-                )}
-                style={{ borderColor: a.color }}
-                onClick={rowClick}
-              >
-                <div className="flex items-center gap-2">
-                  {canEdit && mode === "reorder" && (
-                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => moveActivity(a, -1)}
-                        disabled={idx === 0}
-                        title="Move up"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveActivity(a, 1)}
-                        disabled={idx === sorted.length - 1}
-                        title="Move down"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-                  {canEdit && mode === "idle" && (
-                    <div
-                      className="flex items-center gap-0.5 shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setEditing(a)}
-                        title="Edit"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => (a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a))}
-                        title={
-                          a.is_shared
-                            ? "Shared across all lines — click to make local"
-                            : "Share across all lines"
-                        }
-                        className={cn(
-                          "inline-flex h-5 w-5 items-center justify-center rounded hover:text-foreground",
-                          a.is_shared ? "text-primary" : "text-muted-foreground",
-                        )}
-                      >
-                        {a.is_shared ? (
-                          <Share2 className="h-3 w-3" />
-                        ) : (
-                          <Lock className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
-                    {a.name}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
-                    {format(parseISO(a.start_date), "d MMM yy")} →{" "}
-                    {format(parseISO(a.end_date), "d MMM yy")}
-                  </span>
-                  {canEdit && mode === "idle" && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const { error } = await supabase
-                          .from("line_activities")
-                          .update({ show_on_global: !a.show_on_global })
-                          .eq("id", a.id);
-                        if (error) toast.error(toUserMessage(error));
-                        else {
-                          toast.success(
-                            a.show_on_global
-                              ? "Hidden from global calendar"
-                              : "Shown on global calendar",
-                          );
-                          onChange();
-                        }
-                      }}
-                      title={
-                        a.show_on_global
-                          ? "Visible on global calendar — click to hide"
-                          : "Hidden from global calendar — click to show"
+          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={sorted.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <ul className="space-y-1">
+                {sorted.map((a) => (
+                  <SortableActivityRow
+                    key={a.id}
+                    a={a}
+                    mode={mode}
+                    canEdit={canEdit}
+                    onScrollTo={() => scrollToActivity(a)}
+                    onDuplicate={() => doDuplicate(a)}
+                    onDelete={() => setConfirmDelete(a)}
+                    onEdit={() => setEditing(a)}
+                    onToggleShare={() => (a.is_shared ? setConfirmUnshare(a) : setConfirmShare(a))}
+                    onToggleGlobal={async () => {
+                      const { error } = await supabase
+                        .from("line_activities")
+                        .update({ show_on_global: !a.show_on_global })
+                        .eq("id", a.id);
+                      if (error) toast.error(toUserMessage(error));
+                      else {
+                        toast.success(
+                          a.show_on_global
+                            ? "Hidden from global calendar"
+                            : "Shown on global calendar",
+                        );
+                        onChange();
                       }
-                      className={cn(
-                        "shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border transition",
-                        a.show_on_global
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
-                      )}
-                    >
-                      <CalendarIcon className="h-3 w-3" />
-                      <span>{a.show_on_global ? "Global" : "Local"}</span>
-                    </button>
-                  )}
-                </div>
-              </li>
-              );
-            })}
-          </ul>
+                    }}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -1137,5 +1066,135 @@ function DateField({
         </PopoverContent>
       </Popover>
     </div>
+  );
+}
+
+function SortableActivityRow({
+  a,
+  mode,
+  canEdit,
+  onScrollTo,
+  onDuplicate,
+  onDelete,
+  onEdit,
+  onToggleShare,
+  onToggleGlobal,
+}: {
+  a: LineActivity;
+  mode: "idle" | "copy" | "delete" | "reorder";
+  canEdit: boolean;
+  onScrollTo: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onToggleShare: () => void;
+  onToggleGlobal: () => void;
+}) {
+  const disabled = !canEdit || mode !== "reorder";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: a.id,
+    disabled,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    borderColor: a.color,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  const rowClick =
+    mode === "copy"
+      ? onDuplicate
+      : mode === "delete"
+      ? onDelete
+      : mode === "reorder"
+      ? undefined
+      : onScrollTo;
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-md border-2 bg-card px-2 py-0.5 text-xs transition",
+        rowClick && "cursor-pointer hover:brightness-105",
+        mode === "copy" && "hover:bg-primary/5",
+        mode === "delete" && "hover:bg-destructive/10",
+      )}
+      onClick={rowClick}
+    >
+      <div className="flex items-center gap-2">
+        {canEdit && mode === "reorder" && (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            title="Drag to reorder"
+            aria-label="Drag handle"
+            className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none shrink-0"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {canEdit && mode === "idle" && (
+          <div
+            className="flex items-center gap-0.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Edit"
+              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleShare}
+              title={
+                a.is_shared
+                  ? "Shared across all lines — click to make local"
+                  : "Share across all lines"
+              }
+              className={cn(
+                "inline-flex h-5 w-5 items-center justify-center rounded hover:text-foreground",
+                a.is_shared ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {a.is_shared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+            </button>
+          </div>
+        )}
+        <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
+          {a.name}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
+          {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+        </span>
+        {canEdit && mode === "idle" && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleGlobal();
+            }}
+            title={
+              a.show_on_global
+                ? "Visible on global calendar — click to hide"
+                : "Hidden from global calendar — click to show"
+            }
+            className={cn(
+              "shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border transition",
+              a.show_on_global
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
+            )}
+          >
+            <CalendarIcon className="h-3 w-3" />
+            <span>{a.show_on_global ? "Global" : "Local"}</span>
+          </button>
+        )}
+      </div>
+    </li>
   );
 }
