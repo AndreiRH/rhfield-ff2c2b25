@@ -1,59 +1,57 @@
-## Three fixes to the calendar export
+## Calendar-view export in PDF, Excel, CSV, and ICS
 
-### 1. Garbled characters ("â€“")
+Extend the existing "Calendar view" export so it isn't PDF-only. The date-range dialog stays the same (current view vs. custom dates); after picking the range the user also picks a format.
 
-Cause: the en-dash in labels like `Line 01 – Line 1` is UTF-8 bytes, but Excel opens CSV as Windows-1252 unless the file starts with a UTF-8 BOM.
+### UI changes (`src/components/calendar/ExportMenu.tsx`)
 
-Fix in `src/lib/calendar-export.ts`:
-- Prepend `\uFEFF` to the CSV string before wrapping in the Blob.
-- Also prepend BOM to the `.ics` blob (some Outlook builds misread non-ASCII without it).
-- XLSX/PDF already handle Unicode internally — no change needed there.
+- Keep the single "Calendar view…" menu item.
+- The existing dialog gains a second control: format radio group — **PDF**, **Excel (.xlsx)**, **CSV**, **Calendar feed (.ics)**.
+- "Export" button calls `runExport(chosenFormat, opts, range)`.
 
-### 2. Random row order in CSV/XLSX/PDF/ICS
+### Library changes (`src/lib/calendar-export.ts`)
 
-Cause: the global page fetches activities with only `.order("start_date")`, losing per-line planner order, and `buildRows` then iterates whatever order it received.
+Add three new functions and route them through `runExport`:
 
-Fix:
-- In `src/routes/p.$projectId.calendar.tsx`, change the `exportActivities` query to also select `sort_order` and order by `sort_order` then `start_date` (matches the per-line planner).
-- In `src/lib/calendar-export.ts`, before building rows, sort activities by:
-  1. Line number (resolved from `lines` prop when present, otherwise leave as-is)
-  2. existing array order within the line (stable sort)
-- Apply the same sort to the ICS event loop.
+- `exportCalendarXlsx(opts, range)` — gantt-style spreadsheet.
+- `exportCalendarCsv(opts, range)` — same grid, plain text.
+- `exportCalendarIcs(opts, range)` — same as existing `exportIcs` but only events overlapping `range`.
 
-Result: Line 01 activities first (in planner order), then Line 02, etc., never interleaved.
+Spreadsheet/CSV layout (one row per activity, grouped by line and ordered by planner sort):
 
-### 3. New "Calendar view (PDF)" export with date-range prompt
+```
+| Line | Activity | Start | End | Days | 2026 | 2026 | ... (year row)
+|      |          |       |     |      | Jan  | Jan  | ... (month row)
+|      |          |       |     |      | 1    | 2    | ... (day row)
+|      |          |       |     |      | T    | F    | ... (weekday letters)
+| L01  | Heating  | ...   | ... | 5    |  X   |  X   | ... (span cells)
+```
 
-Add a fifth menu item **"Calendar view (PDF)"** to `ExportMenu` that produces a visual gantt page (month/year header, day grid, colored bars with activity names) rather than a table.
+XLSX specifics (using `xlsx` package):
+- Freeze top 4 header rows and the 5 left columns.
+- Fill each span cell with the activity color (`s.fill.fgColor.rgb = "RRGGBB"`); contrast-aware white/black "X" or activity name initial.
+- Weekend day columns get a light gray fill on header + empty cells.
+- Set narrow column width (~3) for day columns, normal width for left columns.
+- One workbook sheet, named "Calendar".
 
-Flow:
-- Clicking the item opens a small dialog asking:
-  - Radio: **Current view** (default) vs **Custom date range**
-  - When "Custom" is picked: two date inputs (start, end).
-- "Current view" uses the date range currently visible in the gantt scroll container; "Custom" uses the picked dates.
-- Generates a landscape PDF with `jsPDF` using vector drawing:
-  - Top band: year row + month row spanning the chosen range.
-  - Left column: `Line 01`, `Line 02`, … (or single line on the per-line page).
-  - Body: one row per line, colored rectangles per activity (clipped to range), activity name drawn inside the bar when it fits, otherwise to the right.
-  - Footer with project name + export timestamp.
+CSV specifics:
+- Same row/column shape, BOM + UTF-8.
+- Span cells contain the activity name (truncated to the column count for that activity); empty otherwise.
+- No coloring (CSV has no styling).
 
-### Wiring the "current view" range
+ICS specifics:
+- Same VEVENT format as the existing list-export, but only activities where `end_date >= range.start && start_date <= range.end`.
 
-- `CombinedGantt` (global page) and the per-line `ActivityPlanner` both own the horizontal scroll container. Expose the visible date range up to the page via a ref callback:
-  - New prop `onVisibleRangeChange?: (range: { start: Date; end: Date }) => void` updated on scroll/resize.
-  - Page stores the latest range in state and passes `getCurrentRange={() => range}` to `ExportMenu`.
-- For the per-line calendar page, do the equivalent in `ActivityPlanner` (smallest possible surface — just publish the range, no other changes).
+### Format guardrail
 
-### New files / edits
+If the chosen range × line count would produce more than ~5,000 day columns or rows, show a small inline warning in the dialog ("Range is very wide; the spreadsheet may be slow to open") but still allow export.
 
-- `src/lib/calendar-export.ts` — BOM, sort helper, new `exportCalendarPdf(opts, range)` function, extend `runExport` to accept `"calendar-pdf"` plus a `range` arg.
-- `src/components/calendar/ExportMenu.tsx` — add the new menu item, add a shadcn `Dialog` for the range prompt, accept `getCurrentRange` prop.
-- `src/routes/p.$projectId.calendar.tsx` — fetch `sort_order`, track visible range from `CombinedGantt`, pass `getCurrentRange`.
-- `src/routes/p.$projectId.lines.$lineNumber.calendar.tsx` — track visible range from `ActivityPlanner`, pass `getCurrentRange`.
-- `src/components/ActivityPlanner.tsx` — emit visible range via new optional callback (no behavior change otherwise).
+### Files touched
+
+- `src/lib/calendar-export.ts` — add `exportCalendarXlsx`, `exportCalendarCsv`, `exportCalendarIcs`; extend `runExport` switch.
+- `src/components/calendar/ExportMenu.tsx` — add format radio inside the calendar-view dialog; route to selected format.
 
 ### Out of scope
 
-- Exact pixel match to the on-screen gantt (fonts/spacing in jsPDF will differ slightly).
-- Rendering follows-arrows between bars in the PDF.
-- Multi-page wrapping when the chosen range is extremely wide — will fit-to-page by scaling day width; if the user wants pagination, that's a follow-up.
+- A separate sheet per line.
+- Conditional formatting / Excel formulas.
+- Pixel-matching the on-screen gantt in Excel (cells are uniform width).

@@ -48,21 +48,18 @@ export function ExportMenu({
   const opts = { activities, lines, projectName, scopeLabel };
   const [viewDialog, setViewDialog] = useState(false);
   const [mode, setMode] = useState<"current" | "custom">("current");
+  const [viewFormat, setViewFormat] = useState<"pdf" | "xlsx" | "csv" | "ics">("pdf");
   const today = format(new Date(), "yyyy-MM-dd");
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
 
-  const runCalendarPdf = () => {
+  const runCalendarExport = () => {
     let range: CalendarRange | null = null;
     if (mode === "current") {
       range = getCurrentRange?.() ?? null;
-      if (!range) {
-        // Fallback: derive from activity bounds
-        if (activities.length > 0) {
-          const dates = activities.flatMap((a) => [a.start_date, a.end_date]);
-          dates.sort();
-          range = { start: parseISO(dates[0]), end: parseISO(dates[dates.length - 1]) };
-        }
+      if (!range && activities.length > 0) {
+        const dates = activities.flatMap((a) => [a.start_date, a.end_date]).sort();
+        range = { start: parseISO(dates[0]), end: parseISO(dates[dates.length - 1]) };
       }
     } else {
       try {
@@ -74,7 +71,13 @@ export function ExportMenu({
       }
     }
     if (!range) return;
-    runExport("calendar-pdf", opts, range);
+    const fmtMap = {
+      pdf: "calendar-pdf",
+      xlsx: "calendar-xlsx",
+      csv: "calendar-csv",
+      ics: "calendar-ics",
+    } as const;
+    runExport(fmtMap[viewFormat], opts, range);
     setViewDialog(false);
   };
 
@@ -111,7 +114,6 @@ export function ExportMenu({
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
-              // Pre-fill custom range with current view if available
               const cur = getCurrentRange?.();
               if (cur) {
                 setStartDate(format(cur.start, "yyyy-MM-dd"));
@@ -121,7 +123,7 @@ export function ExportMenu({
               setViewDialog(true);
             }}
           >
-            Calendar view (PDF)
+            Calendar view…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -131,61 +133,90 @@ export function ExportMenu({
           <DialogHeader>
             <DialogTitle>Export calendar view</DialogTitle>
             <DialogDescription>
-              Choose which date range to render in the PDF.
+              Pick a date range and a format.
             </DialogDescription>
           </DialogHeader>
-          <RadioGroup
-            value={mode}
-            onValueChange={(v) => setMode(v as "current" | "custom")}
-            className="space-y-3"
-          >
-            <div className="flex items-start gap-2">
-              <RadioGroupItem value="current" id="r-current" className="mt-1" />
-              <Label htmlFor="r-current" className="font-normal">
-                <div className="font-medium">Current view</div>
-                <div className="text-xs text-muted-foreground">
-                  Use the date range currently visible on screen.
-                </div>
-              </Label>
-            </div>
-            <div className="flex items-start gap-2">
-              <RadioGroupItem value="custom" id="r-custom" className="mt-1" />
-              <Label htmlFor="r-custom" className="font-normal flex-1">
-                <div className="font-medium">Custom date range</div>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="d-start" className="text-xs">Start</Label>
-                    <Input
-                      id="d-start"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        setMode("custom");
-                      }}
-                    />
+
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Date range</div>
+            <RadioGroup
+              value={mode}
+              onValueChange={(v) => setMode(v as "current" | "custom")}
+              className="space-y-3"
+            >
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="current" id="r-current" className="mt-1" />
+                <Label htmlFor="r-current" className="font-normal">
+                  <div className="font-medium">Current view</div>
+                  <div className="text-xs text-muted-foreground">
+                    Use the date range currently visible on screen.
                   </div>
-                  <div>
-                    <Label htmlFor="d-end" className="text-xs">End</Label>
-                    <Input
-                      id="d-end"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => {
-                        setEndDate(e.target.value);
-                        setMode("custom");
-                      }}
-                    />
+                </Label>
+              </div>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="custom" id="r-custom" className="mt-1" />
+                <Label htmlFor="r-custom" className="font-normal flex-1">
+                  <div className="font-medium">Custom date range</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="d-start" className="text-xs">Start</Label>
+                      <Input
+                        id="d-start"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value);
+                          setMode("custom");
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="d-end" className="text-xs">End</Label>
+                      <Input
+                        id="d-end"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => {
+                          setEndDate(e.target.value);
+                          setMode("custom");
+                        }}
+                      />
+                    </div>
                   </div>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Format</div>
+            <RadioGroup
+              value={viewFormat}
+              onValueChange={(v) => setViewFormat(v as typeof viewFormat)}
+              className="grid grid-cols-2 gap-2"
+            >
+              {[
+                { v: "pdf", label: "PDF", hint: "Printable timeline" },
+                { v: "xlsx", label: "Excel", hint: "Colored gantt grid" },
+                { v: "csv", label: "CSV", hint: "Plain grid (no colors)" },
+                { v: "ics", label: "Calendar (.ics)", hint: "Events in range" },
+              ].map((f) => (
+                <div key={f.v} className="flex items-start gap-2 rounded-md border p-2">
+                  <RadioGroupItem value={f.v} id={`fmt-${f.v}`} className="mt-1" />
+                  <Label htmlFor={`fmt-${f.v}`} className="font-normal">
+                    <div className="font-medium text-sm">{f.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{f.hint}</div>
+                  </Label>
                 </div>
-              </Label>
-            </div>
-          </RadioGroup>
+              ))}
+            </RadioGroup>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={runCalendarPdf}>Export PDF</Button>
+            <Button onClick={runCalendarExport}>Export</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
