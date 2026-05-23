@@ -495,6 +495,7 @@ function drawGantt(
     const x = dayToX(d);
     doc.line(x, wkTop, x, firstRowY);
   }
+  return y;
 }
 
 // ---------- Combined Excel ----------
