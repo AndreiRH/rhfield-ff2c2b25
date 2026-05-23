@@ -594,7 +594,6 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       ) : (
         <div
           className={`flex-1 min-w-0 ${(inSelectMode || canExpand) ? "cursor-pointer" : ""}`}
-          onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
         >
           <span
             onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
