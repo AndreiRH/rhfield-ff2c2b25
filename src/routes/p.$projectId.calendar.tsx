@@ -102,6 +102,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const mobileYearRowRef = useRef<HTMLDivElement>(null);
   const mobileMonthRowRef = useRef<HTMLDivElement>(null);
+  const desktopYearRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
