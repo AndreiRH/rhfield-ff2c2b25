@@ -238,13 +238,21 @@ export function exportPdf(opts: BuildOptions, range: CalendarRange) {
     alternateRowStyles: { fillColor: [248, 249, 252] },
   });
 
-  // ===== Section 2: Calendar view (gantt, range-filtered visual) =====
-  doc.addPage();
+  // ===== Section 2: Calendar view (gantt) — continues in same flow =====
+  const afterTableY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? marginTop + 26;
   const rangeLabel = `${format(range.start, "PP")} - ${format(range.end, "PP")}`;
-  drawTitle(`Calendar view - ${rangeLabel}`);
+  let ganttTop = afterTableY + 24;
+  if (ganttTop > pageH - 120) {
+    doc.addPage();
+    ganttTop = marginTop;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(20);
+  doc.text(`Calendar view - ${rangeLabel}`, marginX, ganttTop);
   drawGantt(doc, opts, range, {
     marginX,
-    top: marginTop + 28,
+    top: ganttTop + 14,
     pageH,
     pageW,
   });
