@@ -1095,7 +1095,7 @@ function SortableActivityRow({
     id: a.id,
     disabled,
   });
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     borderColor: a.color,
