@@ -532,14 +532,14 @@ export function ActivityPlanner({
               {/* Full timeline header */}
               <div className="border-b bg-card">
                 {/* Years */}
-                <div className="relative hidden border-b md:block" style={{ height: YEAR_HEADER_H }}>
+                <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
                   {years.map((y) => {
                     const left = dayToX(y.start);
                     const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
                     return (
                       <div
                         key={`yr-${y.year}`}
-                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
+                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
                         style={{ left, width, height: YEAR_HEADER_H }}
                       >
                         <span className="truncate px-1">{y.year}</span>
@@ -548,7 +548,7 @@ export function ActivityPlanner({
                   })}
                 </div>
                 {/* Months */}
-                <div className="relative hidden border-b md:block" style={{ height: MONTH_HEADER_H }}>
+                <div className="relative border-b" style={{ height: MONTH_HEADER_H }}>
                   {months.map((m) => {
                     const mStart = m < rangeStart ? rangeStart : m;
                     const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
@@ -557,7 +557,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`mo-${m.toISOString()}`}
-                        className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
+                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
                         style={{ left, width, height: MONTH_HEADER_H }}
                       >
                         <span className="truncate px-1">{format(m, "MMM")}</span>
