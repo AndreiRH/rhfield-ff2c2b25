@@ -921,6 +921,7 @@ export function ActivityPlanner({
       {editing && (
         <EditActivityDialog
           activity={editing}
+          siblings={sorted}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
