@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CalendarNotesList } from "@/components/CalendarNotesList";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ExportMenu } from "@/components/calendar/ExportMenu";
 
 interface LineLite {
   id: string;
