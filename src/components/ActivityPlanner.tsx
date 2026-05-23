@@ -854,10 +854,17 @@ export function ActivityPlanner({
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={sorted.map((s) => s.id)} strategy={verticalListSortingStrategy}>
               <ul className="space-y-1">
-                {sorted.map((a) => (
+                {sorted.map((a) => {
+                  const parent = a.follows_activity_id
+                    ? sorted.find((s) => s.id === a.follows_activity_id)
+                    : null;
+                  return (
                   <SortableActivityRow
                     key={a.id}
                     a={a}
+                    followsName={parent?.name ?? null}
+                    followsColor={parent?.color ?? null}
+                    followsOffset={parent ? a.offset_days ?? 0 : null}
                     mode={mode}
                     canEdit={canEdit}
                     onScrollTo={() => scrollToActivity(a)}
@@ -881,7 +888,8 @@ export function ActivityPlanner({
                       }
                     }}
                   />
-                ))}
+                  );
+                })}
               </ul>
             </SortableContext>
           </DndContext>
