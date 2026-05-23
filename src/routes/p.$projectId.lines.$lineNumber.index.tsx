@@ -135,7 +135,7 @@ function LineOverview() {
                     params={{ projectId, lineNumber, kind: eq.kind }}
                     className="group block"
                   >
-                    <Card className={`transition hover:border-primary/40 hover:shadow-sm ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
+                    <Card className="transition hover:border-primary/40 hover:shadow-sm">
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
