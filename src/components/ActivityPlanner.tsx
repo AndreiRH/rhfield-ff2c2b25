@@ -198,6 +198,10 @@ export function ActivityPlanner({
     [rangeStart, rangeEnd],
   );
   const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
+  const weekendDays = useMemo(
+    () => days.filter((d) => d.getDay() === 0 || d.getDay() === 6),
+    [days],
+  );
 
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
