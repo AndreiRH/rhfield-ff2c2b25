@@ -135,6 +135,10 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   const months = useMemo(() => eachMonthOfInterval({ start: RANGE_START, end: RANGE_END }), []);
   const days = useMemo(() => eachDayOfInterval({ start: RANGE_START, end: RANGE_END }), []);
   const mondays = useMemo(() => days.filter((d) => d.getDay() === 1), [days]);
+  const weekendDays = useMemo(
+    () => days.filter((d) => d.getDay() === 0 || d.getDay() === 6),
+    [days],
+  );
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
@@ -228,6 +232,18 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         {/* Scrollable timeline */}
         <div ref={scrollRef} className="overflow-x-auto flex-1">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
+            {weekendDays.map((d) => (
+              <div
+                key={`we-full-${d.toISOString()}`}
+                className="absolute z-10 pointer-events-none bg-muted/40"
+                style={{
+                  left: dayToX(d),
+                  top: weekSeparatorTop + DAY_NUMBERS_HEADER_H,
+                  width: DAY_WIDTH,
+                  height: weekSeparatorHeight - DAY_NUMBERS_HEADER_H,
+                }}
+              />
+            ))}
             {mondays.map((d) => (
               <div
                 key={`wk-full-${d.toISOString()}`}
