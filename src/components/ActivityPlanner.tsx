@@ -861,9 +861,10 @@ export function ActivityPlanner({
       {/* Create dialog */}
       {creating && (
         <CreateActivityDialog
+          siblings={sorted}
           onClose={() => setCreating(false)}
-          onSubmit={async (name, start, end) => {
-            await checkDuplicateAndAdd(name, start, end, false);
+          onSubmit={async (name, start, durationDays, follows) => {
+            await checkDuplicateAndAdd(name, start, durationDays, false, follows);
             setCreating(false);
           }}
         />
@@ -891,7 +892,7 @@ export function ActivityPlanner({
                   await insertLocal(
                     duplicateConflict.name,
                     duplicateConflict.start,
-                    duplicateConflict.end,
+                    duplicateConflict.durationDays,
                   );
                   setDuplicateConflict(null);
                 }}
@@ -903,7 +904,7 @@ export function ActivityPlanner({
                   await insertSharedAcrossAll(
                     duplicateConflict.name,
                     duplicateConflict.start,
-                    duplicateConflict.end,
+                    duplicateConflict.durationDays,
                     duplicateConflict.existingColor,
                   );
                   setDuplicateConflict(null);
