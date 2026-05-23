@@ -377,24 +377,25 @@ export function ActivityPlanner({
   const checkDuplicateAndAdd = async (
     name: string,
     start: string,
-    end: string,
+    durationDays: number,
     shareGlobal: boolean,
+    follows: { id: string; offset: number } | null,
   ) => {
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error("Activity name required");
       return;
     }
-    if (!start || !end) {
-      toast.error("Pick start and end dates");
+    if (!start) {
+      toast.error("Pick a start date");
       return;
     }
-    if (start > end) {
-      toast.error("End date must be after start");
+    if (!durationDays || durationDays < 1) {
+      toast.error("Length must be at least 1 day");
       return;
     }
     const otherLineIds = allLines.filter((l) => l.id !== line.id).map((l) => l.id);
-    if (otherLineIds.length > 0) {
+    if (otherLineIds.length > 0 && !follows) {
       const { data } = await supabase
         .from("line_activities")
         .select("name, color, line_id")
@@ -412,15 +413,15 @@ export function ActivityPlanner({
           existingLineNumbers: lineNumbers,
           existingColor: dupes[0].color,
           start,
-          end,
+          durationDays,
         });
         return;
       }
     }
-    if (shareGlobal && allLines.length > 1) {
-      await insertSharedAcrossAll(trimmed, start, end, nextColor());
+    if (shareGlobal && allLines.length > 1 && !follows) {
+      await insertSharedAcrossAll(trimmed, start, durationDays, nextColor());
     } else {
-      await insertLocal(trimmed, start, end);
+      await insertLocal(trimmed, start, durationDays, undefined, follows);
     }
   };
 
