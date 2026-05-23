@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -141,53 +140,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
     [days],
   );
 
-  // Track horizontal viewport for mobile fixed header splitting
-  const [viewport, setViewport] = useState({ left: 0, width: 0 });
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const apply = () => {
-      flushSync(() => setViewport({ left: el.scrollLeft, width: el.clientWidth }));
-    };
-    apply();
-    const onScroll = () => apply();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      ro.disconnect();
-    };
-  }, [lines.length]);
-  const visibleSegments = useMemo(() => {
-    const buildEmpty = (label: string) => [{ key: label, label, days: 1 }];
-    if (viewport.width === 0) {
-      return {
-        years: buildEmpty(format(RANGE_START, "yyyy")),
-        months: buildEmpty(format(RANGE_START, "MMM")),
-      };
-    }
-    const startIdx = Math.max(0, Math.floor(viewport.left / DAY_WIDTH));
-    const endIdx = Math.min(
-      totalDays - 1,
-      Math.ceil((viewport.left + viewport.width) / DAY_WIDTH) - 1,
-    );
-    const years: { key: string; label: string; days: number }[] = [];
-    const months: { key: string; label: string; days: number }[] = [];
-    for (let i = startIdx; i <= endIdx; i++) {
-      const d = days[i];
-      if (!d) continue;
-      const yKey = `${d.getFullYear()}`;
-      const mKey = `${d.getFullYear()}-${d.getMonth()}`;
-      const yLast = years[years.length - 1];
-      if (yLast && yLast.key === yKey) yLast.days += 1;
-      else years.push({ key: yKey, label: format(d, "yyyy"), days: 1 });
-      const mLast = months[months.length - 1];
-      if (mLast && mLast.key === mKey) mLast.days += 1;
-      else months.push({ key: mKey, label: format(d, "MMM"), days: 1 });
-    }
-    return { years, months };
-  }, [viewport, days, totalDays]);
   const years = useMemo(() => {
     const map = new Map<number, { start: Date; end: Date }>();
     for (const m of months) {
@@ -280,42 +232,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
         {/* Scrollable timeline */}
         <div className="relative min-w-0 flex-1">
-          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
-            <div
-              className="flex items-stretch border-b border-border/40 text-xs font-semibold"
-              style={{ height: YEAR_HEADER_H }}
-            >
-              {visibleSegments.years.map((seg, i) => (
-                <div
-                  key={seg.key}
-                  className={cn(
-                    "flex items-center justify-center min-w-0",
-                    i > 0 && "border-l border-border/40",
-                  )}
-                  style={{ flexGrow: seg.days, flexBasis: 0 }}
-                >
-                  <span className="truncate px-1">{seg.label}</span>
-                </div>
-              ))}
-            </div>
-            <div
-              className="flex items-stretch text-[11px] text-muted-foreground"
-              style={{ height: MONTH_HEADER_H }}
-            >
-              {visibleSegments.months.map((seg, i) => (
-                <div
-                  key={seg.key}
-                  className={cn(
-                    "flex items-center justify-center min-w-0",
-                    i > 0 && "border-l border-border/40",
-                  )}
-                  style={{ flexGrow: seg.days, flexBasis: 0 }}
-                >
-                  <span className="truncate px-1">{seg.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
           <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
@@ -341,7 +257,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`yr-${y.year}`}
-                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
+                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
                       style={{ left, width, height: YEAR_HEADER_H }}
                     >
                       <span className="truncate px-1">{y.year}</span>
@@ -359,7 +275,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`mo-${m.toISOString()}`}
-                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
+                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground"
                       style={{ left, width, height: MONTH_HEADER_H }}
                     >
                       <span className="truncate px-1">{format(m, "MMM")}</span>
