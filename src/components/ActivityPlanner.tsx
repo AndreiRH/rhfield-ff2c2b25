@@ -1068,3 +1068,133 @@ function DateField({
     </div>
   );
 }
+
+function SortableActivityRow({
+  a,
+  mode,
+  canEdit,
+  onScrollTo,
+  onDuplicate,
+  onDelete,
+  onEdit,
+  onToggleShare,
+  onToggleGlobal,
+}: {
+  a: LineActivity;
+  mode: "idle" | "copy" | "delete" | "reorder";
+  canEdit: boolean;
+  onScrollTo: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onToggleShare: () => void;
+  onToggleGlobal: () => void;
+}) {
+  const disabled = !canEdit || mode !== "reorder";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: a.id,
+    disabled,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    borderColor: a.color,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  const rowClick =
+    mode === "copy"
+      ? onDuplicate
+      : mode === "delete"
+      ? onDelete
+      : mode === "reorder"
+      ? undefined
+      : onScrollTo;
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-md border-2 bg-card px-2 py-0.5 text-xs transition",
+        rowClick && "cursor-pointer hover:brightness-105",
+        mode === "copy" && "hover:bg-primary/5",
+        mode === "delete" && "hover:bg-destructive/10",
+      )}
+      onClick={rowClick}
+    >
+      <div className="flex items-center gap-2">
+        {canEdit && mode === "reorder" && (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            title="Drag to reorder"
+            aria-label="Drag handle"
+            className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none shrink-0"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {canEdit && mode === "idle" && (
+          <div
+            className="flex items-center gap-0.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Edit"
+              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleShare}
+              title={
+                a.is_shared
+                  ? "Shared across all lines — click to make local"
+                  : "Share across all lines"
+              }
+              className={cn(
+                "inline-flex h-5 w-5 items-center justify-center rounded hover:text-foreground",
+                a.is_shared ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {a.is_shared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+            </button>
+          </div>
+        )}
+        <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
+          {a.name}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
+          {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
+        </span>
+        {canEdit && mode === "idle" && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleGlobal();
+            }}
+            title={
+              a.show_on_global
+                ? "Visible on global calendar — click to hide"
+                : "Hidden from global calendar — click to show"
+            }
+            className={cn(
+              "shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide border transition",
+              a.show_on_global
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
+            )}
+          >
+            <CalendarIcon className="h-3 w-3" />
+            <span>{a.show_on_global ? "Global" : "Local"}</span>
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
