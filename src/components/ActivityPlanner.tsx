@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { flushSync } from "react-dom";
 import {
   format,
   parseISO,
@@ -143,6 +142,7 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderTrackRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     name: string;
@@ -204,13 +204,19 @@ export function ActivityPlanner({
     [days],
   );
 
-  // Track horizontal viewport for mobile fixed header splitting
-  const [viewport, setViewport] = useState({ left: 0, width: 0 });
+  const syncMobileHeader = () => {
+    const el = scrollRef.current;
+    const track = mobileHeaderTrackRef.current;
+    if (!el || !track) return;
+    track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
+  };
+
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    const track = mobileHeaderTrackRef.current;
+    if (!el || !track) return;
     const apply = () => {
-      flushSync(() => setViewport({ left: el.scrollLeft, width: el.clientWidth }));
+      track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
     };
     apply();
     const onScroll = () => apply();
@@ -222,35 +228,6 @@ export function ActivityPlanner({
       ro.disconnect();
     };
   }, []);
-  const visibleSegments = useMemo(() => {
-    const buildEmpty = (label: string) => [{ key: label, label, days: 1 }];
-    if (viewport.width === 0) {
-      return {
-        years: buildEmpty(format(rangeStart, "yyyy")),
-        months: buildEmpty(format(rangeStart, "MMM")),
-      };
-    }
-    const startIdx = Math.max(0, Math.floor(viewport.left / DAY_WIDTH));
-    const endIdx = Math.min(
-      totalDays - 1,
-      Math.ceil((viewport.left + viewport.width) / DAY_WIDTH) - 1,
-    );
-    const years: { key: string; label: string; days: number }[] = [];
-    const months: { key: string; label: string; days: number }[] = [];
-    for (let i = startIdx; i <= endIdx; i++) {
-      const d = days[i];
-      if (!d) continue;
-      const yKey = `${d.getFullYear()}`;
-      const mKey = `${d.getFullYear()}-${d.getMonth()}`;
-      const yLast = years[years.length - 1];
-      if (yLast && yLast.key === yKey) yLast.days += 1;
-      else years.push({ key: yKey, label: format(d, "yyyy"), days: 1 });
-      const mLast = months[months.length - 1];
-      if (mLast && mLast.key === mKey) mLast.days += 1;
-      else months.push({ key: mKey, label: format(d, "MMM"), days: 1 });
-    }
-    return { years, months };
-  }, [viewport, days, totalDays, rangeStart]);
 
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
@@ -259,6 +236,7 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
+    syncMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
