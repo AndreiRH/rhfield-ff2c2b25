@@ -258,7 +258,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
         {/* Scrollable timeline */}
         <div className="relative min-w-0 flex-1">
-          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+          <div className="absolute left-0 right-0 top-0 z-30 overflow-hidden border-b bg-card md:hidden">
             <div
               ref={mobileHeaderTrackRef}
               className="relative will-change-transform"
