@@ -144,6 +144,7 @@ export function ActivityPlanner({
   const scrollRef = useRef<HTMLDivElement>(null);
   const mobileYearRowRef = useRef<HTMLDivElement>(null);
   const mobileMonthRowRef = useRef<HTMLDivElement>(null);
+  const desktopYearRowRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     name: string;
@@ -236,16 +237,14 @@ export function ActivityPlanner({
       });
       row.replaceChildren(...children);
     };
-    renderRow(
-      mobileYearRowRef.current,
-      years.map((y) => ({
-        key: String(y.year),
-        label: String(y.year),
-        startX: dayToX(y.start),
-        endX: dayToX(y.end) + DAY_WIDTH,
-      })),
-      "text-xs font-semibold",
-    );
+    const yearSegments = years.map((y) => ({
+      key: String(y.year),
+      label: String(y.year),
+      startX: dayToX(y.start),
+      endX: dayToX(y.end) + DAY_WIDTH,
+    }));
+    renderRow(mobileYearRowRef.current, yearSegments, "text-xs font-semibold");
+    renderRow(desktopYearRowRef.current, yearSegments, "text-xs font-semibold");
     renderRow(
       mobileMonthRowRef.current,
       months.map((m) => {
@@ -514,6 +513,11 @@ export function ActivityPlanner({
                 style={{ height: MONTH_HEADER_H }}
               />
             </div>
+            <div
+              ref={desktopYearRowRef}
+              className="absolute left-0 right-0 top-0 z-30 hidden overflow-hidden border-b bg-card md:flex"
+              style={{ height: YEAR_HEADER_H }}
+            />
             <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {mondays.map((d) => (
@@ -539,7 +543,7 @@ export function ActivityPlanner({
                     return (
                       <div
                         key={`yr-${y.year}`}
-                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
+                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold"
                         style={{ left, width, height: YEAR_HEADER_H }}
                       >
                         <span className="truncate px-1">{y.year}</span>
