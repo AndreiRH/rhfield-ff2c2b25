@@ -495,6 +495,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
                 className={`text-lg font-semibold ${canEdit ? "cursor-text" : ""}`}
               >{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
+              <FlagBadge count={flagCount} />
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </div>
           )}
