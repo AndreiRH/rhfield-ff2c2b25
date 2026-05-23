@@ -232,8 +232,9 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   const labelW = 70;
   const headerYearH = 14;
   const headerMonthH = 14;
+  const headerWeekdayH = dayW >= 6 ? 9 : 0;
   const headerDayH = 12;
-  const headerH = headerYearH + headerMonthH + headerDayH;
+  const headerH = headerYearH + headerMonthH + headerWeekdayH + headerDayH;
   const rowH = 18;
   const barH = 12;
 
@@ -241,13 +242,18 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   const gridTop = marginTop + 30;
   const gridRight = pageW - marginX;
   const gridW = gridRight - gridLeft;
-
-  const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
-  const dayW = gridW / totalDays;
   const dayToX = (d: Date) =>
     gridLeft + differenceInCalendarDays(d, range.start) * dayW;
 
-  // Per-line lane packing
+  // Precompute days
+  const days: Date[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(range.start);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+
+  // Per-line lane packing + row layout (compute first so we know body height)
   type Placed = ExportActivity & { lane: number };
   const linePacks = new Map<string, { lanes: number; placed: Placed[] }>();
   for (const l of lines) {
@@ -265,11 +271,6 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
     linePacks.set(l.id, { lanes: Math.max(1, laneEnds.length), placed });
   }
 
-  // Header bands
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.5);
-
-  // Years
   const months = eachMonthOfInterval({ start: range.start, end: range.end });
   const yearMap = new Map<number, { s: Date; e: Date }>();
   for (const m of months) {
@@ -280,58 +281,91 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
     else yearMap.get(y)!.e = me;
   }
 
-  doc.setFillColor(245, 245, 247);
-  doc.rect(gridLeft, gridTop, gridW, headerH, "F");
-  doc.setTextColor(40);
-  doc.setFontSize(8);
-  for (const [year, { s, e }] of yearMap.entries()) {
-    const x = dayToX(s);
-    const w = (differenceInCalendarDays(e, s) + 1) * dayW;
-    doc.rect(x, gridTop, w, headerYearH, "S");
-    doc.text(String(year), x + w / 2, gridTop + 10, { align: "center" });
-  }
-  // Months
-  doc.setFontSize(7);
-  for (const m of months) {
-    const ms = m < range.start ? range.start : m;
-    const me = endOfMonth(m) > range.end ? range.end : endOfMonth(m);
-    const x = dayToX(ms);
-    const w = (differenceInCalendarDays(me, ms) + 1) * dayW;
-    doc.rect(x, gridTop + headerYearH, w, headerMonthH, "S");
-    if (w > 14) doc.text(format(m, "MMM"), x + w / 2, gridTop + headerYearH + 10, { align: "center" });
-  }
-  // Day numbers (only if room)
-  if (dayW >= 8) {
-    doc.setFontSize(5.5);
-    doc.setTextColor(110);
-    for (let i = 0; i < totalDays; i++) {
-      const d = new Date(range.start);
-      d.setDate(d.getDate() + i);
-      const x = gridLeft + i * dayW;
-      doc.text(String(d.getDate()), x + dayW / 2, gridTop + headerYearH + headerMonthH + 8, { align: "center" });
+  const drawHeader = (top: number) => {
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.5);
+    doc.setFillColor(245, 245, 247);
+    doc.rect(gridLeft, top, gridW, headerH, "F");
+
+    // Years
+    doc.setTextColor(40);
+    doc.setFontSize(8);
+    for (const [year, { s, e }] of yearMap.entries()) {
+      const x = dayToX(s);
+      const w = (differenceInCalendarDays(e, s) + 1) * dayW;
+      doc.rect(x, top, w, headerYearH, "S");
+      doc.text(String(year), x + w / 2, top + 10, { align: "center" });
     }
-  } else {
-    // Show only firsts
-    doc.setFontSize(5.5);
-    doc.setTextColor(110);
+    // Months
+    doc.setFontSize(7);
     for (const m of months) {
       const ms = m < range.start ? range.start : m;
+      const me = endOfMonth(m) > range.end ? range.end : endOfMonth(m);
       const x = dayToX(ms);
-      doc.text("1", x + 2, gridTop + headerYearH + headerMonthH + 8);
+      const w = (differenceInCalendarDays(me, ms) + 1) * dayW;
+      doc.rect(x, top + headerYearH, w, headerMonthH, "S");
+      if (w > 14) doc.text(format(m, "MMM"), x + w / 2, top + headerYearH + 10, { align: "center" });
     }
-  }
+    // Weekday letters band
+    const wdTop = top + headerYearH + headerMonthH;
+    const dayTop = wdTop + headerWeekdayH;
+    if (headerWeekdayH > 0) {
+      const letters = ["S", "M", "T", "W", "T", "F", "S"];
+      doc.setFontSize(5.5);
+      for (const d of days) {
+        const dow = d.getDay();
+        const x = dayToX(d);
+        if (dow === 0 || dow === 6) {
+          doc.setFillColor(232, 234, 240);
+          doc.rect(x, wdTop, dayW, headerWeekdayH, "F");
+          doc.setTextColor(80, 95, 140);
+        } else {
+          doc.setTextColor(120);
+        }
+        if (dayW >= 5) doc.text(letters[dow], x + dayW / 2, wdTop + 6.5, { align: "center" });
+      }
+    }
+    // Day numbers
+    if (dayW >= 8) {
+      doc.setFontSize(5.5);
+      for (const d of days) {
+        const dow = d.getDay();
+        const x = dayToX(d);
+        if (dow === 0 || dow === 6) {
+          doc.setFillColor(238, 240, 246);
+          doc.rect(x, dayTop, dayW, headerDayH, "F");
+          doc.setTextColor(80);
+        } else {
+          doc.setTextColor(110);
+        }
+        doc.text(String(d.getDate()), x + dayW / 2, dayTop + 8, { align: "center" });
+      }
+    } else {
+      doc.setFontSize(5.5);
+      doc.setTextColor(110);
+      for (const m of months) {
+        const ms = m < range.start ? range.start : m;
+        const x = dayToX(ms);
+        doc.text("1", x + 2, dayTop + 8);
+      }
+    }
+  };
+
+  drawHeader(gridTop);
 
   // Rows
   let y = gridTop + headerH;
+  const rowStartY = y;
   doc.setFontSize(7);
   for (const l of lines) {
     const pack = linePacks.get(l.id) ?? { lanes: 1, placed: [] as Placed[] };
     const lineRowH = pack.lanes * rowH;
 
     if (y + lineRowH > pageH - 24) {
-      // Simple overflow guard - add new page with re-drawn headers
+      // Overflow: new page with re-drawn headers
       doc.addPage();
-      y = marginTop + 10;
+      drawHeader(marginTop);
+      y = marginTop + headerH;
     }
 
     // Label background
@@ -346,15 +380,36 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
     // Grid background per line
     doc.setFillColor(255, 255, 255);
     doc.rect(gridLeft, y, gridW, lineRowH, "F");
-    doc.setDrawColor(235);
-    doc.rect(gridLeft, y, gridW, lineRowH, "S");
+
+    // Weekend column shading inside body row
+    for (const d of days) {
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) continue;
+      doc.setFillColor(243, 245, 250);
+      doc.rect(dayToX(d), y, dayW, lineRowH, "F");
+    }
 
     // Month separators
-    doc.setDrawColor(230);
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.3);
     for (const m of months) {
       const x = dayToX(m < range.start ? range.start : m);
       doc.line(x, y, x, y + lineRowH);
     }
+
+    // Weekly (Monday) vertical lines
+    doc.setDrawColor(190);
+    doc.setLineWidth(0.2);
+    for (const d of days) {
+      if (d.getDay() !== 1) continue;
+      const x = dayToX(d);
+      doc.line(x, y, x, y + lineRowH);
+    }
+
+    // Row border
+    doc.setDrawColor(235);
+    doc.setLineWidth(0.4);
+    doc.rect(gridLeft, y, gridW, lineRowH, "S");
 
     // Bars
     for (const a of pack.placed) {
@@ -372,7 +427,6 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
       doc.setLineWidth(0.3);
       doc.roundedRect(bx, by, bw, barH, 2, 2, "FD");
 
-      // Label
       const text = a.name;
       const textColor = relLuminance([r, g, b]) > 0.5 ? 20 : 245;
       doc.setTextColor(textColor);
@@ -382,13 +436,22 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
         const lines2 = doc.splitTextToSize(text, maxTextW);
         doc.text(String(lines2[0]), bx + 3, by + barH / 2 + 2);
       } else {
-        // place to the right outside bar
         doc.setTextColor(60);
         doc.text(text, bx + bw + 2, by + barH / 2 + 2);
       }
     }
 
     y += lineRowH;
+  }
+
+  // Weekly Monday lines through the header day band to tie header to body
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.2);
+  const wkTop = gridTop + headerYearH + headerMonthH;
+  for (const d of days) {
+    if (d.getDay() !== 1) continue;
+    const x = dayToX(d);
+    doc.line(x, wkTop, x, rowStartY);
   }
 
   doc.save(`${fileBase(opts)}-view.pdf`);
