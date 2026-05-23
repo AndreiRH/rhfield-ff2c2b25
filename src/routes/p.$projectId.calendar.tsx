@@ -29,6 +29,9 @@ interface Activity {
   end_date: string;
   name: string;
   color: string;
+  duration_days: number | null;
+  follows_activity_id: string | null;
+  offset_days: number | null;
 }
 
 const DAY_WIDTH = 28;
