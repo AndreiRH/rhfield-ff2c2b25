@@ -105,16 +105,16 @@ function ProjectDashboard() {
             const flagCount = flaggedInLine(l);
             return (
               <Link key={l.id} to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber: String(l.number) }}>
-                <Card className={`h-full transition-all hover:border-primary/40 hover:shadow-md ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
+                <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="p-4">
-                    <div className="flex items-baseline justify-between">
+                    <div className="flex items-baseline justify-between gap-2">
                       <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
-                      <div className="flex items-center gap-1.5">
-                        <FlagBadge count={flagCount} />
-                        <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
-                      </div>
+                      <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
                     </div>
-                    <div className="mt-1 text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
+                      <FlagBadge count={flagCount} />
+                    </div>
                     <div className="mt-3"><ProgressBar value={pct} size="sm" /></div>
                   </CardContent>
                 </Card>
