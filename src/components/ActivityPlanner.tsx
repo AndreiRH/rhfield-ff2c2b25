@@ -96,6 +96,7 @@ export interface LineActivity {
   show_on_global: boolean;
   created_by: string | null;
   created_at: string;
+  sort_order: number;
 }
 
 export interface LineLite {
