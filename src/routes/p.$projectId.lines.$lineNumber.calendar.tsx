@@ -42,19 +42,21 @@ function LineCalendarPage() {
         .single();
       if (error) throw error;
 
-      const [{ data: allLines }, { data: activities }] = await Promise.all([
+      const [{ data: allLines }, { data: activities }, { data: project }] = await Promise.all([
         supabase
           .from("lines")
           .select("id, number, name")
           .eq("project_id", projectId)
           .order("number"),
         supabase.from("line_activities").select("*").eq("line_id", line.id).order("sort_order").order("start_date"),
+        supabase.from("projects").select("name").eq("id", projectId).maybeSingle(),
       ]);
 
       return {
         line: line as LineInfo,
         allLines: (allLines ?? []) as LineLite[],
         activities: (activities ?? []) as LineActivity[],
+        projectName: (project?.name as string | undefined) ?? "project",
       };
     },
   });
