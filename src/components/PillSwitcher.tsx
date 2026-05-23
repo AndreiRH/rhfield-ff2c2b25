@@ -57,6 +57,7 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
           boxShadow: "0 4px 12px oklch(0.18 0.03 250 / 0.1)",
           minWidth: "180px",
           fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+          pointerEvents: "auto",
         }}
         className={cn(
           "overflow-hidden p-1",
@@ -218,6 +219,7 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             top: pos.top,
             left: pos.left,
             width: pos.width,
+            pointerEvents: "auto",
           }}
           className="z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
