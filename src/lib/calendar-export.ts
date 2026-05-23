@@ -23,7 +23,15 @@ export interface ExportLine {
   name?: string | null;
 }
 
-export type ExportFormat = "pdf" | "xlsx" | "csv" | "ics" | "calendar-pdf";
+export type ExportFormat =
+  | "pdf"
+  | "xlsx"
+  | "csv"
+  | "ics"
+  | "calendar-pdf"
+  | "calendar-xlsx"
+  | "calendar-csv"
+  | "calendar-ics";
 
 interface BuildOptions {
   activities: ExportActivity[];
