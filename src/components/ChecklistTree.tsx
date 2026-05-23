@@ -588,12 +588,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           className="h-7 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
         />
       ) : (
-        <span
-          onClick={(e) => { if (!inMode) e.stopPropagation(); }}
-          onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
-          title={!inMode && canEdit ? "Double-click to rename" : undefined}
-          className={`flex-1 min-w-0 break-words text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
-        >{item.label}</span>
+        <div
+          className={`flex-1 min-w-0 ${(inSelectMode || canExpand) ? "cursor-pointer" : ""}`}
+          onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
+        >
+          <span
+            onClick={(e) => { if (!inMode) e.stopPropagation(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
+            title={!inMode && canEdit ? "Double-click to rename" : undefined}
+            className={`inline break-words text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
+          >{item.label}</span>
+        </div>
       )}
       {/* Always-visible content indicators */}
       <span className="flex shrink-0 items-center gap-2">
