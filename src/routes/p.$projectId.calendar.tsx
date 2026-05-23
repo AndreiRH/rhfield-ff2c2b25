@@ -184,7 +184,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         return [child];
       });
       children.forEach((child, index) => {
-        if (index > 0) child.classList.add("border-l", "border-border/40");
+        if (index > 0) child.classList.add("border-l", "border-muted-foreground/30");
       });
       row.replaceChildren(...children);
     };
@@ -347,7 +347,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`yr-${y.year}`}
-                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold"
+                      className="absolute top-0 hidden items-center justify-center border-r border-muted-foreground/30 text-xs font-semibold"
                       style={{ left, width, height: YEAR_HEADER_H }}
                     >
                       <span className="truncate px-1">{y.year}</span>
@@ -365,7 +365,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`mo-${m.toISOString()}`}
-                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
+                      className="absolute top-0 hidden items-center justify-center border-r border-muted-foreground/30 text-[11px] text-muted-foreground md:flex"
                       style={{ left, width, height: MONTH_HEADER_H }}
                     >
                       <span className="truncate px-1">{format(m, "MMM")}</span>
