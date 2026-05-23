@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
-import { calcProgress, liveChecklistItems } from "@/lib/progress";
+import { calcProgress, liveChecklistItems, countFlagged } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
