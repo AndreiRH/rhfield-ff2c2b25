@@ -347,7 +347,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`yr-${y.year}`}
-                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold md:flex"
+                      className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold"
                       style={{ left, width, height: YEAR_HEADER_H }}
                     >
                       <span className="truncate px-1">{y.year}</span>
