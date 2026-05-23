@@ -122,7 +122,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       }
       const { data: acts } = await supabase
         .from("line_activities")
-        .select("id, line_id, start_date, end_date, name, color, show_on_global")
+        .select("id, line_id, start_date, end_date, name, color, show_on_global, duration_days, follows_activity_id, offset_days")
         .in(
           "line_id",
           list.map((l) => l.id),
