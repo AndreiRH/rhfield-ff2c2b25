@@ -585,33 +585,120 @@ export function ActivityPlanner({
 
       {/* Activity list */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-muted-foreground">Activities</h3>
           {canEdit && (
-            <Button
-              size="icon"
-              onClick={() => setCreating(true)}
-              className="h-7 w-7 bg-blue-600 hover:bg-blue-700 text-white"
-              title="Add activity"
-              aria-label="Add activity"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMode((m) => (m === "copy" ? "idle" : "copy"))}
+                title={mode === "copy" ? "Exit duplicate mode" : "Duplicate an activity"}
+                aria-label="Duplicate mode"
+                className={cn(
+                  "inline-flex h-7 w-7 items-center justify-center rounded border transition",
+                  mode === "copy"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
+                )}
+              >
+                {mode === "copy" ? <X className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode((m) => (m === "delete" ? "idle" : "delete"))}
+                title={mode === "delete" ? "Exit delete mode" : "Delete an activity"}
+                aria-label="Delete mode"
+                className={cn(
+                  "inline-flex h-7 w-7 items-center justify-center rounded border transition",
+                  mode === "delete"
+                    ? "border-destructive bg-destructive/10 text-destructive"
+                    : "border-border text-muted-foreground hover:text-destructive hover:border-destructive/40",
+                )}
+              >
+                {mode === "delete" ? <X className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode((m) => (m === "reorder" ? "idle" : "reorder"))}
+                title={mode === "reorder" ? "Done reordering" : "Reorder activities"}
+                aria-label="Reorder mode"
+                className={cn(
+                  "inline-flex h-7 w-7 items-center justify-center rounded border transition",
+                  mode === "reorder"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
+                )}
+              >
+                {mode === "reorder" ? <X className="h-3.5 w-3.5" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+              </button>
+              <Button
+                size="icon"
+                onClick={() => { setMode("idle"); setCreating(true); }}
+                className="h-7 w-7 bg-blue-600 hover:bg-blue-700 text-white"
+                title="Add activity"
+                aria-label="Add activity"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
+        {mode !== "idle" && (
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            {mode === "copy" && "Click an activity to duplicate it on this line."}
+            {mode === "delete" && "Click an activity to delete it."}
+            {mode === "reorder" && "Use the arrows to reorder. The calendar follows this order."}
+          </p>
+        )}
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activities scheduled.</p>
         ) : (
           <ul className="space-y-1">
-            {sorted.map((a) => (
+            {sorted.map((a, idx) => {
+              const rowClick =
+                mode === "copy"
+                  ? () => doDuplicate(a)
+                  : mode === "delete"
+                  ? () => setConfirmDelete(a)
+                  : mode === "reorder"
+                  ? undefined
+                  : () => scrollToActivity(a);
+              return (
               <li
                 key={a.id}
-                className="rounded-md border-2 bg-card px-2 py-0.5 text-xs cursor-pointer transition hover:brightness-105"
+                className={cn(
+                  "rounded-md border-2 bg-card px-2 py-0.5 text-xs transition",
+                  rowClick && "cursor-pointer hover:brightness-105",
+                  mode === "copy" && "hover:bg-primary/5",
+                  mode === "delete" && "hover:bg-destructive/10",
+                )}
                 style={{ borderColor: a.color }}
-                onClick={() => scrollToActivity(a)}
+                onClick={rowClick}
               >
                 <div className="flex items-center gap-2">
-                  {canEdit && (
+                  {canEdit && mode === "reorder" && (
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => moveActivity(a, -1)}
+                        disabled={idx === 0}
+                        title="Move up"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveActivity(a, 1)}
+                        disabled={idx === sorted.length - 1}
+                        title="Move down"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {canEdit && mode === "idle" && (
                     <div
                       className="flex items-center gap-0.5 shrink-0"
                       onClick={(e) => e.stopPropagation()}
@@ -643,22 +730,6 @@ export function ActivityPlanner({
                           <Lock className="h-3 w-3" />
                         )}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => doDuplicate(a)}
-                        title="Duplicate on this line"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(a)}
-                        title="Delete"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded text-destructive hover:opacity-80"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
                     </div>
                   )}
                   <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
@@ -668,7 +739,7 @@ export function ActivityPlanner({
                     {format(parseISO(a.start_date), "d MMM yy")} →{" "}
                     {format(parseISO(a.end_date), "d MMM yy")}
                   </span>
-                  {canEdit && (
+                  {canEdit && mode === "idle" && (
                     <button
                       type="button"
                       onClick={async (e) => {
@@ -701,12 +772,12 @@ export function ActivityPlanner({
                     >
                       <CalendarIcon className="h-3 w-3" />
                       <span>{a.show_on_global ? "Global" : "Local"}</span>
-
                     </button>
                   )}
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
