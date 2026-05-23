@@ -393,12 +393,18 @@ export function ActivityPlanner({
     await insertLocal(a.name, a.start_date, a.end_date);
   };
 
-  const moveActivity = async (a: LineActivity, direction: -1 | 1) => {
-    const idx = sorted.findIndex((x) => x.id === a.id);
-    const swapIdx = idx + direction;
-    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
-    const next = [...sorted];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = sorted.findIndex((x) => x.id === active.id);
+    const newIdx = sorted.findIndex((x) => x.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(sorted, oldIdx, newIdx);
     const updates = await Promise.all(
       next.map((row, i) =>
         supabase.from("line_activities").update({ sort_order: i }).eq("id", row.id),
