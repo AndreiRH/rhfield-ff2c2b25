@@ -11,13 +11,11 @@ import {
 import {
   Pencil,
   Copy,
-  Globe,
   Lock,
   Trash2,
   Plus,
   CalendarIcon,
   Share2,
-  ArrowUpDown,
   GripVertical,
   X,
 } from "lucide-react";
@@ -666,7 +664,7 @@ export function ActivityPlanner({
                     : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
                 )}
               >
-                {mode === "reorder" ? <X className="h-3.5 w-3.5" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+                {mode === "reorder" ? <X className="h-3.5 w-3.5" /> : <GripVertical className="h-3.5 w-3.5" />}
               </button>
               <Button
                 size="icon"
