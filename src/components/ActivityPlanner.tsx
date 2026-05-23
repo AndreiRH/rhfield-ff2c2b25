@@ -142,6 +142,9 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileYearRowRef = useRef<HTMLDivElement>(null);
+  const mobileMonthRowRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderRafRef = useRef<number | null>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     name: string;
