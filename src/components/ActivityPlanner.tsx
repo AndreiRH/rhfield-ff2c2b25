@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { PillSwitcher, type PillItem } from "@/components/PillSwitcher";
 
 export const DAY_WIDTH = 28;
 const ROW_HEIGHT = 22;
@@ -102,6 +103,9 @@ export interface LineActivity {
   name: string;
   start_date: string;
   end_date: string;
+  duration_days: number;
+  follows_activity_id: string | null;
+  offset_days: number;
   color: string;
   is_shared: boolean;
   shared_group_id: string | null;
@@ -151,7 +155,7 @@ export function ActivityPlanner({
     existingLineNumbers: number[];
     existingColor: string;
     start: string;
-    end: string;
+    durationDays: number;
   } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
@@ -306,13 +310,26 @@ export function ActivityPlanner({
       ? 0
       : Math.max(...activities.map((a) => a.sort_order ?? 0)) + 1;
 
-  const insertLocal = async (name: string, start: string, end: string, color?: string) => {
+  const insertLocal = async (
+    name: string,
+    start: string,
+    durationDays: number,
+    color?: string,
+    follows?: { id: string; offset: number } | null,
+  ) => {
     const c = color ?? nextColor();
+    const end = format(
+      new Date(parseISO(start).getTime() + (durationDays - 1) * 86400000),
+      "yyyy-MM-dd",
+    );
     const { error } = await supabase.from("line_activities").insert({
       line_id: line.id,
       name,
       start_date: start,
       end_date: end,
+      duration_days: durationDays,
+      follows_activity_id: follows?.id ?? null,
+      offset_days: follows?.offset ?? 0,
       color: c,
       is_shared: false,
       created_by: user?.id ?? null,
@@ -326,13 +343,23 @@ export function ActivityPlanner({
     }
   };
 
-  const insertSharedAcrossAll = async (name: string, start: string, end: string, color: string) => {
+  const insertSharedAcrossAll = async (
+    name: string,
+    start: string,
+    durationDays: number,
+    color: string,
+  ) => {
     const groupId = crypto.randomUUID();
+    const end = format(
+      new Date(parseISO(start).getTime() + (durationDays - 1) * 86400000),
+      "yyyy-MM-dd",
+    );
     const rows = allLines.map((l) => ({
       line_id: l.id,
       name,
       start_date: start,
       end_date: end,
+      duration_days: durationDays,
       color,
       is_shared: true,
       shared_group_id: groupId,
@@ -351,24 +378,25 @@ export function ActivityPlanner({
   const checkDuplicateAndAdd = async (
     name: string,
     start: string,
-    end: string,
+    durationDays: number,
     shareGlobal: boolean,
+    follows: { id: string; offset: number } | null,
   ) => {
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error("Activity name required");
       return;
     }
-    if (!start || !end) {
-      toast.error("Pick start and end dates");
+    if (!start) {
+      toast.error("Pick a start date");
       return;
     }
-    if (start > end) {
-      toast.error("End date must be after start");
+    if (!durationDays || durationDays < 1) {
+      toast.error("Length must be at least 1 day");
       return;
     }
     const otherLineIds = allLines.filter((l) => l.id !== line.id).map((l) => l.id);
-    if (otherLineIds.length > 0) {
+    if (otherLineIds.length > 0 && !follows) {
       const { data } = await supabase
         .from("line_activities")
         .select("name, color, line_id")
@@ -386,15 +414,15 @@ export function ActivityPlanner({
           existingLineNumbers: lineNumbers,
           existingColor: dupes[0].color,
           start,
-          end,
+          durationDays,
         });
         return;
       }
     }
-    if (shareGlobal && allLines.length > 1) {
-      await insertSharedAcrossAll(trimmed, start, end, nextColor());
+    if (shareGlobal && allLines.length > 1 && !follows) {
+      await insertSharedAcrossAll(trimmed, start, durationDays, nextColor());
     } else {
-      await insertLocal(trimmed, start, end);
+      await insertLocal(trimmed, start, durationDays, undefined, follows);
     }
   };
 
@@ -465,7 +493,7 @@ export function ActivityPlanner({
   };
 
   const doDuplicate = async (a: LineActivity) => {
-    await insertLocal(a.name, a.start_date, a.end_date);
+    await insertLocal(a.name, a.start_date, a.duration_days ?? 1);
   };
 
   const dndSensors = useSensors(
@@ -834,9 +862,10 @@ export function ActivityPlanner({
       {/* Create dialog */}
       {creating && (
         <CreateActivityDialog
+          siblings={sorted}
           onClose={() => setCreating(false)}
-          onSubmit={async (name, start, end) => {
-            await checkDuplicateAndAdd(name, start, end, false);
+          onSubmit={async (name, start, durationDays, follows) => {
+            await checkDuplicateAndAdd(name, start, durationDays, false, follows);
             setCreating(false);
           }}
         />
@@ -864,7 +893,7 @@ export function ActivityPlanner({
                   await insertLocal(
                     duplicateConflict.name,
                     duplicateConflict.start,
-                    duplicateConflict.end,
+                    duplicateConflict.durationDays,
                   );
                   setDuplicateConflict(null);
                 }}
@@ -876,7 +905,7 @@ export function ActivityPlanner({
                   await insertSharedAcrossAll(
                     duplicateConflict.name,
                     duplicateConflict.start,
-                    duplicateConflict.end,
+                    duplicateConflict.durationDays,
                     duplicateConflict.existingColor,
                   );
                   setDuplicateConflict(null);
@@ -893,6 +922,7 @@ export function ActivityPlanner({
       {editing && (
         <EditActivityDialog
           activity={editing}
+          siblings={sorted}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -991,34 +1021,85 @@ export function ActivityPlanner({
   );
 }
 
+function FollowsPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: LineActivity[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const items: PillItem[] = [
+    { id: "__none__", key: "__none__", label: "None (independent)" },
+    ...options.map((o) => ({ id: o.id, key: o.id, label: o.name })),
+  ];
+  const currentKey = value ?? "__none__";
+  const currentLabel =
+    value ? options.find((o) => o.id === value)?.name ?? "Unknown" : "None";
+  return (
+    <PillSwitcher
+      label={currentLabel}
+      items={items}
+      currentKey={currentKey}
+      onPick={(it) => onChange(it.key === "__none__" ? null : it.id)}
+    />
+  );
+}
+
 function CreateActivityDialog({
+  siblings,
   onClose,
   onSubmit,
 }: {
+  siblings: LineActivity[];
   onClose: () => void;
-  onSubmit: (name: string, start: string, end: string) => Promise<void>;
+  onSubmit: (
+    name: string,
+    start: string,
+    durationDays: number,
+    follows: { id: string; offset: number } | null,
+  ) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [start, setStart] = useState<Date | undefined>();
-  const [end, setEnd] = useState<Date | undefined>();
+  const [duration, setDuration] = useState<number>(1);
+  const [followsId, setFollowsId] = useState<string | null>(null);
+  const [offset, setOffset] = useState<number>(0);
   const [busy, setBusy] = useState(false);
+
+  const followsActivity = followsId ? siblings.find((s) => s.id === followsId) : null;
+  const computedStart =
+    followsActivity
+      ? format(
+          new Date(parseISO(followsActivity.start_date).getTime() + offset * 86400000),
+          "yyyy-MM-dd",
+        )
+      : start
+        ? format(start, "yyyy-MM-dd")
+        : "";
 
   const submit = async () => {
     if (!name.trim()) {
       toast.error("Activity name required");
       return;
     }
-    if (!start || !end) {
-      toast.error("Pick start and end dates");
+    if (!followsActivity && !start) {
+      toast.error("Pick a start date");
       return;
     }
-    if (start > end) {
-      toast.error("End must be after start");
+    if (!duration || duration < 1) {
+      toast.error("Length must be at least 1 day");
       return;
     }
     setBusy(true);
     try {
-      await onSubmit(name.trim(), format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
+      await onSubmit(
+        name.trim(),
+        computedStart,
+        duration,
+        followsActivity ? { id: followsActivity.id, offset } : null,
+      );
     } finally {
       setBusy(false);
     }
@@ -1040,9 +1121,40 @@ function CreateActivityDialog({
               placeholder="Activity name"
             />
           </div>
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Follows activity</Label>
+            <FollowsPicker options={siblings} value={followsId} onChange={setFollowsId} />
+            {followsActivity && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Start follows "{followsActivity.name}" (
+                {format(parseISO(followsActivity.start_date), "d MMM yyyy")}) automatically.
+              </p>
+            )}
+          </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <DateField label="Start" date={start} onChange={setStart} />
-            <DateField label="End" date={end} onChange={setEnd} />
+            {followsActivity ? (
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  Delay (days, negative = anticipate)
+                </Label>
+                <Input
+                  type="number"
+                  value={offset}
+                  onChange={(e) => setOffset(parseInt(e.target.value || "0", 10))}
+                />
+              </div>
+            ) : (
+              <DateField label="Start" date={start} onChange={setStart} />
+            )}
+            <div>
+              <Label className="mb-1 block text-xs text-muted-foreground">Length (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={duration}
+                onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -1060,36 +1172,68 @@ function CreateActivityDialog({
 
 function EditActivityDialog({
   activity,
+  siblings,
   onClose,
   onSaved,
 }: {
   activity: LineActivity;
+  siblings: LineActivity[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [name, setName] = useState(activity.name);
   const [start, setStart] = useState<Date | undefined>(parseISO(activity.start_date));
-  const [end, setEnd] = useState<Date | undefined>(parseISO(activity.end_date));
+  const [duration, setDuration] = useState<number>(activity.duration_days ?? 1);
+  const [followsId, setFollowsId] = useState<string | null>(activity.follows_activity_id);
+  const [offset, setOffset] = useState<number>(activity.offset_days ?? 0);
   const [busy, setBusy] = useState(false);
+
+  // Exclude self + transitive descendants (activities that follow us, directly or indirectly)
+  const forbidden = useMemo(() => {
+    const banned = new Set<string>([activity.id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const s of siblings) {
+        if (s.follows_activity_id && banned.has(s.follows_activity_id) && !banned.has(s.id)) {
+          banned.add(s.id);
+          changed = true;
+        }
+      }
+    }
+    return banned;
+  }, [siblings, activity.id]);
+  const options = siblings.filter((s) => !forbidden.has(s.id));
+  const followsActivity = followsId ? siblings.find((s) => s.id === followsId) : null;
 
   const save = async () => {
     if (!name.trim()) {
       toast.error("Name required");
       return;
     }
-    if (!start || !end) {
-      toast.error("Dates required");
+    if (!followsActivity && !start) {
+      toast.error("Pick a start date");
       return;
     }
-    if (start > end) {
-      toast.error("End must be after start");
+    if (!duration || duration < 1) {
+      toast.error("Length must be at least 1 day");
       return;
     }
     setBusy(true);
     const newName = name.trim();
+    const startStr = followsActivity
+      ? format(
+          new Date(parseISO(followsActivity.start_date).getTime() + offset * 86400000),
+          "yyyy-MM-dd",
+        )
+      : format(start!, "yyyy-MM-dd");
+    const endStr = format(
+      new Date(parseISO(startStr).getTime() + (duration - 1) * 86400000),
+      "yyyy-MM-dd",
+    );
     let error;
     if (activity.is_shared && activity.shared_group_id) {
-      // Propagate name change to all lines sharing this activity; dates stay local
+      // Name propagates to all lines; per-line schedule + follow link stay local
       const [nameRes, datesRes] = await Promise.all([
         supabase
           .from("line_activities")
@@ -1098,8 +1242,11 @@ function EditActivityDialog({
         supabase
           .from("line_activities")
           .update({
-            start_date: format(start, "yyyy-MM-dd"),
-            end_date: format(end, "yyyy-MM-dd"),
+            start_date: startStr,
+            end_date: endStr,
+            duration_days: duration,
+            follows_activity_id: followsActivity ? followsActivity.id : null,
+            offset_days: followsActivity ? offset : 0,
           })
           .eq("id", activity.id),
       ]);
@@ -1109,8 +1256,11 @@ function EditActivityDialog({
         .from("line_activities")
         .update({
           name: newName,
-          start_date: format(start, "yyyy-MM-dd"),
-          end_date: format(end, "yyyy-MM-dd"),
+          start_date: startStr,
+          end_date: endStr,
+          duration_days: duration,
+          follows_activity_id: followsActivity ? followsActivity.id : null,
+          offset_days: followsActivity ? offset : 0,
         })
         .eq("id", activity.id);
       error = res.error;
@@ -1134,17 +1284,47 @@ function EditActivityDialog({
             <Label className="mb-1 block text-xs text-muted-foreground">Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">Follows activity</Label>
+            <FollowsPicker options={options} value={followsId} onChange={setFollowsId} />
+            {followsActivity && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Start follows "{followsActivity.name}" (
+                {format(parseISO(followsActivity.start_date), "d MMM yyyy")}) automatically.
+              </p>
+            )}
+          </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <DateField label="Start" date={start} onChange={setStart} />
-            <DateField label="End" date={end} onChange={setEnd} />
+            {followsActivity ? (
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  Delay (days, negative = anticipate)
+                </Label>
+                <Input
+                  type="number"
+                  value={offset}
+                  onChange={(e) => setOffset(parseInt(e.target.value || "0", 10))}
+                />
+              </div>
+            ) : (
+              <DateField label="Start" date={start} onChange={setStart} />
+            )}
+            <div>
+              <Label className="mb-1 block text-xs text-muted-foreground">Length (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={duration}
+                onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
+            </div>
           </div>
           {activity.is_shared && (
             <p className="text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
               This is a shared activity. Renaming it will update the name on every line it's shared
-              to. Dates remain local to each line.
+              to. Schedule and follow links remain local to each line.
             </p>
           )}
-
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
