@@ -378,6 +378,22 @@ export function ActivityPlanner({
     await insertLocal(a.name, a.start_date, a.end_date);
   };
 
+  const moveActivity = async (a: LineActivity, direction: -1 | 1) => {
+    const idx = sorted.findIndex((x) => x.id === a.id);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+    const next = [...sorted];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    const updates = await Promise.all(
+      next.map((row, i) =>
+        supabase.from("line_activities").update({ sort_order: i }).eq("id", row.id),
+      ),
+    );
+    const err = updates.find((u) => u.error)?.error;
+    if (err) toast.error(toUserMessage(err));
+    else onChange();
+  };
+
   const bodyHeight = Math.max(sorted.length * ROW_HEIGHT, 120);
   const headerHeight = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H + DAY_NUMBERS_HEADER_H;
   const timelineContentHeight = headerHeight + bodyHeight;
