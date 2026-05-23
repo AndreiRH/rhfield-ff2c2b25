@@ -439,7 +439,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
     <Card
       ref={setNodeRef}
       style={style}
-      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : `cursor-pointer hover:border-primary/40 ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}`}
+      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
       onClick={(e) => {
         if (isDelete) { setConfirmDelete(true); return; }
         if (isCopy) { onDuplicate?.(pe); return; }
