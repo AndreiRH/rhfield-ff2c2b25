@@ -234,7 +234,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
   const descFlagged = descendants.filter((d: any) => d.flagged).length;
   const flaggedCount = descFlagged + (item.flagged ? 1 : 0);
-  const isFlaggedShade = !!item.flagged || descFlagged > 0;
+  // "Uniformly flagged" — used to decide red shading on parents.
+  // A parent shows red only when EVERY descendant is flagged (or it has no
+  // descendants and is itself flagged). Mixed states (some flagged + some
+  // not, or flagged + done, or flagged + unmarked) render as default.
+  const allFlagged = !!item.flagged && (subsTotal === 0 || descFlagged === subsTotal);
+  const isFlaggedShade = allFlagged;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
