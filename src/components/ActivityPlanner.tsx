@@ -309,13 +309,26 @@ export function ActivityPlanner({
       ? 0
       : Math.max(...activities.map((a) => a.sort_order ?? 0)) + 1;
 
-  const insertLocal = async (name: string, start: string, end: string, color?: string) => {
+  const insertLocal = async (
+    name: string,
+    start: string,
+    durationDays: number,
+    color?: string,
+    follows?: { id: string; offset: number } | null,
+  ) => {
     const c = color ?? nextColor();
+    const end = format(
+      new Date(parseISO(start).getTime() + (durationDays - 1) * 86400000),
+      "yyyy-MM-dd",
+    );
     const { error } = await supabase.from("line_activities").insert({
       line_id: line.id,
       name,
       start_date: start,
       end_date: end,
+      duration_days: durationDays,
+      follows_activity_id: follows?.id ?? null,
+      offset_days: follows?.offset ?? 0,
       color: c,
       is_shared: false,
       created_by: user?.id ?? null,
@@ -329,13 +342,23 @@ export function ActivityPlanner({
     }
   };
 
-  const insertSharedAcrossAll = async (name: string, start: string, end: string, color: string) => {
+  const insertSharedAcrossAll = async (
+    name: string,
+    start: string,
+    durationDays: number,
+    color: string,
+  ) => {
     const groupId = crypto.randomUUID();
+    const end = format(
+      new Date(parseISO(start).getTime() + (durationDays - 1) * 86400000),
+      "yyyy-MM-dd",
+    );
     const rows = allLines.map((l) => ({
       line_id: l.id,
       name,
       start_date: start,
       end_date: end,
+      duration_days: durationDays,
       color,
       is_shared: true,
       shared_group_id: groupId,
