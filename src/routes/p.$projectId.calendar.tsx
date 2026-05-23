@@ -34,6 +34,7 @@ interface Activity {
   duration_days: number | null;
   follows_activity_id: string | null;
   offset_days: number | null;
+  sort_order?: number | null;
 }
 
 const DAY_WIDTH = 28;
