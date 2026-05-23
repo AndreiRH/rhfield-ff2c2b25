@@ -55,9 +55,38 @@ function ProjectCalendarPage() {
   const { projectId } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
+  const [projectName, setProjectName] = useState<string>("project");
+  const [exportLines, setExportLines] = useState<LineLite[]>([]);
+  const [exportActivities, setExportActivities] = useState<Activity[]>([]);
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
   }, [session, loading, navigate]);
+  useEffect(() => {
+    if (!session) return;
+    (async () => {
+      const { data: proj } = await supabase
+        .from("projects")
+        .select("name")
+        .eq("id", projectId)
+        .maybeSingle();
+      if (proj?.name) setProjectName(proj.name);
+      const { data: ls } = await supabase
+        .from("lines")
+        .select("id, number, name")
+        .eq("project_id", projectId)
+        .order("number");
+      const list = (ls ?? []) as LineLite[];
+      setExportLines(list);
+      if (list.length === 0) return;
+      const { data: acts } = await supabase
+        .from("line_activities")
+        .select("id, line_id, start_date, end_date, name, color, duration_days, follows_activity_id, offset_days, is_shared")
+        .in("line_id", list.map((l) => l.id))
+        .eq("show_on_global", true)
+        .order("start_date");
+      setExportActivities((acts ?? []) as Activity[]);
+    })();
+  }, [projectId, session]);
   if (!session) return null;
 
   return (
@@ -75,10 +104,20 @@ function ProjectCalendarPage() {
               <ChevronLeft className="h-4 w-4" /> Back to project
             </Link>
           </Button>
-          <h1 className="text-3xl font-semibold">Global hot commissioning calendar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            All activities across every production line.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold">Global hot commissioning calendar</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                All activities across every production line.
+              </p>
+            </div>
+            <ExportMenu
+              activities={exportActivities}
+              lines={exportLines}
+              projectName={projectName}
+              scopeLabel="Global"
+            />
+          </div>
         </div>
         <CombinedGantt projectId={projectId} />
         <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
