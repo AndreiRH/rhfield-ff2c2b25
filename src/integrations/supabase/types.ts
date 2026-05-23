@@ -1626,7 +1626,7 @@ export type Database = {
       import_project_bulk: { Args: { payload: Json }; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "engineer" | "pm"
+      app_role: "admin" | "engineer" | "pm" | "viewer"
       chapter_kind:
         | "assembly"
         | "wiring"
@@ -1762,7 +1762,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "engineer", "pm"],
+      app_role: ["admin", "engineer", "pm", "viewer"],
       chapter_kind: [
         "assembly",
         "wiring",
