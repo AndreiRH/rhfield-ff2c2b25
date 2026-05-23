@@ -108,9 +108,9 @@ function UsersPage() {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="hidden sm:grid grid-cols-[1fr_repeat(3,72px)_40px] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              <div className="hidden sm:grid grid-cols-[1fr_repeat(4,64px)_40px] items-center gap-2 border-b px-4 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
                 <div>User</div>
-                {ALL_ROLES.map((r) => <div key={r} className="text-center">{r}</div>)}
+                {ALL_ROLES.map((r) => <div key={r} className="text-center">{ROLE_LABEL[r]}</div>)}
                 <div />
               </div>
               {(data ?? []).map((u) => {
