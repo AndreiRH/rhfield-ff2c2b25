@@ -232,6 +232,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const notesCount = descNotes + (ownNote ? 1 : 0);
   const photosCount = descendants.reduce((s: number, d: any) => s + (d.item_photos?.length ?? 0), 0) + photos.length;
   const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
+  const descFlagged = descendants.filter((d: any) => d.flagged).length;
+  const flaggedCount = descFlagged + (item.flagged ? 1 : 0);
+  const isFlaggedShade = !!item.flagged || descFlagged > 0;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
