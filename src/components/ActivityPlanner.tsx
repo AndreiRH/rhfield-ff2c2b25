@@ -1086,14 +1086,35 @@ function EditActivityDialog({
       return;
     }
     setBusy(true);
-    const { error } = await supabase
-      .from("line_activities")
-      .update({
-        name: name.trim(),
-        start_date: format(start, "yyyy-MM-dd"),
-        end_date: format(end, "yyyy-MM-dd"),
-      })
-      .eq("id", activity.id);
+    const newName = name.trim();
+    let error;
+    if (activity.is_shared && activity.shared_group_id) {
+      // Propagate name change to all lines sharing this activity; dates stay local
+      const [nameRes, datesRes] = await Promise.all([
+        supabase
+          .from("line_activities")
+          .update({ name: newName })
+          .eq("shared_group_id", activity.shared_group_id),
+        supabase
+          .from("line_activities")
+          .update({
+            start_date: format(start, "yyyy-MM-dd"),
+            end_date: format(end, "yyyy-MM-dd"),
+          })
+          .eq("id", activity.id),
+      ]);
+      error = nameRes.error ?? datesRes.error;
+    } else {
+      const res = await supabase
+        .from("line_activities")
+        .update({
+          name: newName,
+          start_date: format(start, "yyyy-MM-dd"),
+          end_date: format(end, "yyyy-MM-dd"),
+        })
+        .eq("id", activity.id);
+      error = res.error;
+    }
     setBusy(false);
     if (error) toast.error(toUserMessage(error));
     else {
@@ -1119,10 +1140,11 @@ function EditActivityDialog({
           </div>
           {activity.is_shared && (
             <p className="text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
-              This is a shared activity. Editing the name will only affect this line. Dates are
-              always local to each line.
+              This is a shared activity. Renaming it will update the name on every line it's shared
+              to. Dates remain local to each line.
             </p>
           )}
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
