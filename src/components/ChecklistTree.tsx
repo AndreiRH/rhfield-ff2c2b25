@@ -597,10 +597,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
         >
           <span
-            onClick={(e) => { if (!inMode) e.stopPropagation(); }}
             onDoubleClick={(e) => { e.stopPropagation(); !inMode && canEdit && setEditingLabel(true); }}
             title={!inMode && canEdit ? "Double-click to rename" : undefined}
-            className={`inline break-words text-sm ${item.done && !inMode ? "text-muted-foreground" : ""} ${!inMode ? "cursor-default" : ""}`}
+            className={`inline break-words text-sm ${item.done && !inMode ? "text-muted-foreground" : ""}`}
           >{item.label}</span>
         </div>
       )}
