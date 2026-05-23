@@ -1517,9 +1517,33 @@ function SortableActivityRow({
         <span className="font-medium flex-1 min-w-0 truncate" style={{ color: a.color }}>
           {a.name}
         </span>
+        {followsName && (
+          <span
+            className="hidden sm:inline-flex shrink-0 items-center"
+            title={`Follows "${followsName}"${
+              followsOffset != null
+                ? followsOffset === 0
+                  ? ""
+                  : ` (${followsOffset > 0 ? "+" : ""}${followsOffset}d)`
+                : ""
+            }`}
+            style={{ color: followsColor ?? undefined }}
+          >
+            <Link2 className="h-3 w-3" />
+          </span>
+        )}
         <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline shrink-0">
           {format(parseISO(a.start_date), "d MMM yy")} → {format(parseISO(a.end_date), "d MMM yy")}
         </span>
+        {followsName && (
+          <span
+            className="sm:hidden shrink-0 inline-flex items-center"
+            title={`Follows "${followsName}"`}
+            style={{ color: followsColor ?? undefined }}
+          >
+            <Link2 className="h-3 w-3" />
+          </span>
+        )}
         {canEdit && mode === "idle" && (
           <button
             type="button"
