@@ -492,7 +492,7 @@ export function ActivityPlanner({
   };
 
   const doDuplicate = async (a: LineActivity) => {
-    await insertLocal(a.name, a.start_date, a.end_date);
+    await insertLocal(a.name, a.start_date, a.duration_days ?? 1);
   };
 
   const dndSensors = useSensors(
