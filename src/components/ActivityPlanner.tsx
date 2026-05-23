@@ -1414,6 +1414,9 @@ function DateField({
 
 function SortableActivityRow({
   a,
+  followsName,
+  followsColor,
+  followsOffset,
   mode,
   canEdit,
   onScrollTo,
@@ -1424,6 +1427,9 @@ function SortableActivityRow({
   onToggleGlobal,
 }: {
   a: LineActivity;
+  followsName: string | null;
+  followsColor: string | null;
+  followsOffset: number | null;
   mode: "idle" | "copy" | "delete" | "reorder";
   canEdit: boolean;
   onScrollTo: () => void;
