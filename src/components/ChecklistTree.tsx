@@ -264,8 +264,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const nowIso = new Date().toISOString();
     // Cascade down to all descendants.
     const ids = [item.id, ...descendants.map((d: any) => d.id)];
+    const updates: any = { done: next, completed_at: next ? nowIso : null };
+    // Marking done clears any flag on this branch (a done item can't be flagged).
+    if (next) updates.flagged = false;
     const { error } = await supabase.from("checklist_items")
-      .update({ done: next, completed_at: next ? nowIso : null }).in("id", ids);
+      .update(updates).in("id", ids);
     if (error) { toast.error(toUserMessage(error)); return; }
     // Cascade up: marking done propagates when all siblings are done;
     // unmarking propagates to any done ancestor (an item can't be done if a descendant isn't).
@@ -279,7 +282,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         const allDone = siblings.every((s: any) => doneSet.has(s.id) || s.done);
         if (!allDone) break;
         const { error: pErr } = await supabase.from("checklist_items")
-          .update({ done: true, completed_at: nowIso }).eq("id", parentId);
+          .update({ done: true, completed_at: nowIso, flagged: false }).eq("id", parentId);
         if (pErr) { toast.error(toUserMessage(pErr)); break; }
         doneSet.add(parentId);
         parentId = parent.parent_item_id ?? null;
@@ -302,13 +305,32 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     onChange();
   };
   // Toggle the "problem / needs attention" flag on this item AND cascade to all
-  // sublayers below it (so a flagged subtask group can be cleared in one click).
+  // sublayers below it. Flagging also clears the done state on this branch and
+  // on any done ancestors — a flagged item can't be considered complete.
   const toggleFlag = async () => {
     const next = !item.flagged;
     const ids = [item.id, ...descendants.map((d: any) => d.id)];
+    const updates: any = { flagged: next };
+    if (next) { updates.done = false; updates.completed_at = null; }
     const { error } = await supabase.from("checklist_items")
-      .update({ flagged: next }).in("id", ids);
-    if (error) toast.error(toUserMessage(error)); else onChange();
+      .update(updates).in("id", ids);
+    if (error) { toast.error(toUserMessage(error)); return; }
+    if (next) {
+      const ancestors: string[] = [];
+      let parentId: string | null = item.parent_item_id ?? null;
+      while (parentId) {
+        const parent: any = allItems.find((i: any) => i.id === parentId);
+        if (!parent) break;
+        if (parent.done) ancestors.push(parentId);
+        parentId = parent.parent_item_id ?? null;
+      }
+      if (ancestors.length) {
+        const { error: pErr } = await supabase.from("checklist_items")
+          .update({ done: false, completed_at: null }).in("id", ancestors);
+        if (pErr) toast.error(toUserMessage(pErr));
+      }
+    }
+    onChange();
   };
   const itemParentCols = item.component_type_id
     ? { component_type_id: item.component_type_id as string }
