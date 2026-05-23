@@ -475,16 +475,38 @@ export function ActivityPlanner({
           <div className="relative">
             <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
               <div
-                className="flex items-center justify-center border-b border-border/40 text-xs font-semibold"
+                className="flex items-stretch border-b border-border/40 text-xs font-semibold"
                 style={{ height: YEAR_HEADER_H }}
               >
-                <span className="truncate px-1">{format(rangeStart, "yyyy")}</span>
+                {visibleSegments.years.map((seg, i) => (
+                  <div
+                    key={seg.key}
+                    className={cn(
+                      "flex items-center justify-center min-w-0",
+                      i > 0 && "border-l border-border/40",
+                    )}
+                    style={{ flexGrow: seg.days, flexBasis: 0 }}
+                  >
+                    <span className="truncate px-1">{seg.label}</span>
+                  </div>
+                ))}
               </div>
               <div
-                className="flex items-center justify-center text-[11px] text-muted-foreground"
+                className="flex items-stretch text-[11px] text-muted-foreground"
                 style={{ height: MONTH_HEADER_H }}
               >
-                <span className="truncate px-1">{format(rangeStart, "MMM")}</span>
+                {visibleSegments.months.map((seg, i) => (
+                  <div
+                    key={seg.key}
+                    className={cn(
+                      "flex items-center justify-center min-w-0",
+                      i > 0 && "border-l border-border/40",
+                    )}
+                    style={{ flexGrow: seg.days, flexBasis: 0 }}
+                  >
+                    <span className="truncate px-1">{seg.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
             <div ref={scrollRef} className="overflow-x-auto">
