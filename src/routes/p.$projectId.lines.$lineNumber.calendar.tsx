@@ -47,7 +47,7 @@ function LineCalendarPage() {
           .select("id, number, name")
           .eq("project_id", projectId)
           .order("number"),
-        supabase.from("line_activities").select("*").eq("line_id", line.id).order("start_date"),
+        supabase.from("line_activities").select("*").eq("line_id", line.id).order("sort_order").order("start_date"),
       ]);
 
       return {
