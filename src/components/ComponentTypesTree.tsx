@@ -11,7 +11,7 @@ import {
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
-  Camera, Paperclip, Check, ListPlus, Share2, Lock, X,
+  Camera, Paperclip, Check, ListPlus, Share2, Lock, X, Flag,
 } from "lucide-react";
 import {
   useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType, pasteItem,
@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { ComponentsList } from "@/components/ExtraWorkChapterView";
 import { ChecklistTree, PhotoTile, FileChip } from "@/components/ChecklistTree";
-import { calcProgress, liveChecklistItems } from "@/lib/progress";
+import { calcProgress, liveChecklistItems, countFlagged } from "@/lib/progress";
 import { TreeActionProvider, useTreeAction } from "@/components/TreeAction";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -378,6 +378,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     items.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
   const filesCount =
     items.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
+  const flaggedCount = countFlagged(type.checklist_items ?? []);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
@@ -459,6 +460,11 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
         {filesCount > 0 && (
           <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files inside">
             <Paperclip className="h-3 w-3" /> {filesCount}
+          </span>
+        )}
+        {!inMode && flaggedCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-destructive/40 bg-destructive/10 px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-destructive" title={`${flaggedCount} flagged inside`}>
+            <Flag className="h-3 w-3 fill-current" />{flaggedCount}
           </span>
         )}
       </div>
