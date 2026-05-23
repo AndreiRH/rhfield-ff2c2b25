@@ -513,6 +513,11 @@ export function ActivityPlanner({
                 style={{ height: MONTH_HEADER_H }}
               />
             </div>
+            <div
+              ref={desktopYearRowRef}
+              className="absolute left-0 right-0 top-0 z-30 hidden overflow-hidden border-b bg-card md:flex"
+              style={{ height: YEAR_HEADER_H }}
+            />
             <div ref={scrollRef} className="overflow-x-auto">
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {mondays.map((d) => (
