@@ -545,7 +545,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       className={`flex items-center gap-1 px-2 py-1.5 ${(inSelectMode || canExpand) ? "cursor-pointer" : ""} ${
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
-        inReorder ? "bg-muted/30" : ""
+        inReorder ? "bg-muted/30" :
+        item.flagged ? "bg-destructive/15" :
+        descFlagged > 0 ? "bg-destructive/5" : ""
       }`}
       onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
