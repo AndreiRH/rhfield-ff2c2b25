@@ -203,6 +203,51 @@ export function ActivityPlanner({
     [days],
   );
 
+  // Track horizontal viewport for mobile fixed header splitting
+  const [viewport, setViewport] = useState({ left: 0, width: 0 });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setViewport({ left: el.scrollLeft, width: el.clientWidth });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  const visibleSegments = useMemo(() => {
+    const buildEmpty = (label: string) => [{ key: label, label, days: 1 }];
+    if (viewport.width === 0) {
+      return {
+        years: buildEmpty(format(rangeStart, "yyyy")),
+        months: buildEmpty(format(rangeStart, "MMM")),
+      };
+    }
+    const startIdx = Math.max(0, Math.floor(viewport.left / DAY_WIDTH));
+    const endIdx = Math.min(
+      totalDays - 1,
+      Math.ceil((viewport.left + viewport.width) / DAY_WIDTH) - 1,
+    );
+    const years: { key: string; label: string; days: number }[] = [];
+    const months: { key: string; label: string; days: number }[] = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      const d = days[i];
+      if (!d) continue;
+      const yKey = `${d.getFullYear()}`;
+      const mKey = `${d.getFullYear()}-${d.getMonth()}`;
+      const yLast = years[years.length - 1];
+      if (yLast && yLast.key === yKey) yLast.days += 1;
+      else years.push({ key: yKey, label: format(d, "yyyy"), days: 1 });
+      const mLast = months[months.length - 1];
+      if (mLast && mLast.key === mKey) mLast.days += 1;
+      else months.push({ key: mKey, label: format(d, "MMM"), days: 1 });
+    }
+    return { years, months };
+  }, [viewport, days, totalDays, rangeStart]);
+
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -430,16 +475,38 @@ export function ActivityPlanner({
           <div className="relative">
             <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
               <div
-                className="flex items-center justify-center border-b border-border/40 text-xs font-semibold"
+                className="flex items-stretch border-b border-border/40 text-xs font-semibold"
                 style={{ height: YEAR_HEADER_H }}
               >
-                <span className="truncate px-1">{format(rangeStart, "yyyy")}</span>
+                {visibleSegments.years.map((seg, i) => (
+                  <div
+                    key={seg.key}
+                    className={cn(
+                      "flex items-center justify-center min-w-0",
+                      i > 0 && "border-l border-border/40",
+                    )}
+                    style={{ flexGrow: seg.days, flexBasis: 0 }}
+                  >
+                    <span className="truncate px-1">{seg.label}</span>
+                  </div>
+                ))}
               </div>
               <div
-                className="flex items-center justify-center text-[11px] text-muted-foreground"
+                className="flex items-stretch text-[11px] text-muted-foreground"
                 style={{ height: MONTH_HEADER_H }}
               >
-                <span className="truncate px-1">{format(rangeStart, "MMM")}</span>
+                {visibleSegments.months.map((seg, i) => (
+                  <div
+                    key={seg.key}
+                    className={cn(
+                      "flex items-center justify-center min-w-0",
+                      i > 0 && "border-l border-border/40",
+                    )}
+                    style={{ flexGrow: seg.days, flexBasis: 0 }}
+                  >
+                    <span className="truncate px-1">{seg.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
             <div ref={scrollRef} className="overflow-x-auto">
