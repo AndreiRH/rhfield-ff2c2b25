@@ -600,6 +600,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         {subsTotal > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
         )}
+        {!inMode && descFlagged > 0 && !item.flagged && (
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-destructive/40 bg-destructive/10 px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-destructive" title={`${descFlagged} flagged below`}>
+            <Flag className="h-3 w-3 fill-current" />{descFlagged}
+          </span>
+        )}
         {!inMode && notesCount > 0 && (
           <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
             <StickyNote className="h-3 w-3" /> {notesCount}
@@ -614,6 +619,18 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Files">
             <Paperclip className="h-3 w-3" /> {filesCount}
           </span>
+        )}
+        {!inMode && canEdit && (
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFlag(); }}
+            title={item.flagged ? "Clear problem flag (also clears sublayers)" : "Flag a problem with this device"}
+            aria-label={item.flagged ? "Unflag problem" : "Flag problem"}
+            className={`inline-flex items-center justify-center rounded p-0.5 transition-colors ${
+              item.flagged ? "text-destructive hover:bg-destructive/15" : "text-muted-foreground/50 hover:bg-accent hover:text-destructive"
+            }`}
+          >
+            <Flag className={`h-3.5 w-3.5 ${item.flagged ? "fill-current" : ""}`} />
+          </button>
         )}
       </span>
     </div>
