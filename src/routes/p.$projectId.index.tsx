@@ -102,13 +102,17 @@ function ProjectDashboard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(data?.lines ?? []).map((l: any, i: number) => {
             const pct = lineProgresses[i];
+            const flagCount = flaggedInLine(l);
             return (
               <Link key={l.id} to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber: String(l.number) }}>
-                <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+                <Card className={`h-full transition-all hover:border-primary/40 hover:shadow-md ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
                   <CardContent className="p-4">
                     <div className="flex items-baseline justify-between">
                       <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
+                      <div className="flex items-center gap-1.5">
+                        <FlagBadge count={flagCount} />
+                        <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
+                      </div>
                     </div>
                     <div className="mt-1 text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
                     <div className="mt-3"><ProgressBar value={pct} size="sm" /></div>
