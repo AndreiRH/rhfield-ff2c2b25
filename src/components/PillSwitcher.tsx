@@ -39,7 +39,7 @@ export function PillSwitcher({ label, items, currentKey, onPick }: Props) {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className="breadcrumb-pill focus:outline-none focus-visible:ring-1 focus-visible:ring-current/60"
       >
