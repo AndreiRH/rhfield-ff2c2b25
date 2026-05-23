@@ -149,17 +149,17 @@ export function CalendarNotesList({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-medium hover:text-foreground"
-          >
+        <div
+          onClick={() => setOpen((o) => !o)}
+          className="flex cursor-pointer items-center justify-between gap-2 -m-1 rounded p-1 hover:bg-accent/40"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             Notes
             <span className="font-mono text-xs text-muted-foreground">({notes.length})</span>
-          </button>
+          </div>
           {open && canEdit && (
-            <Button size="sm" onClick={addNote}>
+            <Button size="sm" onClick={(e) => { e.stopPropagation(); addNote(); }}>
               <Plus className="mr-1 h-4 w-4" /> Add note
             </Button>
           )}
