@@ -154,7 +154,7 @@ export function ActivityPlanner({
     existingLineNumbers: number[];
     existingColor: string;
     start: string;
-    end: string;
+    durationDays: number;
   } | null>(null);
   const [confirmShare, setConfirmShare] = useState<LineActivity | null>(null);
   const [confirmUnshare, setConfirmUnshare] = useState<LineActivity | null>(null);
