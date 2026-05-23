@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { localUuid } from "@/lib/local-id";
-import { calcProgress, equipmentProgress, liveChecklistItems } from "@/lib/progress";
+import { calcProgress, equipmentProgress, liveChecklistItems, flaggedInPlantEquipment, flaggedInLine } from "@/lib/progress";
+import { FlagBadge } from "@/components/FlagBadge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,7 @@ function LineOverview() {
                   <h1 className="text-3xl font-semibold tabular-nums">
                     {data.number.toString().padStart(2, "0")}
                     <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgressPct}%</span>
+                    <FlagBadge count={flaggedInLine(data)} className="ml-2 align-middle" />
                   </h1>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
@@ -126,6 +128,7 @@ function LineOverview() {
                 const overallPct = eq.equipment.length === 0
                   ? 0
                   : Math.round(eq.equipment.reduce((s: number, pe: any) => s + equipmentProgress(pe).overall, 0) / eq.equipment.length);
+                const flagCount = eq.equipment.reduce((s: number, pe: any) => s + flaggedInPlantEquipment(pe), 0);
                 return (
                   <Link
                     key={eq.kind}
@@ -133,12 +136,13 @@ function LineOverview() {
                     params={{ projectId, lineNumber, kind: eq.kind }}
                     className="group block"
                   >
-                    <Card className="transition hover:border-primary/40 hover:shadow-sm">
+                    <Card className={`transition hover:border-primary/40 hover:shadow-sm ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Factory className="h-5 w-5 text-muted-foreground" />
                             <h3 className="text-lg font-semibold">{eq.name}</h3>
+                            <FlagBadge count={flagCount} />
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
                         </div>

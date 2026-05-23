@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { localUuid } from "@/lib/local-id";
-import { equipmentProgress } from "@/lib/progress";
+import { equipmentProgress, flaggedInPlantEquipment } from "@/lib/progress";
+import { FlagBadge } from "@/components/FlagBadge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -398,6 +399,7 @@ function ChapterTile({ label, pct }: { label: string; pct: number }) {
 function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mode, onDuplicate }: any) {
   const navigate = useNavigate();
   const { mech, wiring, cold, overall } = equipmentProgress(pe);
+  const flagCount = flaggedInPlantEquipment(pe);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pe.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -437,7 +439,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
     <Card
       ref={setNodeRef}
       style={style}
-      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : "cursor-pointer hover:border-primary/40"}`}
+      className={`transition ${isDelete ? "cursor-pointer border-destructive/50 bg-destructive/5 hover:bg-destructive/10" : isCopy ? "cursor-pointer border-primary/50 bg-primary/5 hover:bg-primary/10" : editing ? "" : `cursor-pointer hover:border-primary/40 ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}`}
       onClick={(e) => {
         if (isDelete) { setConfirmDelete(true); return; }
         if (isCopy) { onDuplicate?.(pe); return; }
@@ -493,6 +495,7 @@ function EquipmentCard({ pe, canEdit, onChange, projectId, lineNumber, kind, mod
                 className={`text-lg font-semibold ${canEdit ? "cursor-text" : ""}`}
               >{pe.name}</h3>
               <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">{overall}%</span>
+              <FlagBadge count={flagCount} />
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </div>
           )}
