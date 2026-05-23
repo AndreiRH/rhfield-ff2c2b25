@@ -80,14 +80,18 @@ function ProjectsPage() {
               const pct = lineParts.length === 0
                 ? 0
                 : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
+              const flagCount = flaggedInProject(p.lines ?? []);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
-                    <Card className="transition-all hover:border-primary/40 hover:shadow-md">
+                    <Card className={`transition-all hover:border-primary/40 hover:shadow-md ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
-                          <span className={`text-xs tabular-nums text-muted-foreground ${isAdmin ? "mr-20" : ""}`}>{p.lines?.length ?? 0} lines</span>
+                          <div className={`flex items-center gap-2 ${isAdmin ? "mr-20" : ""}`}>
+                            <FlagBadge count={flagCount} />
+                            <span className="text-xs tabular-nums text-muted-foreground">{p.lines?.length ?? 0} lines</span>
+                          </div>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
                         <ProgressBar value={pct} size="md" />
