@@ -110,7 +110,6 @@ function LineOverview() {
                   <h1 className="text-3xl font-semibold tabular-nums">
                     {data.number.toString().padStart(2, "0")}
                     <span className="ml-3 text-base font-normal text-muted-foreground">{lineProgressPct}%</span>
-                    <FlagBadge count={flaggedInLine(data)} className="ml-2 align-middle" />
                   </h1>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
