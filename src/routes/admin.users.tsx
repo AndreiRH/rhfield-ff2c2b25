@@ -118,7 +118,7 @@ function UsersPage() {
                 return (
                   <div
                     key={u.user_id}
-                    className="flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_repeat(3,72px)_40px] sm:items-center sm:gap-2"
+                    className="flex flex-col gap-3 border-b px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_repeat(4,64px)_40px] sm:items-center sm:gap-2"
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium break-words">
@@ -127,16 +127,16 @@ function UsersPage() {
                       </div>
                       <div className="text-xs text-muted-foreground break-all">{u.email}</div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 sm:contents">
+                    <div className="flex items-center justify-between gap-1 sm:contents">
                       {ALL_ROLES.map((r) => {
                         const has = u.roles?.includes(r);
                         const disabled = mutate.isPending || (isMe && r === "admin" && has);
                         return (
                           <label
                             key={r}
-                            className="flex flex-1 items-center justify-center gap-2 rounded-md border px-2 py-1.5 sm:flex-none sm:border-0 sm:p-0"
+                            className="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 sm:flex-none sm:border-1 sm:p-0"
                           >
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground sm:hidden">{r}</span>
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground sm:hidden">{ROLE_LABEL[r]}</span>
                             <Checkbox
                               checked={!!has}
                               disabled={disabled}
