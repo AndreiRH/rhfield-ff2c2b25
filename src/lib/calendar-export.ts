@@ -666,6 +666,7 @@ export async function exportXlsx(opts: BuildOptions, range: CalendarRange) {
   });
 
   XLSXStyle.utils.book_append_sheet(wb, ws, "Calendar");
+  XLSXStyle.utils.book_append_sheet(wb, wsList, "Activities");
   XLSXStyle.writeFile(wb, `${fileBase(opts)}.xlsx`);
 }
 
