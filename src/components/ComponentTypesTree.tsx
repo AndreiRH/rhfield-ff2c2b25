@@ -378,6 +378,7 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
     items.reduce((acc: number, i: any) => acc + (i.item_photos?.length ?? 0), 0);
   const filesCount =
     items.reduce((acc: number, i: any) => acc + (i.item_files?.length ?? 0), 0);
+  const flaggedCount = countFlagged(type.checklist_items ?? []);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
