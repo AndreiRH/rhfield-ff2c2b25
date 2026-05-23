@@ -128,6 +128,7 @@ function LineOverview() {
                 const overallPct = eq.equipment.length === 0
                   ? 0
                   : Math.round(eq.equipment.reduce((s: number, pe: any) => s + equipmentProgress(pe).overall, 0) / eq.equipment.length);
+                const flagCount = eq.equipment.reduce((s: number, pe: any) => s + flaggedInPlantEquipment(pe), 0);
                 return (
                   <Link
                     key={eq.kind}
@@ -135,12 +136,13 @@ function LineOverview() {
                     params={{ projectId, lineNumber, kind: eq.kind }}
                     className="group block"
                   >
-                    <Card className="transition hover:border-primary/40 hover:shadow-sm">
+                    <Card className={`transition hover:border-primary/40 hover:shadow-sm ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Factory className="h-5 w-5 text-muted-foreground" />
                             <h3 className="text-lg font-semibold">{eq.name}</h3>
+                            <FlagBadge count={flagCount} />
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />
                         </div>
