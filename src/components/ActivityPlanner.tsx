@@ -18,6 +18,7 @@ import {
   Share2,
   GripVertical,
   X,
+  Link2,
 } from "lucide-react";
 import {
   DndContext,
