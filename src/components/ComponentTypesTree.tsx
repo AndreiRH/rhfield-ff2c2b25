@@ -462,6 +462,11 @@ function TypeSection({ type, canEdit, onChange, open, onToggleOpen, externalSear
             <Paperclip className="h-3 w-3" /> {filesCount}
           </span>
         )}
+        {!inMode && flaggedCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-destructive/40 bg-destructive/10 px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-destructive" title={`${flaggedCount} flagged inside`}>
+            <Flag className="h-3 w-3 fill-current" />{flaggedCount}
+          </span>
+        )}
       </div>
 
       {open && (
