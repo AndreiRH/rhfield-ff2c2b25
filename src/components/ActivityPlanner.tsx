@@ -431,13 +431,13 @@ export function ActivityPlanner({
             <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
               {weekendDays.map((d) => (
                 <div
-                  key={`we-full-${d.toISOString()}`}
+                  key={`we-hdr-${d.toISOString()}`}
                   className="absolute z-10 pointer-events-none bg-muted/40"
                   style={{
                     left: dayToX(d),
-                    top: weekSeparatorTop + DAY_NUMBERS_HEADER_H,
+                    top: weekSeparatorTop,
                     width: DAY_WIDTH,
-                    height: weekSeparatorHeight - DAY_NUMBERS_HEADER_H,
+                    height: DAY_NUMBERS_HEADER_H,
                   }}
                 />
               ))}
