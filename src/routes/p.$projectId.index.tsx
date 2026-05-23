@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lineOverallPct, flaggedInLine } from "@/lib/progress";
-import { FlagBadge } from "@/components/FlagBadge";
+import { lineOverallPct } from "@/lib/progress";
+
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,7 +102,6 @@ function ProjectDashboard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(data?.lines ?? []).map((l: any, i: number) => {
             const pct = lineProgresses[i];
-            const flagCount = flaggedInLine(l);
             return (
               <Link key={l.id} to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber: String(l.number) }}>
                 <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
@@ -111,10 +110,7 @@ function ProjectDashboard() {
                       <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
                       <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
-                      <FlagBadge count={flagCount} />
-                    </div>
+                    <div className="mt-1 text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
                     <div className="mt-3"><ProgressBar value={pct} size="sm" /></div>
                   </CardContent>
                 </Card>
