@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -145,13 +146,16 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const update = () => setViewport({ left: el.scrollLeft, width: el.clientWidth });
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
+    const apply = () => {
+      flushSync(() => setViewport({ left: el.scrollLeft, width: el.clientWidth }));
+    };
+    apply();
+    const onScroll = () => apply();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => {
-      el.removeEventListener("scroll", update);
+      el.removeEventListener("scroll", onScroll);
       ro.disconnect();
     };
   }, [lines.length]);

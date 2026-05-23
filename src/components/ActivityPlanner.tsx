@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { flushSync } from "react-dom";
 import {
   format,
   parseISO,
@@ -208,13 +209,16 @@ export function ActivityPlanner({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const update = () => setViewport({ left: el.scrollLeft, width: el.clientWidth });
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
+    const apply = () => {
+      flushSync(() => setViewport({ left: el.scrollLeft, width: el.clientWidth }));
+    };
+    apply();
+    const onScroll = () => apply();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => {
-      el.removeEventListener("scroll", update);
+      el.removeEventListener("scroll", onScroll);
       ro.disconnect();
     };
   }, []);
