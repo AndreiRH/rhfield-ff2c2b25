@@ -1044,11 +1044,14 @@ export type Database = {
           color: string
           created_at: string
           created_by: string | null
+          duration_days: number
           end_date: string
+          follows_activity_id: string | null
           id: string
           is_shared: boolean
           line_id: string
           name: string
+          offset_days: number
           origin_line_id: string | null
           shared_group_id: string | null
           show_on_global: boolean
@@ -1059,11 +1062,14 @@ export type Database = {
           color: string
           created_at?: string
           created_by?: string | null
+          duration_days?: number
           end_date: string
+          follows_activity_id?: string | null
           id?: string
           is_shared?: boolean
           line_id: string
           name: string
+          offset_days?: number
           origin_line_id?: string | null
           shared_group_id?: string | null
           show_on_global?: boolean
@@ -1074,11 +1080,14 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string | null
+          duration_days?: number
           end_date?: string
+          follows_activity_id?: string | null
           id?: string
           is_shared?: boolean
           line_id?: string
           name?: string
+          offset_days?: number
           origin_line_id?: string | null
           shared_group_id?: string | null
           show_on_global?: boolean
@@ -1086,6 +1095,13 @@ export type Database = {
           start_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "line_activities_follows_activity_id_fkey"
+            columns: ["follows_activity_id"]
+            isOneToOne: false
+            referencedRelation: "line_activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "line_activities_line_id_fkey"
             columns: ["line_id"]
