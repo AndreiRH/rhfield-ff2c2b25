@@ -1262,6 +1262,19 @@ function EditActivityDialog({
       toast.error("Length must be at least 1 day");
       return;
     }
+    // If this is a shared activity and the follows link is changing,
+    // warn the user — the change will propagate to every line in the group.
+    if (activity.is_shared && activity.shared_group_id && followsId !== activity.follows_activity_id) {
+      const { count } = await supabase
+        .from("line_activities")
+        .select("id", { count: "exact", head: true })
+        .eq("shared_group_id", activity.shared_group_id);
+      const n = count ?? 0;
+      const ok = window.confirm(
+        `This is a shared activity. Changing the "follows" setting will affect all ${n} line${n === 1 ? "" : "s"}. Continue?`,
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     const newName = name.trim();
     const startStr = followsActivity
