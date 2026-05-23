@@ -148,7 +148,13 @@ function ProjectCalendarPage() {
   );
 }
 
-function CombinedGantt({ projectId }: { projectId: string }) {
+function CombinedGantt({
+  projectId,
+  onVisibleRangeChange,
+}: {
+  projectId: string;
+  onVisibleRangeChange?: (r: { start: Date; end: Date }) => void;
+}) {
   const [lines, setLines] = useState<LineLite[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
