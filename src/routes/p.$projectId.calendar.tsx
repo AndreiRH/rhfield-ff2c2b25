@@ -230,7 +230,22 @@ function CombinedGantt({ projectId }: { projectId: string }) {
         </div>
 
         {/* Scrollable timeline */}
-        <div ref={scrollRef} className="overflow-x-auto flex-1 [container-type:inline-size]">
+        <div className="relative min-w-0 flex-1">
+          <div className="absolute left-0 right-0 top-0 z-30 border-b bg-card md:hidden">
+            <div
+              className="flex items-center justify-center border-b border-border/40 text-xs font-semibold"
+              style={{ height: YEAR_HEADER_H }}
+            >
+              <span className="truncate px-1">{format(RANGE_START, "yyyy")}</span>
+            </div>
+            <div
+              className="flex items-center justify-center text-[11px] text-muted-foreground"
+              style={{ height: MONTH_HEADER_H }}
+            >
+              <span className="truncate px-1">{format(RANGE_START, "MMM")}</span>
+            </div>
+          </div>
+          <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
               <div
@@ -249,12 +264,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
             <div className="bg-card border-b">
               {/* Years */}
               <div className="relative border-b" style={{ height: YEAR_HEADER_H }}>
-                <div
-                  className="sticky left-0 z-30 flex items-center justify-center border-r border-border/40 bg-card text-xs font-semibold md:hidden"
-                  style={{ width: "100cqw", height: YEAR_HEADER_H }}
-                >
-                  <span className="truncate px-1">{format(RANGE_START, "yyyy")}</span>
-                </div>
                 {years.map((y) => {
                   const left = dayToX(y.start);
                   const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
@@ -271,12 +280,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
               </div>
               {/* Months */}
               <div className="relative border-b" style={{ height: MONTH_HEADER_H }}>
-                <div
-                  className="sticky left-0 z-30 flex items-center justify-center border-r border-border/40 bg-card text-[11px] text-muted-foreground md:hidden"
-                  style={{ width: "100cqw", height: MONTH_HEADER_H }}
-                >
-                  <span className="truncate px-1">{format(RANGE_START, "MMM")}</span>
-                </div>
                 {months.map((m) => {
                   const mStart = m < RANGE_START ? RANGE_START : m;
                   const mEnd = endOfMonth(m) > RANGE_END ? RANGE_END : endOfMonth(m);
@@ -419,6 +422,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
                 });
               })}
             </div>
+          </div>
           </div>
         </div>
       </div>
