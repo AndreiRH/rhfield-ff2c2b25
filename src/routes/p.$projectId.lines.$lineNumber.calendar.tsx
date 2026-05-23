@@ -16,6 +16,7 @@ import {
 } from "@/components/ActivityPlanner";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
 import { CalendarNotesList } from "@/components/CalendarNotesList";
+import { ExportMenu } from "@/components/calendar/ExportMenu";
 
 export const Route = createFileRoute("/p/$projectId/lines/$lineNumber/calendar")({
   component: LineCalendarPage,
