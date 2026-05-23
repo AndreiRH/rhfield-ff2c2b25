@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, GripVertical, ChevronRight, ChevronDown, Camera, Paperclip,
-  StickyNote, ListPlus, X, Share2, Lock, ClipboardPaste, Check,
+  StickyNote, ListPlus, X, Share2, Lock, ClipboardPaste, Check, Flag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoPicker } from "@/components/PhotoPicker";
@@ -232,6 +232,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const notesCount = descNotes + (ownNote ? 1 : 0);
   const photosCount = descendants.reduce((s: number, d: any) => s + (d.item_photos?.length ?? 0), 0) + photos.length;
   const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
+  const descFlagged = descendants.filter((d: any) => d.flagged).length;
+  const flaggedCount = descFlagged + (item.flagged ? 1 : 0);
+  const isFlaggedShade = !!item.flagged || descFlagged > 0;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -292,6 +295,15 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       }
     }
     onChange();
+  };
+  // Toggle the "problem / needs attention" flag on this item AND cascade to all
+  // sublayers below it (so a flagged subtask group can be cleared in one click).
+  const toggleFlag = async () => {
+    const next = !item.flagged;
+    const ids = [item.id, ...descendants.map((d: any) => d.id)];
+    const { error } = await supabase.from("checklist_items")
+      .update({ flagged: next }).in("id", ids);
+    if (error) toast.error(toUserMessage(error)); else onChange();
   };
   const itemParentCols = item.component_type_id
     ? { component_type_id: item.component_type_id as string }
@@ -533,7 +545,9 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       className={`flex items-center gap-1 px-2 py-1.5 ${(inSelectMode || canExpand) ? "cursor-pointer" : ""} ${
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
-        inReorder ? "bg-muted/30" : ""
+        inReorder ? "bg-muted/30" :
+        item.flagged ? "bg-destructive/15" :
+        descFlagged > 0 ? "bg-destructive/5" : ""
       }`}
       onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
@@ -586,6 +600,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         {subsTotal > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
         )}
+        {!inMode && descFlagged > 0 && !item.flagged && (
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-destructive/40 bg-destructive/10 px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-destructive" title={`${descFlagged} flagged below`}>
+            <Flag className="h-3 w-3 fill-current" />{descFlagged}
+          </span>
+        )}
         {!inMode && notesCount > 0 && (
           <span className="inline-flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground" title="Notes">
             <StickyNote className="h-3 w-3" /> {notesCount}
@@ -601,6 +620,18 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
             <Paperclip className="h-3 w-3" /> {filesCount}
           </span>
         )}
+        {!inMode && canEdit && (
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFlag(); }}
+            title={item.flagged ? "Clear problem flag (also clears sublayers)" : "Flag a problem with this device"}
+            aria-label={item.flagged ? "Unflag problem" : "Flag problem"}
+            className={`inline-flex items-center justify-center rounded p-0.5 transition-colors ${
+              item.flagged ? "text-destructive hover:bg-destructive/15" : "text-muted-foreground/50 hover:bg-accent hover:text-destructive"
+            }`}
+          >
+            <Flag className={`h-3.5 w-3.5 ${item.flagged ? "fill-current" : ""}`} />
+          </button>
+        )}
       </span>
     </div>
   );
@@ -611,6 +642,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       className={`rounded-md border bg-card ${depth === 0 ? "ml-2 border-l-4 border-l-muted-foreground/30" : ""} ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
+        item.flagged ? "border-destructive/60 bg-destructive/10" :
+        descFlagged > 0 ? "border-destructive/30" :
         item.done ? "border-success/40 bg-success/10" : ""
       }`}>
       {row}

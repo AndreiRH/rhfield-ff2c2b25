@@ -35,17 +35,17 @@ function ProjectsPage() {
               id, deleted_at, mech_mode, mech_manual_pct,
               equipment_groups(
                 id, chapter, deleted_at,
-                components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id)),
+                components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id)),
                 component_types(
                   id, deleted_at,
-                  checklist_items(id, done, deleted_at, parent_item_id),
-                  components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+                  checklist_items(id, done, flagged, deleted_at, parent_item_id),
+                  components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
                 )
               )
             ),
             equipment_groups(
               id, kind, deleted_at,
-              components(id, deleted_at, checklist_items(id, done, deleted_at, parent_item_id))
+              components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
             )
           )
         `)

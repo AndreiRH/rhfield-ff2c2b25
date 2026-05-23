@@ -37,6 +37,38 @@ export function calcProgress(items: ChecklistProgressItem[]): ProgressNumbers {
   return { done, total, pct };
 }
 
+// Count flagged checklist items in a flat list (handles soft-deleted/orphaned items).
+export function countFlagged(items: any[]): number {
+  return liveChecklistItems(items as any).filter((i: any) => i.flagged).length;
+}
+
+// Count flagged items inside an equipment group (covers both shapes).
+export function flaggedInGroup(group: any): number {
+  return countFlagged(itemsFromGroup(group));
+}
+
+// Count flagged items inside a plant_equipment record.
+export function flaggedInPlantEquipment(pe: any): number {
+  const groups = (pe?.equipment_groups ?? []).filter((g: any) => !g.deleted_at);
+  return groups.reduce((s: number, g: any) => s + flaggedInGroup(g), 0);
+}
+
+// Count flagged items across a whole line (plant equipment + extra-work groups).
+export function flaggedInLine(line: any): number {
+  const peTotal = (line?.plant_equipment ?? [])
+    .filter((p: any) => !p.deleted_at)
+    .reduce((s: number, pe: any) => s + flaggedInPlantEquipment(pe), 0);
+  const extraTotal = (line?.equipment_groups ?? [])
+    .filter((eg: any) => !eg.deleted_at)
+    .reduce((s: number, eg: any) => s + flaggedInGroup(eg), 0);
+  return peTotal + extraTotal;
+}
+
+// Count flagged items for a project given its lines.
+export function flaggedInProject(lines: any[]): number {
+  return (lines ?? []).reduce((s: number, l: any) => s + flaggedInLine(l), 0);
+}
+
 export const CHAPTER_LABELS: Record<string, string> = {
   assembly: "Assembly",
   wiring: "Wiring",
