@@ -102,6 +102,9 @@ export interface LineActivity {
   name: string;
   start_date: string;
   end_date: string;
+  duration_days: number;
+  follows_activity_id: string | null;
+  offset_days: number;
   color: string;
   is_shared: boolean;
   shared_group_id: string | null;
