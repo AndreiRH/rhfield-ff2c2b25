@@ -200,7 +200,8 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   }
 
   const headerHeight = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H + DAY_NUMBERS_HEADER_H;
-  const timelineContentHeight = headerHeight + bodyHeight;
+  const weekSeparatorTop = YEAR_HEADER_H + MONTH_HEADER_H + WEEKDAY_HEADER_H;
+  const weekSeparatorHeight = DAY_NUMBERS_HEADER_H + bodyHeight;
 
   return (
     <div className="rounded-md border bg-card overflow-hidden">
@@ -230,12 +231,12 @@ function CombinedGantt({ projectId }: { projectId: string }) {
             {mondays.map((d) => (
               <div
                 key={`wk-full-${d.toISOString()}`}
-                className="absolute top-0 z-10 pointer-events-none"
+                className="absolute z-20 pointer-events-none bg-muted-foreground/30"
                 style={{
                   left: dayToX(d),
+                  top: weekSeparatorTop,
                   width: 1,
-                  height: timelineContentHeight,
-                  background: "hsl(var(--border) / 0.7)",
+                  height: weekSeparatorHeight,
                 }}
               />
             ))}
