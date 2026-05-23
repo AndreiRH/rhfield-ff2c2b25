@@ -232,46 +232,6 @@ function CombinedGantt({ projectId }: { projectId: string }) {
 
         {/* Scrollable timeline */}
         <div className="relative min-w-0 flex-1">
-          <div className="absolute left-0 right-0 top-0 z-30 overflow-hidden border-b bg-card md:hidden">
-            <div
-              ref={mobileHeaderTrackRef}
-              className="relative will-change-transform"
-              style={{ width: timelineWidth }}
-            >
-              <div className="relative border-b border-border/40" style={{ height: YEAR_HEADER_H }}>
-                {years.map((y) => {
-                  const left = dayToX(y.start);
-                  const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
-                  return (
-                    <div
-                      key={`mobile-yr-${y.year}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40 text-xs font-semibold"
-                      style={{ left, width, height: YEAR_HEADER_H }}
-                    >
-                      <span className="truncate px-1">{y.year}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="relative text-[11px] text-muted-foreground" style={{ height: MONTH_HEADER_H }}>
-                {months.map((m) => {
-                  const mStart = m < RANGE_START ? RANGE_START : m;
-                  const mEnd = endOfMonth(m) > RANGE_END ? RANGE_END : endOfMonth(m);
-                  const left = dayToX(mStart);
-                  const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
-                  return (
-                    <div
-                      key={`mobile-mo-${m.toISOString()}`}
-                      className="absolute top-0 flex items-center justify-center border-r border-border/40"
-                      style={{ left, width, height: MONTH_HEADER_H }}
-                    >
-                      <span className="truncate px-1">{format(m, "MMM")}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
           <div ref={scrollRef} className="overflow-x-auto">
           <div className="relative" style={{ width: timelineWidth, minWidth: "100%" }}>
             {mondays.map((d) => (
