@@ -26,6 +26,7 @@ function LineCalendarPage() {
   const { projectId, lineNumber } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
+  const visibleRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
   }, [session, loading, navigate]);
