@@ -34,6 +34,7 @@ interface Activity {
   duration_days: number | null;
   follows_activity_id: string | null;
   offset_days: number | null;
+  sort_order?: number | null;
 }
 
 const DAY_WIDTH = 28;
@@ -58,6 +59,7 @@ function ProjectCalendarPage() {
   const [projectName, setProjectName] = useState<string>("project");
   const [exportLines, setExportLines] = useState<LineLite[]>([]);
   const [exportActivities, setExportActivities] = useState<Activity[]>([]);
+  const visibleRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
   }, [session, loading, navigate]);
@@ -80,9 +82,10 @@ function ProjectCalendarPage() {
       if (list.length === 0) return;
       const { data: acts } = await supabase
         .from("line_activities")
-        .select("id, line_id, start_date, end_date, name, color, duration_days, follows_activity_id, offset_days, is_shared")
+        .select("id, line_id, start_date, end_date, name, color, duration_days, follows_activity_id, offset_days, is_shared, sort_order")
         .in("line_id", list.map((l) => l.id))
         .eq("show_on_global", true)
+        .order("sort_order")
         .order("start_date");
       setExportActivities((acts ?? []) as Activity[]);
     })();
@@ -116,10 +119,16 @@ function ProjectCalendarPage() {
               lines={exportLines}
               projectName={projectName}
               scopeLabel="Global"
+              getCurrentRange={() => visibleRangeRef.current}
             />
           </div>
         </div>
-        <CombinedGantt projectId={projectId} />
+        <CombinedGantt
+          projectId={projectId}
+          onVisibleRangeChange={(r) => {
+            visibleRangeRef.current = r;
+          }}
+        />
         <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
           <span>
@@ -140,7 +149,13 @@ function ProjectCalendarPage() {
   );
 }
 
-function CombinedGantt({ projectId }: { projectId: string }) {
+function CombinedGantt({
+  projectId,
+  onVisibleRangeChange,
+}: {
+  projectId: string;
+  onVisibleRangeChange?: (r: { start: Date; end: Date }) => void;
+}) {
   const [lines, setLines] = useState<LineLite[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -259,7 +274,18 @@ function CombinedGantt({ projectId }: { projectId: string }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const sync = () => updateMobileHeader();
+    const sync = () => {
+      updateMobileHeader();
+      if (onVisibleRangeChange) {
+        const startDay = Math.floor(el.scrollLeft / DAY_WIDTH);
+        const endDay = Math.ceil((el.scrollLeft + el.clientWidth) / DAY_WIDTH) - 1;
+        const start = new Date(RANGE_START);
+        start.setDate(start.getDate() + Math.max(0, startDay));
+        const end = new Date(RANGE_START);
+        end.setDate(end.getDate() + Math.max(startDay, endDay));
+        onVisibleRangeChange({ start, end });
+      }
+    };
     sync();
     el.addEventListener("scroll", sync, { passive: true });
     const ro = new ResizeObserver(sync);
@@ -268,7 +294,7 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       el.removeEventListener("scroll", sync);
       ro.disconnect();
     };
-  }, [lines.length, months, years]);
+  }, [lines.length, months, years, onVisibleRangeChange]);
 
   // Lane-pack activities per line so overlapping ones stack into multiple rows.
   const linePacks = useMemo(() => {

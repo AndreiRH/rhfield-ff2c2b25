@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ function LineCalendarPage() {
   const { projectId, lineNumber } = Route.useParams();
   const { session, loading, canEdit, user } = useAuth();
   const navigate = useNavigate();
+  const visibleRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
   }, [session, loading, navigate]);
@@ -95,8 +96,10 @@ function LineCalendarPage() {
                   <ProjectHotCalendarButton projectId={projectId} />
                   <ExportMenu
                     activities={data.activities}
+                    lines={[data.line]}
                     projectName={data.projectName}
                     scopeLabel={`Line ${String(data.line.number).padStart(2, "0")}`}
+                    getCurrentRange={() => visibleRangeRef.current}
                   />
                 </div>
               </div>
@@ -107,6 +110,9 @@ function LineCalendarPage() {
               activities={data.activities}
               canEdit={canEdit}
               onChange={refetch}
+              onVisibleRangeChange={(r) => {
+                visibleRangeRef.current = r;
+              }}
             />
             <div className="mt-6">
               <CalendarNotesList
