@@ -84,7 +84,7 @@ function ProjectsPage() {
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
-                    <Card className={`transition-all hover:border-primary/40 hover:shadow-md ${flagCount ? "border-destructive/40 bg-destructive/5" : ""}`}>
+                    <Card className="transition-all hover:border-primary/40 hover:shadow-md">
                       <CardContent className="p-5">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
