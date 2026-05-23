@@ -243,6 +243,7 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   const gridTop = marginTop + 30;
   const gridRight = pageW - marginX;
   const gridW = gridRight - gridLeft;
+  const dayW = gridW / totalDays;
   const dayToX = (d: Date) =>
     gridLeft + differenceInCalendarDays(d, range.start) * dayW;
 
