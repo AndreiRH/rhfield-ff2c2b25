@@ -47,7 +47,7 @@ function LoginPage() {
     });
     setBusy(false);
     if (error) toast.error(error.message);
-    else toast.success("Account created. Check your email to confirm, then sign in.");
+    else toast.success("Verification email sent. Click the link in your inbox to activate your account before signing in.");
   };
 
   return (
