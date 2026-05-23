@@ -23,8 +23,8 @@ import { toUserMessage } from "@/lib/errors";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-type Role = "admin" | "engineer" | "pm";
-const ALL_ROLES: Role[] = ["admin", "engineer", "pm"];
+type Role = "admin" | "engineer" | "pm" | "viewer";
+const ALL_ROLES: Role[] = ["admin", "engineer", "pm", "viewer"];
 
 export const Route = createFileRoute("/admin/users")({ component: UsersPage });
 
