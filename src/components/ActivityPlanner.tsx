@@ -138,12 +138,14 @@ export function ActivityPlanner({
   activities,
   canEdit,
   onChange,
+  onVisibleRangeChange,
 }: {
   line: LineInfo;
   allLines: LineLite[];
   activities: LineActivity[];
   canEdit: boolean;
   onChange: () => void;
+  onVisibleRangeChange?: (r: { start: Date; end: Date }) => void;
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
