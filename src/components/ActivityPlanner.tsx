@@ -203,6 +203,51 @@ export function ActivityPlanner({
     [days],
   );
 
+  // Track horizontal viewport for mobile fixed header splitting
+  const [viewport, setViewport] = useState({ left: 0, width: 0 });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setViewport({ left: el.scrollLeft, width: el.clientWidth });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  const visibleSegments = useMemo(() => {
+    const buildEmpty = (label: string) => [{ key: label, label, days: 1 }];
+    if (viewport.width === 0) {
+      return {
+        years: buildEmpty(format(rangeStart, "yyyy")),
+        months: buildEmpty(format(rangeStart, "MMM")),
+      };
+    }
+    const startIdx = Math.max(0, Math.floor(viewport.left / DAY_WIDTH));
+    const endIdx = Math.min(
+      totalDays - 1,
+      Math.ceil((viewport.left + viewport.width) / DAY_WIDTH) - 1,
+    );
+    const years: { key: string; label: string; days: number }[] = [];
+    const months: { key: string; label: string; days: number }[] = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      const d = days[i];
+      if (!d) continue;
+      const yKey = `${d.getFullYear()}`;
+      const mKey = `${d.getFullYear()}-${d.getMonth()}`;
+      const yLast = years[years.length - 1];
+      if (yLast && yLast.key === yKey) yLast.days += 1;
+      else years.push({ key: yKey, label: format(d, "yyyy"), days: 1 });
+      const mLast = months[months.length - 1];
+      if (mLast && mLast.key === mKey) mLast.days += 1;
+      else months.push({ key: mKey, label: format(d, "MMM"), days: 1 });
+    }
+    return { years, months };
+  }, [viewport, days, totalDays, rangeStart]);
+
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
