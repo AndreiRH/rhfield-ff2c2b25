@@ -142,6 +142,8 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileYearRowRef = useRef<HTMLDivElement>(null);
+  const mobileMonthRowRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     name: string;
@@ -203,6 +205,77 @@ export function ActivityPlanner({
     [days],
   );
 
+  const updateMobileHeader = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const visibleLeft = el.scrollLeft;
+    const visibleRight = visibleLeft + el.clientWidth;
+    const renderRow = (
+      row: HTMLDivElement | null,
+      segments: { key: string; label: string; startX: number; endX: number }[],
+      textClass: string,
+    ) => {
+      if (!row) return;
+      const children = segments.flatMap((segment) => {
+        const left = Math.max(segment.startX, visibleLeft);
+        const right = Math.min(segment.endX, visibleRight);
+        const width = right - left;
+        if (width <= 0) return [];
+        const child = document.createElement("div");
+        child.className = `flex h-full min-w-0 flex-none items-center justify-center ${textClass}`;
+        child.style.width = `${width}px`;
+        child.dataset.segmentKey = segment.key;
+        const label = document.createElement("span");
+        label.className = "truncate px-1";
+        label.textContent = segment.label;
+        child.appendChild(label);
+        return [child];
+      });
+      children.forEach((child, index) => {
+        if (index > 0) child.classList.add("border-l", "border-border/40");
+      });
+      row.replaceChildren(...children);
+    };
+    renderRow(
+      mobileYearRowRef.current,
+      years.map((y) => ({
+        key: String(y.year),
+        label: String(y.year),
+        startX: dayToX(y.start),
+        endX: dayToX(y.end) + DAY_WIDTH,
+      })),
+      "text-xs font-semibold",
+    );
+    renderRow(
+      mobileMonthRowRef.current,
+      months.map((m) => {
+        const mStart = m < rangeStart ? rangeStart : m;
+        const mEnd = endOfMonth(m) > rangeEnd ? rangeEnd : endOfMonth(m);
+        return {
+          key: m.toISOString(),
+          label: format(m, "MMM"),
+          startX: dayToX(mStart),
+          endX: dayToX(mEnd) + DAY_WIDTH,
+        };
+      }),
+      "text-[11px] text-muted-foreground",
+    );
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const sync = () => updateMobileHeader();
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", sync);
+      ro.disconnect();
+    };
+  }, [months, years]);
+
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -210,6 +283,7 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
+    updateMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
