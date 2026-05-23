@@ -3,8 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lineOverallPct, flaggedInProject } from "@/lib/progress";
-import { FlagBadge } from "@/components/FlagBadge";
+import { lineOverallPct } from "@/lib/progress";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,7 +79,6 @@ function ProjectsPage() {
               const pct = lineParts.length === 0
                 ? 0
                 : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
-              const flagCount = flaggedInProject(p.lines ?? []);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
@@ -89,7 +87,6 @@ function ProjectsPage() {
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</span>
                           <div className={`flex items-center gap-2 ${isAdmin ? "mr-20" : ""}`}>
-                            <FlagBadge count={flagCount} />
                             <span className="text-xs tabular-nums text-muted-foreground">{p.lines?.length ?? 0} lines</span>
                           </div>
                         </div>
