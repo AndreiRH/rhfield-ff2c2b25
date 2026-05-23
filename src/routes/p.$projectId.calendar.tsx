@@ -58,6 +58,7 @@ function ProjectCalendarPage() {
   const [projectName, setProjectName] = useState<string>("project");
   const [exportLines, setExportLines] = useState<LineLite[]>([]);
   const [exportActivities, setExportActivities] = useState<Activity[]>([]);
+  const visibleRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
   }, [session, loading, navigate]);
@@ -80,9 +81,10 @@ function ProjectCalendarPage() {
       if (list.length === 0) return;
       const { data: acts } = await supabase
         .from("line_activities")
-        .select("id, line_id, start_date, end_date, name, color, duration_days, follows_activity_id, offset_days, is_shared")
+        .select("id, line_id, start_date, end_date, name, color, duration_days, follows_activity_id, offset_days, is_shared, sort_order")
         .in("line_id", list.map((l) => l.id))
         .eq("show_on_global", true)
+        .order("sort_order")
         .order("start_date");
       setExportActivities((acts ?? []) as Activity[]);
     })();
@@ -116,10 +118,16 @@ function ProjectCalendarPage() {
               lines={exportLines}
               projectName={projectName}
               scopeLabel="Global"
+              getCurrentRange={() => visibleRangeRef.current}
             />
           </div>
         </div>
-        <CombinedGantt projectId={projectId} />
+        <CombinedGantt
+          projectId={projectId}
+          onVisibleRangeChange={(r) => {
+            visibleRangeRef.current = r;
+          }}
+        />
         <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
           <span>
