@@ -1270,24 +1270,82 @@ function EditActivityDialog({
     );
     let error;
     if (activity.is_shared && activity.shared_group_id) {
-      // Name propagates to all lines; per-line schedule + follow link stay local
-      const [nameRes, datesRes] = await Promise.all([
+      // Name propagates to all lines; per-line schedule stays local.
+      // Follows link: if target is also shared, propagate the link per-line
+      // (each row in our group follows the matching row in the target's group
+      // on the same line). Offset stays local to this line.
+      const ops: Array<Promise<{ error: unknown }>> = [
         supabase
           .from("line_activities")
           .update({ name: newName })
-          .eq("shared_group_id", activity.shared_group_id),
+          .eq("shared_group_id", activity.shared_group_id) as unknown as Promise<{ error: unknown }>,
         supabase
           .from("line_activities")
           .update({
             start_date: startStr,
             end_date: endStr,
             duration_days: duration,
-            follows_activity_id: followsActivity ? followsActivity.id : null,
             offset_days: followsActivity ? offset : 0,
           })
-          .eq("id", activity.id),
-      ]);
-      error = nameRes.error ?? datesRes.error;
+          .eq("id", activity.id) as unknown as Promise<{ error: unknown }>,
+      ];
+
+      if (followsActivity && followsActivity.is_shared && followsActivity.shared_group_id) {
+        // Map line_id -> target row id within followed shared group
+        const { data: targets } = await supabase
+          .from("line_activities")
+          .select("id, line_id")
+          .eq("shared_group_id", followsActivity.shared_group_id);
+        const { data: ownRows } = await supabase
+          .from("line_activities")
+          .select("id, line_id")
+          .eq("shared_group_id", activity.shared_group_id);
+        const targetByLine = new Map<string, string>(
+          (targets ?? []).map((t: { id: string; line_id: string }) => [t.line_id, t.id]),
+        );
+        for (const row of ownRows ?? []) {
+          const targetId = targetByLine.get((row as { line_id: string }).line_id) ?? null;
+          ops.push(
+            supabase
+              .from("line_activities")
+              .update({ follows_activity_id: targetId })
+              .eq("id", (row as { id: string }).id) as unknown as Promise<{ error: unknown }>,
+          );
+        }
+      } else if (followsActivity) {
+        // Target is local — only this row can follow it
+        ops.push(
+          supabase
+            .from("line_activities")
+            .update({ follows_activity_id: followsActivity.id })
+            .eq("id", activity.id) as unknown as Promise<{ error: unknown }>,
+        );
+        // Clear any other rows in our group that may have stale links
+        ops.push(
+          supabase
+            .from("line_activities")
+            .update({ follows_activity_id: null })
+            .eq("shared_group_id", activity.shared_group_id)
+            .neq("id", activity.id) as unknown as Promise<{ error: unknown }>,
+        );
+      } else {
+        // Clear follows across all lines in the group
+        ops.push(
+          supabase
+            .from("line_activities")
+            .update({ follows_activity_id: null, offset_days: 0 })
+            .eq("shared_group_id", activity.shared_group_id)
+            .neq("id", activity.id) as unknown as Promise<{ error: unknown }>,
+        );
+        ops.push(
+          supabase
+            .from("line_activities")
+            .update({ follows_activity_id: null })
+            .eq("id", activity.id) as unknown as Promise<{ error: unknown }>,
+        );
+      }
+      const results = await Promise.all(ops);
+      error = results.find((r) => r.error)?.error;
     } else {
       const res = await supabase
         .from("line_activities")
