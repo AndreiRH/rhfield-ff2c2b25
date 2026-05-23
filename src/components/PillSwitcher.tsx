@@ -218,6 +218,7 @@ function MobileSwitcher({ label, items, currentKey, onPick }: Props) {
             top: pos.top,
             left: pos.left,
             width: pos.width,
+            pointerEvents: "auto",
           }}
           className="z-50 overflow-hidden p-1 animate-in fade-in-0 slide-in-from-top-1 duration-150"
         >
