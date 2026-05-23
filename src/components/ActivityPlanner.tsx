@@ -142,7 +142,6 @@ export function ActivityPlanner({
 }) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mobileHeaderTrackRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState<LineActivity | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     name: string;
@@ -204,31 +203,6 @@ export function ActivityPlanner({
     [days],
   );
 
-  const syncMobileHeader = () => {
-    const el = scrollRef.current;
-    const track = mobileHeaderTrackRef.current;
-    if (!el || !track) return;
-    track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    const track = mobileHeaderTrackRef.current;
-    if (!el || !track) return;
-    const apply = () => {
-      track.style.transform = `translate3d(${-el.scrollLeft}px, 0, 0)`;
-    };
-    apply();
-    const onScroll = () => apply();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      ro.disconnect();
-    };
-  }, []);
-
   // Auto-scroll to today (or first activity) on mount
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -236,7 +210,6 @@ export function ActivityPlanner({
     const focusX = sorted.length > 0 ? dayToX(parseISO(sorted[0].start_date)) : todayX;
     const target = Math.max(0, focusX - el.clientWidth / 2);
     el.scrollLeft = target;
-    syncMobileHeader();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
