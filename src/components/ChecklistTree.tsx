@@ -234,7 +234,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
   const descFlagged = descendants.filter((d: any) => d.flagged).length;
   const flaggedCount = descFlagged + (item.flagged ? 1 : 0);
-  const isFlaggedShade = !!item.flagged || descFlagged > 0;
+  // "Uniformly flagged" — used to decide red shading on parents.
+  // A parent shows red only when EVERY descendant is flagged (or it has no
+  // descendants and is itself flagged). Mixed states (some flagged + some
+  // not, or flagged + done, or flagged + unmarked) render as default.
+  const allFlagged = !!item.flagged && (subsTotal === 0 || descFlagged === subsTotal);
+  const isFlaggedShade = allFlagged;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -546,8 +551,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
         inReorder ? "bg-muted/30" :
-        item.flagged ? "bg-destructive/15" :
-        descFlagged > 0 ? "bg-destructive/5" : ""
+        allFlagged ? "bg-destructive/15" : ""
       }`}
       onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
@@ -647,8 +651,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       className={`rounded-md border bg-card ${depth === 0 ? "ml-2 border-l-4 border-l-muted-foreground/30" : ""} ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
-        item.flagged ? "border-destructive/60 bg-destructive/10" :
-        descFlagged > 0 ? "border-destructive/30" :
+        allFlagged ? "border-destructive/60 bg-destructive/10" :
         item.done ? "border-success/40 bg-success/10" : ""
       }`}>
       {row}
