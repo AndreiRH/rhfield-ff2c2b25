@@ -91,7 +91,14 @@ function LineCalendarPage() {
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-semibold">{title}</h1>
-                <ProjectHotCalendarButton projectId={projectId} />
+                <div className="flex items-center gap-2">
+                  <ProjectHotCalendarButton projectId={projectId} />
+                  <ExportMenu
+                    activities={data.activities}
+                    projectName={data.projectName}
+                    scopeLabel={`Line ${String(data.line.number).padStart(2, "0")}`}
+                  />
+                </div>
               </div>
             </div>
             <ActivityPlanner
