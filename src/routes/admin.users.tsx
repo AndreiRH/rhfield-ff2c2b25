@@ -134,7 +134,7 @@ function UsersPage() {
                         return (
                           <label
                             key={r}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 sm:flex-none sm:border-1 sm:p-0"
+                            className="flex flex-1 items-center justify-center gap-1 rounded-md border px-1 py-1 sm:flex-none sm:border-1 sm:p-0"
                           >
                             <span className="text-[10px] uppercase tracking-wide text-muted-foreground sm:hidden">{ROLE_LABEL[r]}</span>
                             <Checkbox
