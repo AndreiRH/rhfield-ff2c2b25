@@ -237,7 +237,7 @@ export function ActivityPlanner({
         return [child];
       });
       children.forEach((child, index) => {
-        if (index > 0) child.classList.add("border-l", "border-border/40");
+        if (index > 0) child.classList.add("border-l", "border-muted-foreground/30");
       });
       row.replaceChildren(...children);
     };
@@ -569,9 +569,9 @@ export function ActivityPlanner({
                     const left = dayToX(y.start);
                     const width = (differenceInCalendarDays(y.end, y.start) + 1) * DAY_WIDTH;
                     return (
-                      <div
-                        key={`yr-${y.year}`}
-                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-xs font-semibold"
+                    <div
+                      key={`yr-${y.year}`}
+                      className="absolute top-0 hidden items-center justify-center border-r border-muted-foreground/30 text-xs font-semibold"
                         style={{ left, width, height: YEAR_HEADER_H }}
                       >
                         <span className="truncate px-1">{y.year}</span>
@@ -587,9 +587,9 @@ export function ActivityPlanner({
                     const left = dayToX(mStart);
                     const width = (differenceInCalendarDays(mEnd, mStart) + 1) * DAY_WIDTH;
                     return (
-                      <div
-                        key={`mo-${m.toISOString()}`}
-                        className="absolute top-0 hidden items-center justify-center border-r border-border/40 text-[11px] text-muted-foreground md:flex"
+                    <div
+                      key={`mo-${m.toISOString()}`}
+                      className="absolute top-0 hidden items-center justify-center border-r border-muted-foreground/30 text-[11px] text-muted-foreground md:flex"
                         style={{ left, width, height: MONTH_HEADER_H }}
                       >
                         <span className="truncate px-1">{format(m, "MMM")}</span>
