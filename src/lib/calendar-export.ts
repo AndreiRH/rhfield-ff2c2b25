@@ -229,6 +229,7 @@ export function exportCalendarPdf(opts: BuildOptions, range: CalendarRange) {
   doc.text(`${rangeLabel}  -  Exported ${format(new Date(), "PPpp")}`, marginX, marginTop + 12);
 
   // Layout
+  const totalDays = Math.max(1, differenceInCalendarDays(range.end, range.start) + 1);
   const labelW = 70;
   const headerYearH = 14;
   const headerMonthH = 14;
