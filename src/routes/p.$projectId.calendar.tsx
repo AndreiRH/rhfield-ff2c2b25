@@ -188,16 +188,14 @@ function CombinedGantt({ projectId }: { projectId: string }) {
       });
       row.replaceChildren(...children);
     };
-    renderRow(
-      mobileYearRowRef.current,
-      years.map((y) => ({
-        key: String(y.year),
-        label: String(y.year),
-        startX: dayToX(y.start),
-        endX: dayToX(y.end) + DAY_WIDTH,
-      })),
-      "text-xs font-semibold",
-    );
+    const yearSegments = years.map((y) => ({
+      key: String(y.year),
+      label: String(y.year),
+      startX: dayToX(y.start),
+      endX: dayToX(y.end) + DAY_WIDTH,
+    }));
+    renderRow(mobileYearRowRef.current, yearSegments, "text-xs font-semibold");
+    renderRow(desktopYearRowRef.current, yearSegments, "text-xs font-semibold");
     renderRow(
       mobileMonthRowRef.current,
       months.map((m) => {
