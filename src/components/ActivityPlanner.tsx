@@ -1289,10 +1289,10 @@ function EditActivityDialog({
     );
     let error;
     if (activity.is_shared && activity.shared_group_id) {
-      // Name propagates to all lines; per-line schedule stays local.
+      // Name propagates to all lines; per-line delay stays local.
       // Follows link: if target is also shared, propagate the link per-line
       // (each row in our group follows the matching row in the target's group
-      // on the same line). Offset stays local to this line.
+      // on the same line). The database also enforces this so every line stays in sync.
       const ops: Array<Promise<{ error: unknown }>> = [
         supabase
           .from("line_activities")
@@ -1304,6 +1304,7 @@ function EditActivityDialog({
             start_date: startStr,
             end_date: endStr,
             duration_days: duration,
+            follows_activity_id: followsActivity ? followsActivity.id : null,
             offset_days: followsActivity ? offset : 0,
           })
           .eq("id", activity.id) as unknown as Promise<{ error: unknown }>,
@@ -1436,7 +1437,8 @@ function EditActivityDialog({
           {activity.is_shared && (
             <p className="text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
               This is a shared activity. Renaming it will update the name on every line it's shared
-              to. Schedule and follow links remain local to each line.
+              to. When it follows another shared activity, the follow link is shared across all lines;
+              delay and schedule remain local to each line.
             </p>
           )}
         </div>
