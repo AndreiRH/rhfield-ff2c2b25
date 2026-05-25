@@ -141,6 +141,37 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
               </p>
             </div>
 
+            {/* Sections */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Sections</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {ALL_SECTIONS.map((s) => {
+                  const checked = sections.has(s);
+                  return (
+                    <label
+                      key={s}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${checked ? "border-primary bg-primary/5 font-medium" : ""}`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleSection(s)}
+                        disabled={running}
+                      />
+                      {SECTION_LABELS[s]}
+                    </label>
+                  );
+                })}
+              </div>
+              {noSectionChecked && (
+                <p className="text-xs text-destructive">Select at least one section.</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Applies to every selected equipment.
+              </p>
+            </div>
+
+
+
             {/* Format */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Format</Label>
