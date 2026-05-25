@@ -23,6 +23,14 @@ export interface PlantExportOptions {
   equipmentIds: string[];  // selected equipment ids (subset of all)
   allEquipmentCount: number; // total available — used to decide if we show plant totals
   format: PlantExportFormat;
+  sections?: Section[];    // which sections to include; defaults to all three
+}
+
+const ALL_SECTIONS: Section[] = ["assembly", "wiring", "cold_comm"];
+function sectionsOf(opts: PlantExportOptions): Section[] {
+  const s = opts.sections && opts.sections.length > 0 ? opts.sections : ALL_SECTIONS;
+  // preserve canonical order
+  return ALL_SECTIONS.filter((k) => s.includes(k));
 }
 
 type Section = "assembly" | "wiring" | "cold_comm";
