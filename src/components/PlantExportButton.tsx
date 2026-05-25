@@ -219,7 +219,7 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={running}>Cancel</Button>
-            <Button onClick={start} disabled={running || noneChecked} className="gap-2">
+            <Button onClick={start} disabled={running || noneChecked || noSectionChecked} className="gap-2">
               <Download className="h-4 w-4" />
               {running ? "Exporting…" : `Export ${selected.size || ""}`}
             </Button>
