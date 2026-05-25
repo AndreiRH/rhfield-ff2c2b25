@@ -36,15 +36,18 @@ const SECTION_META: Record<Section, { label: string; color: string; pdfRgb: [num
 /* ---------- Row model ---------- */
 
 interface BodyRow {
-  kind: "type" | "component" | "item";
-  indent: number;        // 0 = component_type, 1 = component, 2 = item
+  kind: "type" | "item";
+  indent: number;        // visual indent level (0 = type, 1 = root item, 2+ = subtask depth)
   label: string;
   done?: boolean;
   flagged?: boolean;
   note?: string;
   photoCount?: number;
   photoPaths?: { bucket: string; path: string }[];
+  typeStats?: { done: number; total: number; flagged: number; photos: number; files: number };
 }
+
+interface SectionNote { title: string; body: string }
 
 interface SectionBlock {
   section: Section;
@@ -56,6 +59,7 @@ interface SectionBlock {
   totalItems: number;
   doneItems: number;
   flaggedItems: number;
+  notes: SectionNote[];     // equipment_notes scoped to this section
 }
 
 interface EquipmentBlock {
@@ -63,7 +67,6 @@ interface EquipmentBlock {
   name: string;
   overall: number;
   sections: { assembly: SectionBlock; wiring: SectionBlock; cold_comm: SectionBlock };
-  notes: { title: string; body: string }[];          // equipment-level notes
   photoPaths: { bucket: string; path: string }[];    // equipment-level photos
 }
 
@@ -82,42 +85,59 @@ function itemPhotoPaths(it: any): { bucket: string; path: string }[] {
 function buildSectionRows(group: any): BodyRow[] {
   const rows: BodyRow[] = [];
 
-  const pushItem = (it: any) => {
-    rows.push({
-      kind: "item",
-      indent: 2,
-      label: it.label ?? "(no label)",
-      done: !!it.done,
-      flagged: !!it.flagged,
-      note: noteFromItem(it),
-      photoCount: ((it.item_photos ?? []) as any[]).length,
-      photoPaths: itemPhotoPaths(it),
-    });
-  };
-
-  const pushComponent = (c: any) => {
-    rows.push({ kind: "component", indent: 1, label: c.name ?? "(unnamed component)" });
-    const items = liveChecklistItems((c.checklist_items ?? []) as any[]);
-    items.forEach(pushItem);
-  };
-
-  // direct components on group (legacy)
-  ((group?.components ?? []) as any[])
-    .filter((c) => !c.deleted_at)
-    .forEach(pushComponent);
-
-  // typed structure
-  ((group?.component_types ?? []) as any[])
+  // Mirror the in-app ComponentTypesTree exactly: only component_types
+  // (sorted by sort_order), and items rendered as a parent_item_id tree.
+  // The legacy direct components on the group, and components nested under
+  // types, are NOT rendered in the UI — including them here was the source
+  // of the "ghost" rows the user reported.
+  const types = ((group?.component_types ?? []) as any[])
     .filter((t) => !t.deleted_at)
-    .forEach((t) => {
-      rows.push({ kind: "type", indent: 0, label: t.name ?? "(unnamed type)" });
-      // items directly under the type
-      liveChecklistItems((t.checklist_items ?? []) as any[]).forEach(pushItem);
-      // components under the type
-      ((t.components ?? []) as any[])
-        .filter((c) => !c.deleted_at)
-        .forEach(pushComponent);
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  for (const t of types) {
+    const liveItems = liveChecklistItems((t.checklist_items ?? []) as any[]);
+    const doneCount = liveItems.filter((i: any) => i.done).length;
+    const flaggedCount = liveItems.filter((i: any) => i.flagged).length;
+    const typePhotos = ((t.component_type_photos ?? []) as any[]).length;
+    const typeFiles = ((t.component_type_files ?? []) as any[]).length;
+
+    rows.push({
+      kind: "type",
+      indent: 0,
+      label: t.name ?? "(unnamed type)",
+      typeStats: { done: doneCount, total: liveItems.length, flagged: flaggedCount, photos: typePhotos, files: typeFiles },
     });
+
+    // Build the parent → children map and walk it depth-first.
+    const childrenByParent = new Map<string | null, any[]>();
+    for (const it of liveItems) {
+      const pid = (it.parent_item_id ?? null) as string | null;
+      if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+      childrenByParent.get(pid)!.push(it);
+    }
+    for (const arr of childrenByParent.values()) {
+      arr.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    }
+
+    const walk = (parentId: string | null, depth: number) => {
+      const kids = childrenByParent.get(parentId) ?? [];
+      for (const it of kids) {
+        rows.push({
+          kind: "item",
+          indent: 1 + depth, // root items at indent 1, subtasks deeper
+          label: it.label ?? "(no label)",
+          done: !!it.done,
+          flagged: !!it.flagged,
+          note: noteFromItem(it),
+          photoCount: ((it.item_photos ?? []) as any[]).length,
+          photoPaths: itemPhotoPaths(it),
+        });
+        walk(it.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+  }
 
   return rows;
 }
@@ -125,11 +145,39 @@ function buildSectionRows(group: any): BodyRow[] {
 async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string): Promise<EquipmentBlock> {
   const detail = await fetchEquipmentDetail(opts.projectId, opts.lineNumber, opts.kind, equipmentId);
   const pe = detail.peWithGroups;
-  const { mech, wiring, cold, overall } = equipmentProgress(pe);
+  const { overall } = equipmentProgress(pe);
 
-  const buildSection = (group: any, section: Section, forcedMode?: "checklist" | "manual", manualPct?: number | null): SectionBlock => {
+  // Equipment-level notes split by section, plus equipment photos.
+  const [{ data: notesRaw }, { data: photos }] = await Promise.all([
+    supabase.from("equipment_notes")
+      .select("title, body, section")
+      .eq("equipment_id", equipmentId)
+      .order("sort_order"),
+    supabase.from("equipment_photos")
+      .select("storage_path")
+      .eq("equipment_id", equipmentId)
+      .order("uploaded_at"),
+  ]);
+
+  const notesBySection: Record<Section, SectionNote[]> = { assembly: [], wiring: [], cold_comm: [] };
+  for (const n of (notesRaw ?? []) as any[]) {
+    const sec = (n.section ?? "assembly") as Section;
+    if (!notesBySection[sec]) continue;
+    const title = (n.title ?? "").trim();
+    const body = (n.body ?? "").trim();
+    if (!title && !body) continue;
+    notesBySection[sec].push({ title, body });
+  }
+
+  const buildSection = (
+    group: any,
+    section: Section,
+    forcedMode?: "checklist" | "manual",
+    manualPct?: number | null,
+  ): SectionBlock => {
     const isAssembly = section === "assembly";
-    const mode: "checklist" | "manual" = forcedMode ?? (isAssembly && pe.mech_mode === "manual" ? "manual" : "checklist");
+    const mode: "checklist" | "manual" =
+      forcedMode ?? (isAssembly && pe.mech_mode === "manual" ? "manual" : "checklist");
     const rows = mode === "checklist" ? buildSectionRows(group) : [];
     const items = mode === "checklist" ? liveChecklistItems(itemsFromGroup(group)) : [];
     const doneItems = items.filter((i: any) => i.done).length;
@@ -147,14 +195,9 @@ async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string
       totalItems: items.length,
       doneItems,
       flaggedItems,
+      notes: notesBySection[section],
     };
   };
-
-  // equipment-level notes/photos
-  const [{ data: notes }, { data: photos }] = await Promise.all([
-    supabase.from("equipment_notes").select("title, body").eq("equipment_id", equipmentId).order("sort_order"),
-    supabase.from("equipment_photos").select("storage_path").eq("equipment_id", equipmentId).order("uploaded_at"),
-  ]);
 
   return {
     id: equipmentId,
@@ -167,8 +210,6 @@ async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string
       wiring:    buildSection(detail.wiring,    "wiring"),
       cold_comm: buildSection(detail.cold,      "cold_comm"),
     },
-    notes: (notes ?? []).map((n: any) => ({ title: n.title ?? "", body: (n.body ?? "").trim() }))
-                        .filter((n) => n.title || n.body),
     photoPaths: ((photos ?? []) as any[]).map((p) => ({ bucket: "photos", path: p.storage_path })),
   };
 }
@@ -291,19 +332,14 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
       for (const row of sec.rows) {
         if (row.kind === "type") {
+          const stats = row.typeStats;
+          const tail = stats
+            ? `   —   ${stats.done}/${stats.total} done${stats.flagged ? ` · ${stats.flagged} flagged` : ""}${stats.photos ? ` · ${stats.photos} 📷` : ""}${stats.files ? ` · ${stats.files} 📎` : ""}`
+            : "";
           aoa.push([{
-            v: row.label, t: "s",
+            v: `${row.label}${tail}`, t: "s",
             s: { font: { bold: true, color: { rgb: "111827" } },
                  fill: { fgColor: { rgb: "F3F4F6" } },
-                 border: xlsxBorder() },
-          }, "", "", "", ""]);
-          merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
-          r++;
-        } else if (row.kind === "component") {
-          aoa.push([{
-            v: `  ${row.label}`, t: "s",
-            s: { font: { bold: true, color: { rgb: "374151" } },
-                 fill: { fgColor: { rgb: "F9FAFB" } },
                  border: xlsxBorder() },
           }, "", "", "", ""]);
           merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
@@ -312,8 +348,12 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           markRows.push(r);
           const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
           const statusColor = row.done ? "10B981" : row.flagged ? "EF4444" : "9CA3AF";
+          // indent 1 = root item, 2+ = subtask. Use 4 spaces per depth level.
+          const depth = Math.max(1, row.indent ?? 1);
+          const pad = "    ".repeat(depth);
+          const bullet = depth > 1 ? "↳ " : "• ";
           aoa.push([
-            { v: `      ${row.label}`, t: "s",
+            { v: `${pad}${bullet}${row.label}`, t: "s",
               s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
             { v: status, t: "s",
               s: { font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -330,38 +370,42 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           r++;
         }
       }
+
+      // Section-scoped notes (equipment_notes filtered by section)
+      if (sec.notes.length > 0) {
+        aoa.push([{
+          v: `Notes — ${SECTION_META[sec.section].label}`, t: "s",
+          s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
+               fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() },
+        }, "", "", "", ""]);
+        merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+        r++;
+        for (const n of sec.notes) {
+          aoa.push([
+            { v: `    📝 ${n.title || "Note"}`, t: "s", s: { border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+            { v: n.body, t: "s", s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+          ]);
+          r++;
+        }
+      }
     }
 
-    // Equipment-level notes / photos summary
-    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
-      aoa.push([{
-        v: "Equipment notes & attachments", t: "s",
-        s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
-             fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() },
-      }, "", "", "", ""]);
-      merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+    // Equipment-level photos summary (kept once per equipment)
+    if (eq.photoPaths.length > 0) {
+      aoa.push([
+        { v: "Equipment photos", t: "s",
+          s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
+               fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: `${eq.photoPaths.length} photo${eq.photoPaths.length === 1 ? "" : "s"}`, t: "s",
+          s: { alignment: { horizontal: "center" }, border: xlsxBorder() } },
+      ]);
       r++;
-      for (const n of eq.notes) {
-        aoa.push([
-          { v: `      ${n.title || "Note"}`, t: "s", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: n.body, t: "s", s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-        ]);
-        r++;
-      }
-      if (eq.photoPaths.length > 0) {
-        aoa.push([
-          { v: "      Equipment photos", t: "s", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: `${eq.photoPaths.length} photo${eq.photoPaths.length === 1 ? "" : "s"}`, t: "s",
-            s: { alignment: { horizontal: "center" }, border: xlsxBorder() } },
-        ]);
-        r++;
-      }
     }
 
     // Spacer
@@ -469,13 +513,16 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
       totalFlagged += sec.flaggedItems;
       for (const row of sec.rows) {
         if (row.kind === "type") {
-          lines.push([`# ${row.label}`, "", "", "", ""].map(csvCell).join(","));
-        } else if (row.kind === "component") {
-          lines.push([`  ${row.label}`, "", "", "", ""].map(csvCell).join(","));
+          const stats = row.typeStats;
+          const tail = stats ? `  (${stats.done}/${stats.total}${stats.flagged ? ` · ${stats.flagged} flagged` : ""})` : "";
+          lines.push([`# ${row.label}${tail}`, "", "", "", ""].map(csvCell).join(","));
         } else {
           const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
+          const depth = Math.max(1, row.indent ?? 1);
+          const pad = "  ".repeat(depth + 1);
+          const bullet = depth > 1 ? "↳ " : "• ";
           lines.push([
-            `    ${row.label}`,
+            `${pad}${bullet}${row.label}`,
             status,
             markFor(row),
             row.note ?? "",
@@ -483,15 +530,15 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           ].map(csvCell).join(","));
         }
       }
+      if (sec.notes.length > 0) {
+        lines.push([`-- Notes — ${meta.label} --`, "", "", "", ""].map(csvCell).join(","));
+        for (const n of sec.notes) {
+          lines.push([`    📝 ${n.title || "Note"}`, "", "", n.body, ""].map(csvCell).join(","));
+        }
+      }
     }
-    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
-      lines.push(["## Equipment notes & attachments", "", "", "", ""].map(csvCell).join(","));
-      for (const n of eq.notes) {
-        lines.push([`  ${n.title || "Note"}`, "", "", n.body, ""].map(csvCell).join(","));
-      }
-      if (eq.photoPaths.length > 0) {
-        lines.push([`  Equipment photos`, "", "", "", `${eq.photoPaths.length} photo(s)`].map(csvCell).join(","));
-      }
+    if (eq.photoPaths.length > 0) {
+      lines.push([`Equipment photos`, "", "", "", `${eq.photoPaths.length} photo(s)`].map(csvCell).join(","));
     }
     lines.push("");
   }
@@ -598,22 +645,24 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
         totalFlagged += sec.flaggedItems;
         for (const row of sec.rows) {
           if (row.kind === "type") {
+            const stats = row.typeStats;
+            const tail = stats
+              ? `   —   ${stats.done}/${stats.total} done${stats.flagged ? ` · ${stats.flagged} flagged` : ""}${stats.photos ? ` · ${stats.photos}📷` : ""}${stats.files ? ` · ${stats.files}📎` : ""}`
+              : "";
             rows.push([{
-              content: row.label,
+              content: `${row.label}${tail}`,
               colSpan: 5,
               styles: { fontStyle: "bold", fillColor: [243, 244, 246], textColor: [17, 24, 39] },
-            }]);
-          } else if (row.kind === "component") {
-            rows.push([{
-              content: `  ${row.label}`,
-              colSpan: 5,
-              styles: { fontStyle: "bold", fillColor: [249, 250, 251], textColor: [55, 65, 81] },
             }]);
           } else {
             const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
             const statusColor: [number, number, number] = row.done ? [16, 185, 129] : row.flagged ? [239, 68, 68] : [156, 163, 175];
+            const depth = Math.max(1, row.indent ?? 1);
+            const pad = "    ".repeat(depth);
+            const bullet = depth > 1 ? "↳ " : "• ";
+            const subStyle = depth > 1 ? { textColor: [75, 85, 99] as [number, number, number] } : {};
             rows.push([
-              `      ${row.label}`,
+              { content: `${pad}${bullet}${row.label}`, styles: subStyle },
               { content: status, styles: { fillColor: statusColor, textColor: [255, 255, 255], fontStyle: "bold", halign: "center" } },
               { content: markFor(row), styles: { halign: "center", fontStyle: "bold" } },
               row.note ?? "",
@@ -624,6 +673,15 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
         if (sec.rows.length === 0) {
           rows.push([{ content: "(no checklist items)", colSpan: 5, styles: { fontStyle: "italic", textColor: [156, 163, 175] } }]);
         }
+      }
+
+      // Section-scoped notes appended at the bottom of the section table
+      for (const n of sec.notes) {
+        rows.push([{
+          content: `📝 ${n.title || "Note"}${n.body ? `\n${n.body}` : ""}`,
+          colSpan: 5,
+          styles: { fontStyle: "italic", fillColor: [229, 231, 235], textColor: [55, 65, 81] },
+        }]);
       }
 
       // Section banner
@@ -653,18 +711,6 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
       cursorY = (doc as any).lastAutoTable.finalY + 6;
     }
 
-    // Equipment notes
-    if (eq.notes.length > 0) {
-      autoTable(doc, {
-        startY: cursorY,
-        margin: { left: margin, right: margin },
-        head: [[{ content: "Equipment notes", colSpan: 2, styles: { fillColor: [229, 231, 235], textColor: [55, 65, 81], fontStyle: "bold" } }]],
-        body: eq.notes.map((n) => [n.title || "Note", n.body]),
-        styles: { fontSize: 8, cellPadding: 3, valign: "top", lineColor: [209, 213, 219], lineWidth: 0.4 },
-        columnStyles: { 0: { cellWidth: 120, fontStyle: "bold" }, 1: { cellWidth: "auto" } },
-      });
-      cursorY = (doc as any).lastAutoTable.finalY + 6;
-    }
     cursorY += 6;
   }
 
