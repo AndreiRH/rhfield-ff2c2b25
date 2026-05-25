@@ -470,10 +470,10 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     // Plant-wide section averages if every equipment included
     if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
       const avg = (key: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[key].pct, 0) / blocks.length);
-      const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-      const overall = Math.round((am + wm + cm) / 3);
+      const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+      const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
       aoa.push([{
-        v: `PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`,
+        v: `PLANT AVERAGE — Overall ${overall}%   ·   ${parts.join("   ·   ")}`,
         t: "s",
         s: { font: { bold: true, color: { rgb: "FFFFFF" } },
              fill: { fgColor: { rgb: "1F2937" } },
