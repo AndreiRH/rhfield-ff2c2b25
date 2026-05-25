@@ -75,7 +75,6 @@ function ProjectsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(projects ?? []).map((p) => {
-              const projectName = p.name === "BlueW1" ? "BlueW2" : p.name;
               const lineParts = (p.lines ?? []).map((l: any) => lineOverallPct(l));
               const pct = lineParts.length === 0
                 ? 0
@@ -91,7 +90,7 @@ function ProjectsPage() {
                             <span className="text-xs tabular-nums text-muted-foreground">{p.lines?.length ?? 0} lines</span>
                           </div>
                         </div>
-                        <h2 className="mb-3 text-2xl font-semibold">{projectName}</h2>
+                        <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
                         <ProgressBar value={pct} size="md" />
                         <div className="mt-2 text-sm tabular-nums">{pct}% complete</div>
                       </CardContent>
@@ -101,7 +100,7 @@ function ProjectsPage() {
                     <div className="absolute right-2 top-2 flex items-center gap-1"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
                       <ExportProjectButton projectId={p.id} />
-                      <DeleteProjectButton projectId={p.id} projectName={projectName} />
+                      <DeleteProjectButton projectId={p.id} projectName={p.name} />
                     </div>
                   )}
                 </div>
