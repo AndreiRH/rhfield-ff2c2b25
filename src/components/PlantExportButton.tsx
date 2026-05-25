@@ -30,6 +30,7 @@ interface Props {
 export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equipment }: Props) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(equipment.map((e) => e.id)));
+  const [sections, setSections] = useState<Set<Section>>(() => new Set(ALL_SECTIONS));
   const [format, setFormat] = useState<PlantExportFormat>("pdf");
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ msg: string; cur: number; tot: number } | null>(null);
