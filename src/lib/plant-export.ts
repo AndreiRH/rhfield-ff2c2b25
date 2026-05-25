@@ -509,11 +509,13 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   lines.push("");
 
   let totalItems = 0, totalDone = 0, totalFlagged = 0;
+  const activeSections = sectionsOf(opts);
 
   for (const eq of blocks) {
-    lines.push([`### ${eq.name} — Overall ${eq.overall}% (A ${eq.sections.assembly.pct}% · W ${eq.sections.wiring.pct}% · C ${eq.sections.cold_comm.pct}%)`].map(csvCell).join(","));
+    const summary = activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join(" · ");
+    lines.push([`### ${eq.name} — Overall ${eq.overall}% (${summary})`].map(csvCell).join(","));
     lines.push(HEADERS.map(csvCell).join(","));
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       lines.push([`## ${meta.label}`, "", "", "", `${sec.pct}%`].map(csvCell).join(","));
       if (sec.mode === "manual") {
