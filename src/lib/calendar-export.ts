@@ -144,7 +144,7 @@ export function exportIcs(opts: BuildOptions) {
   const out = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Lovable//Calendar Export//EN",
+    "PRODID:-//RHfield//Calendar Export//EN",
     "CALSCALE:GREGORIAN",
   ];
   for (const a of sorted) {
@@ -156,7 +156,7 @@ export function exportIcs(opts: BuildOptions) {
       : a.name;
     out.push(
       "BEGIN:VEVENT",
-      `UID:${a.id}@lovable-calendar`,
+      `UID:${a.id}@rhfield-calendar`,
       `DTSTAMP:${stamp}Z`,
       `DTSTART;VALUE=DATE:${icsDate(a.start_date)}`,
       `DTEND;VALUE=DATE:${dtend}`,
