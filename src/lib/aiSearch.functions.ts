@@ -56,89 +56,62 @@ const InputSchema = z.object({
     .default({}),
 });
 
-// ---------- AI plan generation ----------
+// ---------- Query plan generation ----------
 
-async function buildPlanFromAI(question: string): Promise<z.infer<typeof PlanSchema>> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) {
-    // Fallback to a naive plan: search everything for the question text
-    return PlanSchema.parse({
-      sources: [
-        "settings",
-        "checklist_items",
-        "equipment_notes",
-        "pa_notes",
-        "common_notes",
-      ],
-      keywords: question.split(/\s+/).filter((w) => w.length > 2).slice(0, 6),
-    });
+async function buildPlanFromQuery(question: string): Promise<z.infer<typeof PlanSchema>> {
+  const normalized = question.toLowerCase();
+  const sources = new Set<z.infer<typeof SourceEnum>>();
+
+  if (/\b(setting|settings|parameter|parameters|configuration|config)\b/.test(normalized)) sources.add("settings");
+  if (/\b(check|checks|checklist|item|items|task|tasks|status|done|complete|completed|open|pending)\b/.test(normalized)) sources.add("checklist_items");
+  if (/\b(note|notes|remark|remarks|comment|comments)\b/.test(normalized)) {
+    sources.add("equipment_notes");
+    sources.add("common_notes");
+  }
+  if (/\b(pa|process automation|automation)\b/.test(normalized)) sources.add("pa_notes");
+  if (/\b(photo|photos|image|images|picture|pictures)\b/.test(normalized)) sources.add("component_photos");
+  if (/\b(file|files|document|documents|attachment|attachments)\b/.test(normalized)) sources.add("component_files");
+  if (sources.size === 0) {
+    sources.add("settings");
+    sources.add("checklist_items");
+    sources.add("equipment_notes");
+    sources.add("pa_notes");
+    sources.add("common_notes");
   }
 
-  const system = `You translate plant-commissioning search questions into a JSON query plan.
-Return ONLY a JSON object matching this schema (no prose):
-{
-  "sources": string[],   // any of: settings, checklist_items, equipment_notes, pa_notes, common_notes, component_files, component_photos
-  "keywords": string[],  // case-insensitive substrings to match in title/body/label/name (include synonyms)
-  "equipmentKinds": ("kiln"|"shs")[] | null,
-  "lineNumbers": number[] | null,
-  "equipmentNameLike": string | null,    // single substring for equipment name
-  "componentTypeLike": string | null,    // single substring for component type
-  "doneFilter": "any"|"done"|"not_done"  // only relevant for checklist_items
-}
-Pick the smallest set of sources that answers the question.
-If the user asks about "settings" pick "settings".
-If they ask about "checks", "status", "sensors", "items", "tasks" → "checklist_items".
-If they ask about "notes" → equipment_notes (and pa_notes when PA mentioned).
-If they ask about "files" or "photos" → include component_files / component_photos.
-Always include 1-5 keywords (lowercase, no punctuation). If the question is in another language, also add English equivalents.`;
+  const equipmentKinds: Array<"kiln" | "shs"> = [];
+  if (/\bkiln|kilns\b/.test(normalized)) equipmentKinds.push("kiln");
+  if (/\bshs\b/.test(normalized)) equipmentKinds.push("shs");
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: question },
-      ],
-      response_format: { type: "json_object" },
-    }),
+  const lineNumbers = Array.from(normalized.matchAll(/\bline\s*(\d+)\b/g))
+    .map((match) => Number(match[1]))
+    .filter(Number.isFinite);
+
+  const keywords = Array.from(
+    new Set(
+      normalized
+        .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+        .split(/\s+/)
+        .filter((word) => word.length > 2)
+        .filter((word) => ![
+          "all", "and", "are", "done", "every", "from", "line", "not",
+          "open", "show", "that", "the", "with",
+        ].includes(word))
+        .slice(0, 8),
+    ),
+  );
+
+  let doneFilter: "any" | "done" | "not_done" = "any";
+  if (/\b(not done|open|pending|incomplete|needs work)\b/.test(normalized)) doneFilter = "not_done";
+  if (/\b(done|completed|complete)\b/.test(normalized) && doneFilter === "any") doneFilter = "done";
+
+  return PlanSchema.parse({
+    sources: Array.from(sources),
+    keywords,
+    equipmentKinds: equipmentKinds.length ? equipmentKinds : undefined,
+    lineNumbers: lineNumbers.length ? lineNumbers : undefined,
+    doneFilter,
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    if (res.status === 429) throw new Error("AI rate limit exceeded. Please retry in a moment.");
-    if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Settings → Workspace → Usage.");
-    console.error("AI gateway error", res.status, text);
-    throw new Error("Search is temporarily unavailable. Please try again.");
-  }
-
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = json.choices?.[0]?.message?.content ?? "{}";
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    parsed = {};
-  }
-
-  const merged = {
-    sources: ["settings", "checklist_items", "equipment_notes"],
-    keywords: [],
-    doneFilter: "any",
-    ...(parsed as object),
-  } as Record<string, unknown>;
-
-  // Strip nulls so zod defaults apply
-  for (const k of Object.keys(merged)) if (merged[k] === null) delete merged[k];
-
-  return PlanSchema.parse(merged);
 }
 
 // ---------- Helpers ----------
@@ -165,9 +138,9 @@ export const runAiSearch = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { projectId, question, scope } = data;
 
-    const plan = await buildPlanFromAI(question);
+    const plan = await buildPlanFromQuery(question);
 
-    // Pre-resolve project → lines → equipment scope
+    // Pre-resolve project to lines to equipment scope.
     const { data: linesRows, error: linesErr } = await supabase
       .from("lines")
       .select("id, number, project_id")
@@ -250,7 +223,7 @@ export const runAiSearch = createServerFn({ method: "POST" })
 
     // ----- 2. Checklist items -----
     if (plan.sources.includes("checklist_items") && equipmentIds.length > 0) {
-      // Need to navigate: equipment_groups → component_types & components → checklist_items
+      // Need to navigate equipment groups, component types, components, and checklist items.
       const { data: groups, error: gErr } = await supabase
         .from("equipment_groups")
         .select(
