@@ -268,10 +268,14 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   aoa.push(["", "", "", "", ""]);
   r++;
 
+  const activeSections = sectionsOf(opts);
+  const headerSummary = (eq: EquipmentBlock) =>
+    activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join("   ");
+
   for (const eq of blocks) {
     // Equipment header
     aoa.push([{
-      v: `${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+      v: `${eq.name}   —   Overall ${eq.overall}%   ·   ${headerSummary(eq)}`,
       t: "s",
       s: {
         font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
@@ -293,7 +297,7 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     })));
     r++;
 
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       // Section header
       aoa.push([{
