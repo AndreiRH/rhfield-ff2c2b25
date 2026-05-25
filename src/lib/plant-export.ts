@@ -85,42 +85,59 @@ function itemPhotoPaths(it: any): { bucket: string; path: string }[] {
 function buildSectionRows(group: any): BodyRow[] {
   const rows: BodyRow[] = [];
 
-  const pushItem = (it: any) => {
-    rows.push({
-      kind: "item",
-      indent: 2,
-      label: it.label ?? "(no label)",
-      done: !!it.done,
-      flagged: !!it.flagged,
-      note: noteFromItem(it),
-      photoCount: ((it.item_photos ?? []) as any[]).length,
-      photoPaths: itemPhotoPaths(it),
-    });
-  };
-
-  const pushComponent = (c: any) => {
-    rows.push({ kind: "component", indent: 1, label: c.name ?? "(unnamed component)" });
-    const items = liveChecklistItems((c.checklist_items ?? []) as any[]);
-    items.forEach(pushItem);
-  };
-
-  // direct components on group (legacy)
-  ((group?.components ?? []) as any[])
-    .filter((c) => !c.deleted_at)
-    .forEach(pushComponent);
-
-  // typed structure
-  ((group?.component_types ?? []) as any[])
+  // Mirror the in-app ComponentTypesTree exactly: only component_types
+  // (sorted by sort_order), and items rendered as a parent_item_id tree.
+  // The legacy direct components on the group, and components nested under
+  // types, are NOT rendered in the UI — including them here was the source
+  // of the "ghost" rows the user reported.
+  const types = ((group?.component_types ?? []) as any[])
     .filter((t) => !t.deleted_at)
-    .forEach((t) => {
-      rows.push({ kind: "type", indent: 0, label: t.name ?? "(unnamed type)" });
-      // items directly under the type
-      liveChecklistItems((t.checklist_items ?? []) as any[]).forEach(pushItem);
-      // components under the type
-      ((t.components ?? []) as any[])
-        .filter((c) => !c.deleted_at)
-        .forEach(pushComponent);
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  for (const t of types) {
+    const liveItems = liveChecklistItems((t.checklist_items ?? []) as any[]);
+    const doneCount = liveItems.filter((i: any) => i.done).length;
+    const flaggedCount = liveItems.filter((i: any) => i.flagged).length;
+    const typePhotos = ((t.component_type_photos ?? []) as any[]).length;
+    const typeFiles = ((t.component_type_files ?? []) as any[]).length;
+
+    rows.push({
+      kind: "type",
+      indent: 0,
+      label: t.name ?? "(unnamed type)",
+      typeStats: { done: doneCount, total: liveItems.length, flagged: flaggedCount, photos: typePhotos, files: typeFiles },
     });
+
+    // Build the parent → children map and walk it depth-first.
+    const childrenByParent = new Map<string | null, any[]>();
+    for (const it of liveItems) {
+      const pid = (it.parent_item_id ?? null) as string | null;
+      if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+      childrenByParent.get(pid)!.push(it);
+    }
+    for (const arr of childrenByParent.values()) {
+      arr.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    }
+
+    const walk = (parentId: string | null, depth: number) => {
+      const kids = childrenByParent.get(parentId) ?? [];
+      for (const it of kids) {
+        rows.push({
+          kind: "item",
+          indent: 1 + depth, // root items at indent 1, subtasks deeper
+          label: it.label ?? "(no label)",
+          done: !!it.done,
+          flagged: !!it.flagged,
+          note: noteFromItem(it),
+          photoCount: ((it.item_photos ?? []) as any[]).length,
+          photoPaths: itemPhotoPaths(it),
+        });
+        walk(it.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+  }
 
   return rows;
 }
@@ -128,11 +145,39 @@ function buildSectionRows(group: any): BodyRow[] {
 async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string): Promise<EquipmentBlock> {
   const detail = await fetchEquipmentDetail(opts.projectId, opts.lineNumber, opts.kind, equipmentId);
   const pe = detail.peWithGroups;
-  const { mech, wiring, cold, overall } = equipmentProgress(pe);
+  const { overall } = equipmentProgress(pe);
 
-  const buildSection = (group: any, section: Section, forcedMode?: "checklist" | "manual", manualPct?: number | null): SectionBlock => {
+  // Equipment-level notes split by section, plus equipment photos.
+  const [{ data: notesRaw }, { data: photos }] = await Promise.all([
+    supabase.from("equipment_notes")
+      .select("title, body, section")
+      .eq("equipment_id", equipmentId)
+      .order("sort_order"),
+    supabase.from("equipment_photos")
+      .select("storage_path")
+      .eq("equipment_id", equipmentId)
+      .order("uploaded_at"),
+  ]);
+
+  const notesBySection: Record<Section, SectionNote[]> = { assembly: [], wiring: [], cold_comm: [] };
+  for (const n of (notesRaw ?? []) as any[]) {
+    const sec = (n.section ?? "assembly") as Section;
+    if (!notesBySection[sec]) continue;
+    const title = (n.title ?? "").trim();
+    const body = (n.body ?? "").trim();
+    if (!title && !body) continue;
+    notesBySection[sec].push({ title, body });
+  }
+
+  const buildSection = (
+    group: any,
+    section: Section,
+    forcedMode?: "checklist" | "manual",
+    manualPct?: number | null,
+  ): SectionBlock => {
     const isAssembly = section === "assembly";
-    const mode: "checklist" | "manual" = forcedMode ?? (isAssembly && pe.mech_mode === "manual" ? "manual" : "checklist");
+    const mode: "checklist" | "manual" =
+      forcedMode ?? (isAssembly && pe.mech_mode === "manual" ? "manual" : "checklist");
     const rows = mode === "checklist" ? buildSectionRows(group) : [];
     const items = mode === "checklist" ? liveChecklistItems(itemsFromGroup(group)) : [];
     const doneItems = items.filter((i: any) => i.done).length;
@@ -150,14 +195,9 @@ async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string
       totalItems: items.length,
       doneItems,
       flaggedItems,
+      notes: notesBySection[section],
     };
   };
-
-  // equipment-level notes/photos
-  const [{ data: notes }, { data: photos }] = await Promise.all([
-    supabase.from("equipment_notes").select("title, body").eq("equipment_id", equipmentId).order("sort_order"),
-    supabase.from("equipment_photos").select("storage_path").eq("equipment_id", equipmentId).order("uploaded_at"),
-  ]);
 
   return {
     id: equipmentId,
@@ -170,8 +210,6 @@ async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string
       wiring:    buildSection(detail.wiring,    "wiring"),
       cold_comm: buildSection(detail.cold,      "cold_comm"),
     },
-    notes: (notes ?? []).map((n: any) => ({ title: n.title ?? "", body: (n.body ?? "").trim() }))
-                        .filter((n) => n.title || n.body),
     photoPaths: ((photos ?? []) as any[]).map((p) => ({ bucket: "photos", path: p.storage_path })),
   };
 }
