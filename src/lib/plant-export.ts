@@ -36,15 +36,18 @@ const SECTION_META: Record<Section, { label: string; color: string; pdfRgb: [num
 /* ---------- Row model ---------- */
 
 interface BodyRow {
-  kind: "type" | "component" | "item";
-  indent: number;        // 0 = component_type, 1 = component, 2 = item
+  kind: "type" | "item";
+  indent: number;        // visual indent level (0 = type, 1 = root item, 2+ = subtask depth)
   label: string;
   done?: boolean;
   flagged?: boolean;
   note?: string;
   photoCount?: number;
   photoPaths?: { bucket: string; path: string }[];
+  typeStats?: { done: number; total: number; flagged: number; photos: number; files: number };
 }
+
+interface SectionNote { title: string; body: string }
 
 interface SectionBlock {
   section: Section;
@@ -56,6 +59,7 @@ interface SectionBlock {
   totalItems: number;
   doneItems: number;
   flaggedItems: number;
+  notes: SectionNote[];     // equipment_notes scoped to this section
 }
 
 interface EquipmentBlock {
@@ -63,7 +67,6 @@ interface EquipmentBlock {
   name: string;
   overall: number;
   sections: { assembly: SectionBlock; wiring: SectionBlock; cold_comm: SectionBlock };
-  notes: { title: string; body: string }[];          // equipment-level notes
   photoPaths: { bucket: string; path: string }[];    // equipment-level photos
 }
 
