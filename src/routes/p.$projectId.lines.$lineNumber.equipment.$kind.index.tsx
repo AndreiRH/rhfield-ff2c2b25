@@ -20,6 +20,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
+import { PlantExportButton } from "@/components/PlantExportButton";
 import { PANotesList } from "@/components/PANotesList";
 import { LineBreadcrumb } from "@/components/LineBreadcrumb";
 import { CurrentLineProvider } from "@/lib/current-line";
@@ -252,6 +253,13 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {equipment.length > 0 && (
             <>
+              <PlantExportButton
+                projectId={projectId}
+                lineNumber={lineNumber}
+                kind={kind}
+                plantLabel={title}
+                equipment={equipment.map((e: any) => ({ id: e.id, name: e.name }))}
+              />
               <Button
                 size="icon"
                 variant={mode === "reorder" ? "default" : "outline"}

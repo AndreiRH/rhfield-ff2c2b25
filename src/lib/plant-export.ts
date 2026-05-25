@@ -1,0 +1,765 @@
+/**
+ * Plant equipment export — PDF / Excel / CSV.
+ *
+ * Builds a per-equipment breakdown grouped by the three sections
+ * (Assembly / Wiring / Cold comm). Recurses into component_types →
+ * components → checklist items. Each item row contributes a "Mark"
+ * value used by COUNTIF totals at the bottom.
+ */
+import * as XLSX from "xlsx-js-style";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { supabase } from "@/integrations/supabase/client";
+import { equipmentProgress, calcProgress, itemsFromGroup, liveChecklistItems } from "@/lib/progress";
+import { fetchEquipmentDetail } from "@/routes/p.$projectId.lines.$lineNumber.equipment.$kind.$equipmentId";
+
+export type PlantExportFormat = "pdf" | "xlsx" | "csv";
+
+export interface PlantExportOptions {
+  projectId: string;
+  lineNumber: string;
+  kind: string;            // kiln | shs
+  plantLabel: string;      // "Kiln" / "SHS"
+  equipmentIds: string[];  // selected equipment ids (subset of all)
+  allEquipmentCount: number; // total available — used to decide if we show plant totals
+  format: PlantExportFormat;
+}
+
+type Section = "assembly" | "wiring" | "cold_comm";
+
+const SECTION_META: Record<Section, { label: string; color: string; pdfRgb: [number, number, number] }> = {
+  assembly:  { label: "Assembly",          color: "F59E0B", pdfRgb: [245, 158, 11] },   // amber
+  wiring:    { label: "Wiring",            color: "8B5CF6", pdfRgb: [139,  92, 246] },  // violet
+  cold_comm: { label: "Cold commissioning",color: "06B6D4", pdfRgb: [  6, 182, 212] },  // cyan
+};
+
+/* ---------- Row model ---------- */
+
+interface BodyRow {
+  kind: "type" | "component" | "item";
+  indent: number;        // 0 = component_type, 1 = component, 2 = item
+  label: string;
+  done?: boolean;
+  flagged?: boolean;
+  note?: string;
+  photoCount?: number;
+  photoPaths?: { bucket: string; path: string }[];
+}
+
+interface SectionBlock {
+  section: Section;
+  mode: "checklist" | "manual";
+  pct: number;
+  rows: BodyRow[];          // empty if manual mode
+  manualPct?: number | null;
+  manualNotes?: string | null;
+  totalItems: number;
+  doneItems: number;
+  flaggedItems: number;
+}
+
+interface EquipmentBlock {
+  id: string;
+  name: string;
+  overall: number;
+  sections: { assembly: SectionBlock; wiring: SectionBlock; cold_comm: SectionBlock };
+  notes: { title: string; body: string }[];          // equipment-level notes
+  photoPaths: { bucket: string; path: string }[];    // equipment-level photos
+}
+
+/* ---------- Building blocks ---------- */
+
+function noteFromItem(it: any): string {
+  return (it?.note ?? "").trim();
+}
+
+function itemPhotoPaths(it: any): { bucket: string; path: string }[] {
+  return ((it?.item_photos ?? []) as any[])
+    .filter((p) => p?.storage_path)
+    .map((p) => ({ bucket: "photos", path: p.storage_path as string }));
+}
+
+function buildSectionRows(group: any): BodyRow[] {
+  const rows: BodyRow[] = [];
+
+  const pushItem = (it: any) => {
+    rows.push({
+      kind: "item",
+      indent: 2,
+      label: it.label ?? "(no label)",
+      done: !!it.done,
+      flagged: !!it.flagged,
+      note: noteFromItem(it),
+      photoCount: ((it.item_photos ?? []) as any[]).length,
+      photoPaths: itemPhotoPaths(it),
+    });
+  };
+
+  const pushComponent = (c: any) => {
+    rows.push({ kind: "component", indent: 1, label: c.name ?? "(unnamed component)" });
+    const items = liveChecklistItems((c.checklist_items ?? []) as any[]);
+    items.forEach(pushItem);
+  };
+
+  // direct components on group (legacy)
+  ((group?.components ?? []) as any[])
+    .filter((c) => !c.deleted_at)
+    .forEach(pushComponent);
+
+  // typed structure
+  ((group?.component_types ?? []) as any[])
+    .filter((t) => !t.deleted_at)
+    .forEach((t) => {
+      rows.push({ kind: "type", indent: 0, label: t.name ?? "(unnamed type)" });
+      // items directly under the type
+      liveChecklistItems((t.checklist_items ?? []) as any[]).forEach(pushItem);
+      // components under the type
+      ((t.components ?? []) as any[])
+        .filter((c) => !c.deleted_at)
+        .forEach(pushComponent);
+    });
+
+  return rows;
+}
+
+async function buildEquipmentBlock(opts: PlantExportOptions, equipmentId: string): Promise<EquipmentBlock> {
+  const detail = await fetchEquipmentDetail(opts.projectId, opts.lineNumber, opts.kind, equipmentId);
+  const pe = detail.peWithGroups;
+  const { mech, wiring, cold, overall } = equipmentProgress(pe);
+
+  const buildSection = (group: any, section: Section, forcedMode?: "checklist" | "manual", manualPct?: number | null): SectionBlock => {
+    const isAssembly = section === "assembly";
+    const mode: "checklist" | "manual" = forcedMode ?? (isAssembly && pe.mech_mode === "manual" ? "manual" : "checklist");
+    const rows = mode === "checklist" ? buildSectionRows(group) : [];
+    const items = mode === "checklist" ? liveChecklistItems(itemsFromGroup(group)) : [];
+    const doneItems = items.filter((i: any) => i.done).length;
+    const flaggedItems = items.filter((i: any) => i.flagged).length;
+    const pct = mode === "manual"
+      ? Math.max(0, Math.min(100, manualPct ?? 0))
+      : calcProgress(items).pct;
+    return {
+      section,
+      mode,
+      pct,
+      rows,
+      manualPct: mode === "manual" ? manualPct ?? 0 : null,
+      manualNotes: mode === "manual" ? (pe.mech_notes ?? null) : null,
+      totalItems: items.length,
+      doneItems,
+      flaggedItems,
+    };
+  };
+
+  // equipment-level notes/photos
+  const [{ data: notes }, { data: photos }] = await Promise.all([
+    supabase.from("equipment_notes").select("title, body").eq("equipment_id", equipmentId).order("sort_order"),
+    supabase.from("equipment_photos").select("storage_path").eq("equipment_id", equipmentId).order("uploaded_at"),
+  ]);
+
+  return {
+    id: equipmentId,
+    name: pe.name,
+    overall,
+    sections: {
+      assembly:  buildSection(detail.assembly,  "assembly",
+                              pe.mech_mode === "manual" ? "manual" : "checklist",
+                              pe.mech_manual_pct),
+      wiring:    buildSection(detail.wiring,    "wiring"),
+      cold_comm: buildSection(detail.cold,      "cold_comm"),
+    },
+    notes: (notes ?? []).map((n: any) => ({ title: n.title ?? "", body: (n.body ?? "").trim() }))
+                        .filter((n) => n.title || n.body),
+    photoPaths: ((photos ?? []) as any[]).map((p) => ({ bucket: "photos", path: p.storage_path })),
+  };
+}
+
+/* ---------- Mark column helpers ---------- */
+
+function markFor(row: BodyRow): string {
+  if (row.kind !== "item") return "";
+  const parts: string[] = [];
+  if (row.done) parts.push("✓");
+  if (row.flagged) parts.push("⚑");
+  return parts.join("");
+}
+
+/* ---------- Excel ---------- */
+
+const HEADERS = ["Item", "Status", "Mark", "Note", "Photos"];
+
+function xlsxBorder() {
+  return {
+    top: { style: "thin", color: { rgb: "D1D5DB" } },
+    bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+    left: { style: "thin", color: { rgb: "D1D5DB" } },
+    right: { style: "thin", color: { rgb: "D1D5DB" } },
+  };
+}
+
+async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
+  const aoa: any[][] = [];
+  const merges: XLSX.Range[] = [];
+  // Track row index of the "Mark" column for totals formula
+  const markRows: number[] = []; // 0-indexed row numbers where item rows live
+  let r = 0;
+
+  // Title row
+  aoa.push([{ v: `${opts.plantLabel} — Line ${opts.lineNumber}`, t: "s",
+              s: { font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+                   fill: { fgColor: { rgb: "111827" } },
+                   alignment: { horizontal: "left", vertical: "center" } } },
+            "", "", "", ""]);
+  merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+  r++;
+  aoa.push([{ v: `Exported ${new Date().toLocaleString()}`, t: "s",
+              s: { font: { italic: true, color: { rgb: "6B7280" } } } },
+            "", "", "", ""]);
+  merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+  r++;
+  aoa.push(["", "", "", "", ""]);
+  r++;
+
+  for (const eq of blocks) {
+    // Equipment header
+    aoa.push([{
+      v: `${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+      t: "s",
+      s: {
+        font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "1F2937" } },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: xlsxBorder(),
+      },
+    }, "", "", "", ""]);
+    merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+    r++;
+
+    // Column headers row (only here so each equipment is self-contained)
+    aoa.push(HEADERS.map((h) => ({
+      v: h, t: "s",
+      s: { font: { bold: true, color: { rgb: "FFFFFF" } },
+           fill: { fgColor: { rgb: "374151" } },
+           alignment: { horizontal: "center" },
+           border: xlsxBorder() },
+    })));
+    r++;
+
+    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+      const meta = SECTION_META[sec.section];
+      // Section header
+      aoa.push([{
+        v: sec.mode === "manual"
+          ? `${meta.label}  (manual ${sec.pct}%)`
+          : `${meta.label}  —  ${sec.pct}%   (${sec.doneItems}/${sec.totalItems} done · ${sec.flaggedItems} flagged)`,
+        t: "s",
+        s: {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: meta.color } },
+          alignment: { horizontal: "left", vertical: "center" },
+          border: xlsxBorder(),
+        },
+      }, "", "", "", ""]);
+      merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+      r++;
+
+      if (sec.mode === "manual") {
+        aoa.push([
+          { v: "Assembly tracked manually (no checklist).", t: "s",
+            s: { font: { italic: true }, alignment: { wrapText: true }, border: xlsxBorder() } },
+          { v: `${sec.pct}%`, t: "s",
+            s: { font: { bold: true }, alignment: { horizontal: "center" }, border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: sec.manualNotes ?? "", t: "s", s: { alignment: { wrapText: true }, border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+        ]);
+        r++;
+        continue;
+      }
+
+      if (sec.rows.length === 0) {
+        aoa.push([
+          { v: "(no checklist items)", t: "s",
+            s: { font: { italic: true, color: { rgb: "9CA3AF" } }, border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+        ]);
+        r++;
+        continue;
+      }
+
+      for (const row of sec.rows) {
+        if (row.kind === "type") {
+          aoa.push([{
+            v: row.label, t: "s",
+            s: { font: { bold: true, color: { rgb: "111827" } },
+                 fill: { fgColor: { rgb: "F3F4F6" } },
+                 border: xlsxBorder() },
+          }, "", "", "", ""]);
+          merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+          r++;
+        } else if (row.kind === "component") {
+          aoa.push([{
+            v: `  ${row.label}`, t: "s",
+            s: { font: { bold: true, color: { rgb: "374151" } },
+                 fill: { fgColor: { rgb: "F9FAFB" } },
+                 border: xlsxBorder() },
+          }, "", "", "", ""]);
+          merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+          r++;
+        } else {
+          markRows.push(r);
+          const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
+          const statusColor = row.done ? "10B981" : row.flagged ? "EF4444" : "9CA3AF";
+          aoa.push([
+            { v: `      ${row.label}`, t: "s",
+              s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
+            { v: status, t: "s",
+              s: { font: { bold: true, color: { rgb: "FFFFFF" } },
+                   fill: { fgColor: { rgb: statusColor } },
+                   alignment: { horizontal: "center" },
+                   border: xlsxBorder() } },
+            { v: markFor(row), t: "s",
+              s: { font: { bold: true }, alignment: { horizontal: "center" }, border: xlsxBorder() } },
+            { v: row.note ?? "", t: "s",
+              s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
+            { v: (row.photoCount ?? 0) > 0 ? `${row.photoCount} photo${row.photoCount === 1 ? "" : "s"}` : "", t: "s",
+              s: { alignment: { horizontal: "center", vertical: "top" }, border: xlsxBorder() } },
+          ]);
+          r++;
+        }
+      }
+    }
+
+    // Equipment-level notes / photos summary
+    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
+      aoa.push([{
+        v: "Equipment notes & attachments", t: "s",
+        s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
+             fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() },
+      }, "", "", "", ""]);
+      merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+      r++;
+      for (const n of eq.notes) {
+        aoa.push([
+          { v: `      ${n.title || "Note"}`, t: "s", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: n.body, t: "s", s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+        ]);
+        r++;
+      }
+      if (eq.photoPaths.length > 0) {
+        aoa.push([
+          { v: "      Equipment photos", t: "s", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: "", s: { border: xlsxBorder() } },
+          { v: `${eq.photoPaths.length} photo${eq.photoPaths.length === 1 ? "" : "s"}`, t: "s",
+            s: { alignment: { horizontal: "center" }, border: xlsxBorder() } },
+        ]);
+        r++;
+      }
+    }
+
+    // Spacer
+    aoa.push(["", "", "", "", ""]);
+    r++;
+  }
+
+  // ---- Totals at bottom ----
+  if (markRows.length > 0) {
+    aoa.push([{
+      v: "TOTALS",
+      t: "s",
+      s: { font: { bold: true, color: { rgb: "FFFFFF" } },
+           fill: { fgColor: { rgb: "111827" } },
+           alignment: { horizontal: "left" } },
+    }, "", "", "", ""]);
+    merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+    r++;
+
+    const total = markRows.length;
+    // Build a SUM of COUNTIF over individual cells so non-contiguous rows still tally.
+    const refs = markRows.map((rr) => `C${rr + 1}`);
+    const checkedFormula =
+      "SUMPRODUCT(--(ISNUMBER(SEARCH(\"✓\",(" + refs.join("),(") + ")))))";
+    const flaggedFormula =
+      "SUMPRODUCT(--(ISNUMBER(SEARCH(\"⚑\",(" + refs.join("),(") + ")))))";
+
+    aoa.push([
+      { v: "Checked", t: "s", s: { font: { bold: true }, border: xlsxBorder() } },
+      { v: "", s: { border: xlsxBorder() } },
+      { f: `${checkedFormula}&"/${total}"`, t: "s",
+        s: { font: { bold: true, color: { rgb: "10B981" } },
+             alignment: { horizontal: "center" }, border: xlsxBorder() } },
+      { v: "Use the Mark column (C) to recount with COUNTIF if you edit.", t: "s",
+        s: { font: { italic: true, color: { rgb: "6B7280" } }, border: xlsxBorder() } },
+      { v: "", s: { border: xlsxBorder() } },
+    ]);
+    r++;
+    aoa.push([
+      { v: "Flagged", t: "s", s: { font: { bold: true }, border: xlsxBorder() } },
+      { v: "", s: { border: xlsxBorder() } },
+      { f: `${flaggedFormula}&"/${total}"`, t: "s",
+        s: { font: { bold: true, color: { rgb: "EF4444" } },
+             alignment: { horizontal: "center" }, border: xlsxBorder() } },
+      { v: "", s: { border: xlsxBorder() } },
+      { v: "", s: { border: xlsxBorder() } },
+    ]);
+    r++;
+
+    // Plant-wide section averages if every equipment included
+    if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
+      const avg = (key: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[key].pct, 0) / blocks.length);
+      const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
+      const overall = Math.round((am + wm + cm) / 3);
+      aoa.push([{
+        v: `PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`,
+        t: "s",
+        s: { font: { bold: true, color: { rgb: "FFFFFF" } },
+             fill: { fgColor: { rgb: "1F2937" } },
+             alignment: { horizontal: "left" }, border: xlsxBorder() },
+      }, "", "", "", ""]);
+      merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+      r++;
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  (ws as any)["!merges"] = merges;
+  (ws as any)["!cols"] = [{ wch: 60 }, { wch: 10 }, { wch: 8 }, { wch: 40 }, { wch: 10 }];
+  (ws as any)["!freeze"] = { xSplit: 0, ySplit: 3 };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, opts.plantLabel);
+  XLSX.writeFile(wb, fileName(opts, "xlsx"));
+}
+
+/* ---------- CSV ---------- */
+
+function csvCell(v: string | number | undefined | null) {
+  const s = v == null ? "" : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
+  const lines: string[] = [];
+  lines.push([opts.plantLabel + " — Line " + opts.lineNumber, "", "", "", ""].map(csvCell).join(","));
+  lines.push(["Exported " + new Date().toLocaleString(), "", "", "", ""].map(csvCell).join(","));
+  lines.push("");
+
+  let totalItems = 0, totalDone = 0, totalFlagged = 0;
+
+  for (const eq of blocks) {
+    lines.push([`### ${eq.name} — Overall ${eq.overall}% (A ${eq.sections.assembly.pct}% · W ${eq.sections.wiring.pct}% · C ${eq.sections.cold_comm.pct}%)`].map(csvCell).join(","));
+    lines.push(HEADERS.map(csvCell).join(","));
+    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+      const meta = SECTION_META[sec.section];
+      lines.push([`## ${meta.label}`, "", "", "", `${sec.pct}%`].map(csvCell).join(","));
+      if (sec.mode === "manual") {
+        lines.push([`Manual tracking`, `${sec.pct}%`, "", sec.manualNotes ?? "", ""].map(csvCell).join(","));
+        continue;
+      }
+      totalItems += sec.totalItems;
+      totalDone += sec.doneItems;
+      totalFlagged += sec.flaggedItems;
+      for (const row of sec.rows) {
+        if (row.kind === "type") {
+          lines.push([`# ${row.label}`, "", "", "", ""].map(csvCell).join(","));
+        } else if (row.kind === "component") {
+          lines.push([`  ${row.label}`, "", "", "", ""].map(csvCell).join(","));
+        } else {
+          const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
+          lines.push([
+            `    ${row.label}`,
+            status,
+            markFor(row),
+            row.note ?? "",
+            (row.photoCount ?? 0) > 0 ? `${row.photoCount} photo(s)` : "",
+          ].map(csvCell).join(","));
+        }
+      }
+    }
+    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
+      lines.push(["## Equipment notes & attachments", "", "", "", ""].map(csvCell).join(","));
+      for (const n of eq.notes) {
+        lines.push([`  ${n.title || "Note"}`, "", "", n.body, ""].map(csvCell).join(","));
+      }
+      if (eq.photoPaths.length > 0) {
+        lines.push([`  Equipment photos`, "", "", "", `${eq.photoPaths.length} photo(s)`].map(csvCell).join(","));
+      }
+    }
+    lines.push("");
+  }
+
+  lines.push(["TOTALS", "", "", "", ""].map(csvCell).join(","));
+  lines.push(["Checked", "", `${totalDone}/${totalItems}`, "", ""].map(csvCell).join(","));
+  lines.push(["Flagged", "", `${totalFlagged}/${totalItems}`, "", ""].map(csvCell).join(","));
+
+  if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
+    const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
+    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
+    const overall = Math.round((am + wm + cm) / 3);
+    lines.push([`PLANT AVERAGE — Overall ${overall}% · Assembly ${am}% · Wiring ${wm}% · Cold ${cm}%`, "", "", "", ""].map(csvCell).join(","));
+  }
+
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  downloadBlob(blob, fileName(opts, "csv"));
+}
+
+/* ---------- PDF ---------- */
+
+async function fetchPhotoDataUrl(path: string, maxPx = 96): Promise<string | null> {
+  try {
+    const { data } = await supabase.storage.from("photos").createSignedUrl(path, 600);
+    if (!data?.signedUrl) return null;
+    const res = await fetch(data.signedUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = URL.createObjectURL(blob);
+    });
+    const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
+    const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+    const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.7);
+  } catch {
+    return null;
+  }
+}
+
+async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 36;
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(`${opts.plantLabel} — Line ${opts.lineNumber}`, margin, margin + 6);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Exported ${new Date().toLocaleString()}`, margin, margin + 22);
+  doc.setTextColor(0);
+  let cursorY = margin + 38;
+
+  // Pre-fetch first-photo previews for all item rows in parallel (cap to 3 per item).
+  const photoJobs: { path: string; resolve: (dataUrl: string | null) => void }[] = [];
+  const photoCache = new Map<string, Promise<string | null>>();
+  const photo = (path: string) => {
+    if (!photoCache.has(path)) photoCache.set(path, fetchPhotoDataUrl(path, 80));
+    return photoCache.get(path)!;
+  };
+
+  let totalItems = 0, totalDone = 0, totalFlagged = 0;
+
+  for (const eq of blocks) {
+    if (cursorY > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); cursorY = margin; }
+    // Equipment header
+    doc.setFillColor(31, 41, 55);
+    doc.rect(margin, cursorY, pageW - margin * 2, 22, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+             margin + 6, cursorY + 15);
+    doc.setTextColor(0);
+    cursorY += 28;
+
+    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+      const meta = SECTION_META[sec.section];
+      const [rr, gg, bb] = meta.pdfRgb;
+
+      const rows: any[] = [];
+      if (sec.mode === "manual") {
+        rows.push([
+          { content: `Manual tracking — ${sec.pct}%`, styles: { fontStyle: "italic" } },
+          "", "",
+          { content: sec.manualNotes ?? "", styles: { fontStyle: "italic" } },
+          "",
+        ]);
+      } else {
+        totalItems += sec.totalItems;
+        totalDone += sec.doneItems;
+        totalFlagged += sec.flaggedItems;
+        for (const row of sec.rows) {
+          if (row.kind === "type") {
+            rows.push([{
+              content: row.label,
+              colSpan: 5,
+              styles: { fontStyle: "bold", fillColor: [243, 244, 246], textColor: [17, 24, 39] },
+            }]);
+          } else if (row.kind === "component") {
+            rows.push([{
+              content: `  ${row.label}`,
+              colSpan: 5,
+              styles: { fontStyle: "bold", fillColor: [249, 250, 251], textColor: [55, 65, 81] },
+            }]);
+          } else {
+            const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
+            const statusColor: [number, number, number] = row.done ? [16, 185, 129] : row.flagged ? [239, 68, 68] : [156, 163, 175];
+            rows.push([
+              `      ${row.label}`,
+              { content: status, styles: { fillColor: statusColor, textColor: [255, 255, 255], fontStyle: "bold", halign: "center" } },
+              { content: markFor(row), styles: { halign: "center", fontStyle: "bold" } },
+              row.note ?? "",
+              { content: "", _photoPaths: (row.photoPaths ?? []).slice(0, 2) },
+            ]);
+          }
+        }
+        if (sec.rows.length === 0) {
+          rows.push([{ content: "(no checklist items)", colSpan: 5, styles: { fontStyle: "italic", textColor: [156, 163, 175] } }]);
+        }
+      }
+
+      // Section banner
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: margin, right: margin },
+        head: [[{
+          content: sec.mode === "manual"
+            ? `${meta.label}  (manual ${sec.pct}%)`
+            : `${meta.label}  —  ${sec.pct}%   (${sec.doneItems}/${sec.totalItems} done · ${sec.flaggedItems} flagged)`,
+          colSpan: 5,
+          styles: { fillColor: [rr, gg, bb], textColor: [255, 255, 255], halign: "left", fontStyle: "bold" },
+        }],
+        ["Item", "Status", "Mark", "Note", "Photos"].map((h) => ({
+          content: h, styles: { fillColor: [55, 65, 81], textColor: [255, 255, 255], halign: "center", fontStyle: "bold" },
+        })) as any],
+        body: rows,
+        styles: { fontSize: 8, cellPadding: 3, valign: "top", lineColor: [209, 213, 219], lineWidth: 0.4 },
+        columnStyles: {
+          0: { cellWidth: "auto" },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 32 },
+          3: { cellWidth: 140 },
+          4: { cellWidth: 70 },
+        },
+      });
+      cursorY = (doc as any).lastAutoTable.finalY + 6;
+    }
+
+    // Equipment notes
+    if (eq.notes.length > 0) {
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: margin, right: margin },
+        head: [[{ content: "Equipment notes", colSpan: 2, styles: { fillColor: [229, 231, 235], textColor: [55, 65, 81], fontStyle: "bold" } }]],
+        body: eq.notes.map((n) => [n.title || "Note", n.body]),
+        styles: { fontSize: 8, cellPadding: 3, valign: "top", lineColor: [209, 213, 219], lineWidth: 0.4 },
+        columnStyles: { 0: { cellWidth: 120, fontStyle: "bold" }, 1: { cellWidth: "auto" } },
+      });
+      cursorY = (doc as any).lastAutoTable.finalY + 6;
+    }
+    cursorY += 6;
+  }
+
+  // Totals
+  if (cursorY > doc.internal.pageSize.getHeight() - 80) { doc.addPage(); cursorY = margin; }
+  doc.setFillColor(17, 24, 39);
+  doc.rect(margin, cursorY, pageW - margin * 2, 18, "F");
+  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.text("TOTALS", margin + 6, cursorY + 12);
+  doc.setTextColor(0);
+  cursorY += 24;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text(`Checked:  ${totalDone}/${totalItems}`, margin + 6, cursorY); cursorY += 14;
+  doc.text(`Flagged:  ${totalFlagged}/${totalItems}`, margin + 6, cursorY); cursorY += 14;
+  if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
+    const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
+    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
+    const overall = Math.round((am + wm + cm) / 3);
+    doc.setFont("helvetica", "bold");
+    doc.text(`PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`, margin + 6, cursorY);
+  }
+
+  // Second pass: embed photo previews. Easier approach — append a final
+  // "Attachments" mini-gallery per equipment so jspdf-autotable doesn't fight us.
+  const photoPages = blocks.filter((b) => {
+    const itemsWithPhotos = (["assembly", "wiring", "cold_comm"] as const)
+      .flatMap((k) => b.sections[k].rows.filter((r) => r.kind === "item" && (r.photoPaths?.length ?? 0) > 0));
+    return itemsWithPhotos.length > 0 || b.photoPaths.length > 0;
+  });
+
+  for (const eq of photoPages) {
+    doc.addPage();
+    let y = margin;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text(`${eq.name} — Photo previews`, margin, y); y += 18;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+
+    const allPhotoRefs: { label: string; paths: { bucket: string; path: string }[] }[] = [];
+    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+      for (const row of sec.rows) {
+        if (row.kind === "item" && (row.photoPaths?.length ?? 0) > 0) {
+          allPhotoRefs.push({ label: `${SECTION_META[sec.section].label} · ${row.label}`, paths: row.photoPaths!.slice(0, 4) });
+        }
+      }
+    }
+    if (eq.photoPaths.length > 0) {
+      allPhotoRefs.push({ label: "Equipment photos", paths: eq.photoPaths.slice(0, 6) });
+    }
+
+    for (const ref of allPhotoRefs) {
+      if (y > doc.internal.pageSize.getHeight() - 90) { doc.addPage(); y = margin; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.text(ref.label, margin, y); y += 4;
+      doc.setFont("helvetica", "normal");
+      const thumbSize = 60;
+      let x = margin;
+      const rowY = y + 4;
+      for (const p of ref.paths) {
+        const dataUrl = await photo(p.path);
+        if (!dataUrl) continue;
+        if (x + thumbSize > pageW - margin) { x = margin; }
+        try { doc.addImage(dataUrl, "JPEG", x, rowY, thumbSize, thumbSize); } catch {}
+        x += thumbSize + 6;
+      }
+      y = rowY + thumbSize + 10;
+    }
+  }
+
+  doc.save(fileName(opts, "pdf"));
+}
+
+/* ---------- Public entry ---------- */
+
+function fileName(opts: PlantExportOptions, ext: string) {
+  const ts = new Date().toISOString().slice(0, 10);
+  return `${opts.plantLabel}_Line${opts.lineNumber}_${ts}.${ext}`.replace(/\s+/g, "_");
+}
+
+function downloadBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function runPlantExport(opts: PlantExportOptions, onProgress?: (msg: string, current: number, total: number) => void) {
+  const blocks: EquipmentBlock[] = [];
+  for (let i = 0; i < opts.equipmentIds.length; i++) {
+    const id = opts.equipmentIds[i];
+    onProgress?.("Loading equipment…", i, opts.equipmentIds.length);
+    blocks.push(await buildEquipmentBlock(opts, id));
+  }
+  onProgress?.("Building file…", opts.equipmentIds.length, opts.equipmentIds.length);
+  if (opts.format === "xlsx") await exportXlsx(opts, blocks);
+  else if (opts.format === "csv") exportCsv(opts, blocks);
+  else await exportPdf(opts, blocks);
+}
