@@ -332,19 +332,14 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
       for (const row of sec.rows) {
         if (row.kind === "type") {
+          const stats = row.typeStats;
+          const tail = stats
+            ? `   —   ${stats.done}/${stats.total} done${stats.flagged ? ` · ${stats.flagged} flagged` : ""}${stats.photos ? ` · ${stats.photos} 📷` : ""}${stats.files ? ` · ${stats.files} 📎` : ""}`
+            : "";
           aoa.push([{
-            v: row.label, t: "s",
+            v: `${row.label}${tail}`, t: "s",
             s: { font: { bold: true, color: { rgb: "111827" } },
                  fill: { fgColor: { rgb: "F3F4F6" } },
-                 border: xlsxBorder() },
-          }, "", "", "", ""]);
-          merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
-          r++;
-        } else if (row.kind === "component") {
-          aoa.push([{
-            v: `  ${row.label}`, t: "s",
-            s: { font: { bold: true, color: { rgb: "374151" } },
-                 fill: { fgColor: { rgb: "F9FAFB" } },
                  border: xlsxBorder() },
           }, "", "", "", ""]);
           merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
@@ -353,8 +348,12 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           markRows.push(r);
           const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
           const statusColor = row.done ? "10B981" : row.flagged ? "EF4444" : "9CA3AF";
+          // indent 1 = root item, 2+ = subtask. Use 4 spaces per depth level.
+          const depth = Math.max(1, row.indent ?? 1);
+          const pad = "    ".repeat(depth);
+          const bullet = depth > 1 ? "↳ " : "• ";
           aoa.push([
-            { v: `      ${row.label}`, t: "s",
+            { v: `${pad}${bullet}${row.label}`, t: "s",
               s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
             { v: status, t: "s",
               s: { font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -371,38 +370,42 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           r++;
         }
       }
+
+      // Section-scoped notes (equipment_notes filtered by section)
+      if (sec.notes.length > 0) {
+        aoa.push([{
+          v: `Notes — ${SECTION_META[sec.section].label}`, t: "s",
+          s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
+               fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() },
+        }, "", "", "", ""]);
+        merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+        r++;
+        for (const n of sec.notes) {
+          aoa.push([
+            { v: `    📝 ${n.title || "Note"}`, t: "s", s: { border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+            { v: n.body, t: "s", s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
+            { v: "", s: { border: xlsxBorder() } },
+          ]);
+          r++;
+        }
+      }
     }
 
-    // Equipment-level notes / photos summary
-    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
-      aoa.push([{
-        v: "Equipment notes & attachments", t: "s",
-        s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
-             fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() },
-      }, "", "", "", ""]);
-      merges.push({ s: { r, c: 0 }, e: { r, c: HEADERS.length - 1 } });
+    // Equipment-level photos summary (kept once per equipment)
+    if (eq.photoPaths.length > 0) {
+      aoa.push([
+        { v: "Equipment photos", t: "s",
+          s: { font: { bold: true, italic: true, color: { rgb: "374151" } },
+               fill: { fgColor: { rgb: "E5E7EB" } }, border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: "", s: { border: xlsxBorder() } },
+        { v: `${eq.photoPaths.length} photo${eq.photoPaths.length === 1 ? "" : "s"}`, t: "s",
+          s: { alignment: { horizontal: "center" }, border: xlsxBorder() } },
+      ]);
       r++;
-      for (const n of eq.notes) {
-        aoa.push([
-          { v: `      ${n.title || "Note"}`, t: "s", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: n.body, t: "s", s: { alignment: { wrapText: true, vertical: "top" }, border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-        ]);
-        r++;
-      }
-      if (eq.photoPaths.length > 0) {
-        aoa.push([
-          { v: "      Equipment photos", t: "s", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: "", s: { border: xlsxBorder() } },
-          { v: `${eq.photoPaths.length} photo${eq.photoPaths.length === 1 ? "" : "s"}`, t: "s",
-            s: { alignment: { horizontal: "center" }, border: xlsxBorder() } },
-        ]);
-        r++;
-      }
     }
 
     // Spacer
