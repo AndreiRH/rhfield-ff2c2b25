@@ -54,8 +54,18 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
     [equipment, selected],
   );
 
+  const orderedSections = useMemo(() => ALL_SECTIONS.filter((s) => sections.has(s)), [sections]);
+  const noSectionChecked = orderedSections.length === 0;
+  const toggleSection = (s: Section) => {
+    setSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+
   const start = async () => {
-    if (noneChecked) return;
+    if (noneChecked || noSectionChecked) return;
     setRunning(true);
     try {
       await runPlantExport(
@@ -64,6 +74,7 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
           equipmentIds: orderedSelectedIds,
           allEquipmentCount: equipment.length,
           format,
+          sections: orderedSections,
         },
         (msg, cur, tot) => setProgress({ msg, cur, tot }),
       );
