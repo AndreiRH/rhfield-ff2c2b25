@@ -438,12 +438,11 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     r++;
 
     const total = markRows.length;
-    // Build a SUM of COUNTIF over individual cells so non-contiguous rows still tally.
+    // SUM of COUNTIF per cell — handles non-contiguous rows and is Excel-safe
+    // (SEARCH / SUMPRODUCT array tricks over discrete refs aren't valid syntax).
     const refs = markRows.map((rr) => `C${rr + 1}`);
-    const checkedFormula =
-      "SUMPRODUCT(--(ISNUMBER(SEARCH(\"✓\",(" + refs.join("),(") + ")))))";
-    const flaggedFormula =
-      "SUMPRODUCT(--(ISNUMBER(SEARCH(\"⚑\",(" + refs.join("),(") + ")))))";
+    const checkedFormula = "SUM(" + refs.map((c) => `COUNTIF(${c},"*✓*")`).join(",") + ")";
+    const flaggedFormula = "SUM(" + refs.map((c) => `COUNTIF(${c},"*⚑*")`).join(",") + ")";
 
     aoa.push([
       { v: "Checked", t: "s", s: { font: { bold: true }, border: xlsxBorder() } },
