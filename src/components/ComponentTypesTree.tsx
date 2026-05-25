@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   ChevronsDownUp, ChevronsUpDown, Search, Copy, ClipboardPaste, StickyNote,
   Camera, Paperclip, Check, ListPlus, Share2, Lock, X, Flag,
+  Filter,
 } from "lucide-react";
 import {
   useClipboard, buildTypeClipMany, buildComponentClipMany, buildItemClipMany, pasteType, pasteItem,
@@ -39,6 +40,77 @@ import { TypeNotesEditor } from "@/components/TypeNotesEditor";
 
 import { useAuth } from "@/hooks/use-auth";
 
+type ChecklistFilterMode = "all" | "open" | "flagged" | "content";
+
+const CHECKLIST_FILTER_STORAGE_KEY = "rhfield:checklist-filter";
+
+const CHECKLIST_FILTERS: Array<{ key: ChecklistFilterMode; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "open", label: "Needs work" },
+  { key: "flagged", label: "Flagged" },
+  { key: "content", label: "With content" },
+];
+
+function readChecklistFilter(): ChecklistFilterMode {
+  if (typeof window === "undefined") return "all";
+  const stored = window.localStorage.getItem(CHECKLIST_FILTER_STORAGE_KEY);
+  return CHECKLIST_FILTERS.some((option) => option.key === stored)
+    ? (stored as ChecklistFilterMode)
+    : "all";
+}
+
+function itemHasContent(item: any) {
+  return (
+    (item.note ?? "").trim() !== "" ||
+    (item.item_photos?.length ?? 0) > 0 ||
+    (item.item_files?.length ?? 0) > 0
+  );
+}
+
+function itemMatchesFilter(item: any, filter: ChecklistFilterMode) {
+  if (filter === "open") return !item.done;
+  if (filter === "flagged") return !!item.flagged;
+  if (filter === "content") return itemHasContent(item);
+  return true;
+}
+
+function countChecklistFilters(types: any[]) {
+  return types.reduce(
+    (acc, type) => {
+      for (const item of liveChecklistItems(type.checklist_items ?? [])) {
+        acc.all += 1;
+        if (!item.done) acc.open += 1;
+        if (item.flagged) acc.flagged += 1;
+        if (itemHasContent(item)) acc.content += 1;
+      }
+      return acc;
+    },
+    { all: 0, open: 0, flagged: 0, content: 0 } as Record<ChecklistFilterMode, number>,
+  );
+}
+
+function filterChecklistItems(items: any[], filter: ChecklistFilterMode) {
+  if (filter === "all") return items;
+
+  const liveItems = liveChecklistItems(items ?? []);
+  const byId = new Map(liveItems.filter((item: any) => item.id).map((item: any) => [item.id, item]));
+  const keep = new Set<string>();
+
+  const keepWithParents = (item: any) => {
+    let current = item;
+    while (current?.id && !keep.has(current.id)) {
+      keep.add(current.id);
+      current = current.parent_item_id ? byId.get(current.parent_item_id) : null;
+    }
+  };
+
+  for (const item of liveItems) {
+    if (itemMatchesFilter(item, filter)) keepWithParents(item);
+  }
+
+  return (items ?? []).filter((item: any) => keep.has(item.id));
+}
+
 export function ComponentTypesTree(props: any) {
   return (
     <TreeActionProvider>
@@ -57,6 +129,8 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [checklistFilter, setChecklistFilter] = useState<ChecklistFilterMode>(readChecklistFilter);
   const { clip, set: setClipTop, clear: clearClip, lockTo } = useClipboard();
   const action = useTreeAction()!;
   const inMode = action.mode !== "none";
@@ -85,11 +159,27 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [types.map((t: any) => t.id).join(",")]);
 
+  useEffect(() => {
+    window.localStorage.setItem(CHECKLIST_FILTER_STORAGE_KEY, checklistFilter);
+  }, [checklistFilter]);
+
   const q = search.trim().toLowerCase();
+  const filterCounts = useMemo(() => countChecklistFilters(types), [types]);
+  const hasChecklistItems = filterCounts.all > 0;
+  const visibleTypes = useMemo(() => {
+    if (checklistFilter === "all") return types;
+    return types
+      .map((type: any) => ({
+        ...type,
+        checklist_items: filterChecklistItems(type.checklist_items ?? [], checklistFilter),
+      }))
+      .filter((type: any) => (type.checklist_items ?? []).length > 0);
+  }, [types, checklistFilter]);
+  const renderedTypes = inMode ? types : visibleTypes;
 
   const matchingTypeIds = q
     ? new Set(
-        types
+        renderedTypes
           .filter((t: any) =>
             (t.checklist_items ?? []).some(
               (i: any) => !i.deleted_at && (i.label ?? "").toLowerCase().includes(q),
@@ -142,7 +232,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
 
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Done handler — commit selection from any kind.
+  // Done handler - commit selection from any kind.
   const commitDone = async () => {
     if (!action.hasSelection) { action.setMode("none"); return; }
     if (action.mode === "delete") {
@@ -201,13 +291,24 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        {/* Optional leading slot (e.g. Manual/Checklist toggle) — own row on top. */}
+        {/* Optional leading slot (e.g. Manual/Checklist toggle) - own row on top. */}
         {headerLeading && <div className="flex">{headerLeading}</div>}
-        {/* Action bar — collapse/expand on the left, the rest on the right. */}
+        {/* Action bar - collapse/expand on the left, the rest on the right. */}
         <div className="flex flex-wrap items-center gap-2">
           {types.length > 0 && (
             <Button size="sm" variant="outline" onClick={allOpen ? collapseAll : expandAll} title={allOpen ? "Collapse all" : "Expand all"} aria-label={allOpen ? "Collapse all" : "Expand all"}>
               {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+            </Button>
+          )}
+          {hasChecklistItems && !inMode && (
+            <Button
+              size="sm"
+              variant={showFilters || checklistFilter !== "all" ? "default" : "outline"}
+              onClick={() => setShowFilters((value) => !value)}
+              title="Filter checklist"
+              aria-label="Filter checklist"
+            >
+              <Filter className="h-4 w-4" />
             </Button>
           )}
           <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -263,6 +364,26 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
           </div>
         </div>
 
+        {hasChecklistItems && showFilters && !inMode && (
+          <div className="flex flex-wrap gap-1 rounded-md border bg-muted/20 px-2 py-2">
+            {CHECKLIST_FILTERS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setChecklistFilter(option.key)}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${
+                  checklistFilter === option.key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <span>{option.label}</span>
+                <span className="font-mono tabular-nums opacity-80">{filterCounts[option.key]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {adding && (
           <div className="flex max-w-md gap-2">
             <Input value={newName} autoFocus onChange={(e) => setNewName(e.target.value)}
@@ -295,7 +416,7 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search components across all types…"
+              placeholder="Search components across all types..."
               className="h-8 pl-7 text-sm"
             />
           </div>
@@ -305,11 +426,17 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
           <p className="text-sm text-muted-foreground">{emptyHint ?? "No component types yet. Add one (e.g. Sensors) to start."}</p>
         )}
 
-        {types.length > 0 && (
+        {types.length > 0 && checklistFilter !== "all" && !inMode && visibleTypes.length === 0 && (
+          <p className="rounded-md border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+            No checklist items match this filter.
+          </p>
+        )}
+
+        {types.length > 0 && renderedTypes.length > 0 && (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={types.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={renderedTypes.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
-                {types.map((t: any) => {
+                {renderedTypes.map((t: any) => {
                   if (q && matchingTypeIds && !matchingTypeIds.has(t.id)) return null;
                   return (
                     <TypeSection
@@ -317,10 +444,10 @@ function ComponentTypesTreeInner({ group, canEdit, onChange, emptyHint, lineCoun
                       type={t}
                       canEdit={canEdit}
                       onChange={onChange}
-                      open={q ? true : openIds.has(t.id)}
+                      open={q || (checklistFilter !== "all" && !inMode) ? true : openIds.has(t.id)}
                       onToggleOpen={() => toggleOne(t.id)}
                       externalSearch={q ? search : undefined}
-                      defaultOpen={allOpen}
+                      defaultOpen={allOpen || (checklistFilter !== "all" && !inMode)}
                     />
                   );
                 })}
@@ -623,7 +750,7 @@ function TypeActionBar({ type, canEdit, onChange }: any) {
         )}
         {currentLine && (
           <button onClick={toggleLocal}
-            title={type.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
+            title={type.local_line_id ? "Local to this production line - click to share across all production lines" : "Shared across all production lines - click to make local to this line"}
             className={`ml-auto inline-flex items-center justify-center rounded p-1 ${type.local_line_id ? "text-muted-foreground hover:bg-accent hover:text-foreground" : "text-primary hover:bg-accent"}`}>
             {type.local_line_id ? <Lock className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
           </button>
