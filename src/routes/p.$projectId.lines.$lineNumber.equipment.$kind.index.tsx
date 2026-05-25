@@ -17,7 +17,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, X, Cog, GripVertical, Copy, Filter } from "lucide-react";
 import { toast } from "sonner";
 import ExtraWorkChapterView from "@/components/ExtraWorkChapterView";
 import { PlantExportButton } from "@/components/PlantExportButton";
@@ -198,11 +198,34 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
   const overall = Math.round((avgMech + avgWiring + avgCold) / 3);
 
   type Mode = "none" | "reorder" | "copy" | "delete";
+  type FilterMode = "all" | "open" | "flagged" | "complete";
   const [mode, setMode] = useState<Mode>("none");
+  const [filter, setFilter] = useState<FilterMode>("all");
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
 
   const title = kind === "kiln" ? "Kiln" : "SHS";
+  const filteredEquipment = equipment.filter((pe: any) => {
+    const progress = equipmentProgress(pe);
+    const flags = flaggedInPlantEquipment(pe);
+    if (filter === "open") return progress.overall < 100;
+    if (filter === "flagged") return flags > 0;
+    if (filter === "complete") return progress.overall === 100;
+    return true;
+  });
+  const filterCounts = equipment.reduce(
+    (acc: Record<FilterMode, number>, pe: any) => {
+      const progress = equipmentProgress(pe);
+      const flags = flaggedInPlantEquipment(pe);
+      acc.all += 1;
+      if (progress.overall < 100) acc.open += 1;
+      if (flags > 0) acc.flagged += 1;
+      if (progress.overall === 100) acc.complete += 1;
+      return acc;
+    },
+    { all: 0, open: 0, flagged: 0, complete: 0 },
+  );
+  const visibleEquipment = mode === "reorder" ? equipment : filteredEquipment;
 
   const addEquipment = async () => {
     if (!newName.trim()) return;
@@ -308,6 +331,19 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
         </div>
       )}
 
+      {equipment.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 px-2 py-2">
+          <div className="flex items-center gap-1 px-1 text-xs font-medium text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" />
+            Filter
+          </div>
+          <FilterButton label="All" count={filterCounts.all} active={filter === "all"} onClick={() => setFilter("all")} />
+          <FilterButton label="Needs work" count={filterCounts.open} active={filter === "open"} onClick={() => setFilter("open")} />
+          <FilterButton label="Flagged" count={filterCounts.flagged} active={filter === "flagged"} onClick={() => setFilter("flagged")} />
+          <FilterButton label="Complete" count={filterCounts.complete} active={filter === "complete"} onClick={() => setFilter("complete")} />
+        </div>
+      )}
+
       {mode === "delete" && (
         <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           Tap an equipment to delete it. Tap the trash icon again to exit delete mode.
@@ -326,9 +362,13 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
 
       {equipment.length === 0 && !adding ? (
         <p className="text-sm text-muted-foreground">No equipment yet. Add the first one to start tracking.</p>
+      ) : visibleEquipment.length === 0 && !adding ? (
+        <p className="rounded-md border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+          No equipment matches this filter.
+        </p>
       ) : (
         <EquipmentSortable
-          equipment={equipment}
+          equipment={visibleEquipment}
           canEdit={canEdit}
           onChange={onChange}
           projectId={projectId}
@@ -343,6 +383,23 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
         <PANotesList lineId={lineId} kind={kind} canEdit={canEdit} userId={userId} />
       </div>
     </>
+  );
+}
+
+function FilterButton({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      <span>{label}</span>
+      <span className="font-mono tabular-nums opacity-80">{count}</span>
+    </button>
   );
 }
 
