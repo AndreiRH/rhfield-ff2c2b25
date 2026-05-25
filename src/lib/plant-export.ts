@@ -649,9 +649,6 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           3: { cellWidth: 140 },
           4: { cellWidth: 70 },
         },
-        didDrawCell: async (data) => {
-          // Image rendering hook: handled after pass below
-        },
       });
       cursorY = (doc as any).lastAutoTable.finalY + 6;
     }
