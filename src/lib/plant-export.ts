@@ -628,6 +628,8 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
   let totalItems = 0, totalDone = 0, totalFlagged = 0;
 
+  const activeSections = sectionsOf(opts);
+
   for (const eq of blocks) {
     if (cursorY > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); cursorY = margin; }
     // Equipment header
@@ -636,12 +638,13 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+    const summary = activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join("   ");
+    doc.text(`${eq.name}   —   Overall ${eq.overall}%   ·   ${summary}`,
              margin + 6, cursorY + 15);
     doc.setTextColor(0);
     cursorY += 28;
 
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       const [rr, gg, bb] = meta.pdfRgb;
 
