@@ -744,16 +744,16 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   doc.text(`Flagged:  ${totalFlagged}/${totalItems}`, margin + 6, cursorY); cursorY += 14;
   if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
     const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
-    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-    const overall = Math.round((am + wm + cm) / 3);
+    const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+    const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
     doc.setFont("helvetica", "bold");
-    doc.text(`PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`, margin + 6, cursorY);
+    doc.text(`PLANT AVERAGE — Overall ${overall}%   ·   ${parts.join("   ·   ")}`, margin + 6, cursorY);
   }
 
   // Second pass: embed photo previews. Easier approach — append a final
   // "Attachments" mini-gallery per equipment so jspdf-autotable doesn't fight us.
   const photoPages = blocks.filter((b) => {
-    const itemsWithPhotos = (["assembly", "wiring", "cold_comm"] as const)
+    const itemsWithPhotos = activeSections
       .flatMap((k) => b.sections[k].rows.filter((r) => r.kind === "item" && (r.photoPaths?.length ?? 0) > 0));
     return itemsWithPhotos.length > 0 || b.photoPaths.length > 0;
   });
@@ -766,7 +766,7 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
 
     const allPhotoRefs: { label: string; paths: { bucket: string; path: string }[] }[] = [];
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       for (const row of sec.rows) {
         if (row.kind === "item" && (row.photoPaths?.length ?? 0) > 0) {
           allPhotoRefs.push({ label: `${SECTION_META[sec.section].label} · ${row.label}`, paths: row.photoPaths!.slice(0, 4) });
