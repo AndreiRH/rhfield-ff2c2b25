@@ -201,6 +201,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
   type FilterMode = "all" | "open" | "flagged" | "complete";
   const [mode, setMode] = useState<Mode>("none");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
 
@@ -276,6 +277,15 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {equipment.length > 0 && (
             <>
+              <Button
+                size="icon"
+                variant={showFilters || filter !== "all" ? "default" : "outline"}
+                onClick={() => setShowFilters((v) => !v)}
+                title="Filter"
+                aria-label="Filter"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
               <PlantExportButton
                 projectId={projectId}
                 lineNumber={lineNumber}
@@ -316,7 +326,7 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
           )}
           <Button size="sm" onClick={() => setAdding(true)} title="Add equipment" aria-label="Add equipment">
             <Plus className="h-4 w-4" />
-            <span className="ml-1">Add equipment</span>
+            <span className="ml-1 hidden sm:inline">Add equipment</span>
           </Button>
         </div>
       )}
@@ -331,12 +341,8 @@ function PlantView({ lineId, kind, equipment, canEdit, isAdmin, userId, onChange
         </div>
       )}
 
-      {equipment.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 px-2 py-2">
-          <div className="flex items-center gap-1 px-1 text-xs font-medium text-muted-foreground">
-            <Filter className="h-3.5 w-3.5" />
-            Filter
-          </div>
+      {equipment.length > 0 && showFilters && (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2 rounded-md border bg-muted/20 px-2 py-2">
           <FilterButton label="All" count={filterCounts.all} active={filter === "all"} onClick={() => setFilter("all")} />
           <FilterButton label="Needs work" count={filterCounts.open} active={filter === "open"} onClick={() => setFilter("open")} />
           <FilterButton label="Flagged" count={filterCounts.flagged} active={filter === "flagged"} onClick={() => setFilter("flagged")} />
