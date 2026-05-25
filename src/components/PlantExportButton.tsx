@@ -11,6 +11,14 @@ import { toast } from "sonner";
 import { runPlantExport, type PlantExportFormat } from "@/lib/plant-export";
 import { toUserMessage } from "@/lib/errors";
 
+type Section = "assembly" | "wiring" | "cold_comm";
+const SECTION_LABELS: Record<Section, string> = {
+  assembly: "Assembly",
+  wiring: "Wiring",
+  cold_comm: "Cold commissioning",
+};
+const ALL_SECTIONS: Section[] = ["assembly", "wiring", "cold_comm"];
+
 interface Props {
   projectId: string;
   lineNumber: string;
@@ -22,6 +30,7 @@ interface Props {
 export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equipment }: Props) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(equipment.map((e) => e.id)));
+  const [sections, setSections] = useState<Set<Section>>(() => new Set(ALL_SECTIONS));
   const [format, setFormat] = useState<PlantExportFormat>("pdf");
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ msg: string; cur: number; tot: number } | null>(null);
@@ -45,8 +54,18 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
     [equipment, selected],
   );
 
+  const orderedSections = useMemo(() => ALL_SECTIONS.filter((s) => sections.has(s)), [sections]);
+  const noSectionChecked = orderedSections.length === 0;
+  const toggleSection = (s: Section) => {
+    setSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+
   const start = async () => {
-    if (noneChecked) return;
+    if (noneChecked || noSectionChecked) return;
     setRunning(true);
     try {
       await runPlantExport(
@@ -55,6 +74,7 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
           equipmentIds: orderedSelectedIds,
           allEquipmentCount: equipment.length,
           format,
+          sections: orderedSections,
         },
         (msg, cur, tot) => setProgress({ msg, cur, tot }),
       );
@@ -121,6 +141,37 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
               </p>
             </div>
 
+            {/* Sections */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Sections</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {ALL_SECTIONS.map((s) => {
+                  const checked = sections.has(s);
+                  return (
+                    <label
+                      key={s}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${checked ? "border-primary bg-primary/5 font-medium" : ""}`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleSection(s)}
+                        disabled={running}
+                      />
+                      {SECTION_LABELS[s]}
+                    </label>
+                  );
+                })}
+              </div>
+              {noSectionChecked && (
+                <p className="text-xs text-destructive">Select at least one section.</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Applies to every selected equipment.
+              </p>
+            </div>
+
+
+
             {/* Format */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Format</Label>
@@ -168,7 +219,7 @@ export function PlantExportButton({ projectId, lineNumber, kind, plantLabel, equ
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={running}>Cancel</Button>
-            <Button onClick={start} disabled={running || noneChecked} className="gap-2">
+            <Button onClick={start} disabled={running || noneChecked || noSectionChecked} className="gap-2">
               <Download className="h-4 w-4" />
               {running ? "Exporting…" : `Export ${selected.size || ""}`}
             </Button>

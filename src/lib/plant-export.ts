@@ -23,6 +23,14 @@ export interface PlantExportOptions {
   equipmentIds: string[];  // selected equipment ids (subset of all)
   allEquipmentCount: number; // total available — used to decide if we show plant totals
   format: PlantExportFormat;
+  sections?: Section[];    // which sections to include; defaults to all three
+}
+
+const ALL_SECTIONS: Section[] = ["assembly", "wiring", "cold_comm"];
+function sectionsOf(opts: PlantExportOptions): Section[] {
+  const s = opts.sections && opts.sections.length > 0 ? opts.sections : ALL_SECTIONS;
+  // preserve canonical order
+  return ALL_SECTIONS.filter((k) => s.includes(k));
 }
 
 type Section = "assembly" | "wiring" | "cold_comm";
@@ -260,10 +268,14 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   aoa.push(["", "", "", "", ""]);
   r++;
 
+  const activeSections = sectionsOf(opts);
+  const headerSummary = (eq: EquipmentBlock) =>
+    activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join("   ");
+
   for (const eq of blocks) {
     // Equipment header
     aoa.push([{
-      v: `${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+      v: `${eq.name}   —   Overall ${eq.overall}%   ·   ${headerSummary(eq)}`,
       t: "s",
       s: {
         font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
@@ -285,7 +297,7 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     })));
     r++;
 
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       // Section header
       aoa.push([{
@@ -458,10 +470,10 @@ async function exportXlsx(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     // Plant-wide section averages if every equipment included
     if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
       const avg = (key: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[key].pct, 0) / blocks.length);
-      const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-      const overall = Math.round((am + wm + cm) / 3);
+      const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+      const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
       aoa.push([{
-        v: `PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`,
+        v: `PLANT AVERAGE — Overall ${overall}%   ·   ${parts.join("   ·   ")}`,
         t: "s",
         s: { font: { bold: true, color: { rgb: "FFFFFF" } },
              fill: { fgColor: { rgb: "1F2937" } },
@@ -497,11 +509,13 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   lines.push("");
 
   let totalItems = 0, totalDone = 0, totalFlagged = 0;
+  const activeSections = sectionsOf(opts);
 
   for (const eq of blocks) {
-    lines.push([`### ${eq.name} — Overall ${eq.overall}% (A ${eq.sections.assembly.pct}% · W ${eq.sections.wiring.pct}% · C ${eq.sections.cold_comm.pct}%)`].map(csvCell).join(","));
+    const summary = activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join(" · ");
+    lines.push([`### ${eq.name} — Overall ${eq.overall}% (${summary})`].map(csvCell).join(","));
     lines.push(HEADERS.map(csvCell).join(","));
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       lines.push([`## ${meta.label}`, "", "", "", `${sec.pct}%`].map(csvCell).join(","));
       if (sec.mode === "manual") {
@@ -549,9 +563,9 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
   if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
     const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
-    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-    const overall = Math.round((am + wm + cm) / 3);
-    lines.push([`PLANT AVERAGE — Overall ${overall}% · Assembly ${am}% · Wiring ${wm}% · Cold ${cm}%`, "", "", "", ""].map(csvCell).join(","));
+    const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+    const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
+    lines.push([`PLANT AVERAGE — Overall ${overall}% · ${parts.join(" · ")}`, "", "", "", ""].map(csvCell).join(","));
   }
 
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -614,6 +628,8 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
   let totalItems = 0, totalDone = 0, totalFlagged = 0;
 
+  const activeSections = sectionsOf(opts);
+
   for (const eq of blocks) {
     if (cursorY > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); cursorY = margin; }
     // Equipment header
@@ -622,12 +638,13 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`${eq.name}   —   Overall ${eq.overall}%   ·   A ${eq.sections.assembly.pct}%   W ${eq.sections.wiring.pct}%   C ${eq.sections.cold_comm.pct}%`,
+    const summary = activeSections.map((k) => `${SECTION_META[k].label[0]} ${eq.sections[k].pct}%`).join("   ");
+    doc.text(`${eq.name}   —   Overall ${eq.overall}%   ·   ${summary}`,
              margin + 6, cursorY + 15);
     doc.setTextColor(0);
     cursorY += 28;
 
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       const meta = SECTION_META[sec.section];
       const [rr, gg, bb] = meta.pdfRgb;
 
@@ -727,16 +744,16 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
   doc.text(`Flagged:  ${totalFlagged}/${totalItems}`, margin + 6, cursorY); cursorY += 14;
   if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
     const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
-    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-    const overall = Math.round((am + wm + cm) / 3);
+    const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+    const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
     doc.setFont("helvetica", "bold");
-    doc.text(`PLANT AVERAGE — Overall ${overall}%   ·   Assembly ${am}%   ·   Wiring ${wm}%   ·   Cold ${cm}%`, margin + 6, cursorY);
+    doc.text(`PLANT AVERAGE — Overall ${overall}%   ·   ${parts.join("   ·   ")}`, margin + 6, cursorY);
   }
 
   // Second pass: embed photo previews. Easier approach — append a final
   // "Attachments" mini-gallery per equipment so jspdf-autotable doesn't fight us.
   const photoPages = blocks.filter((b) => {
-    const itemsWithPhotos = (["assembly", "wiring", "cold_comm"] as const)
+    const itemsWithPhotos = activeSections
       .flatMap((k) => b.sections[k].rows.filter((r) => r.kind === "item" && (r.photoPaths?.length ?? 0) > 0));
     return itemsWithPhotos.length > 0 || b.photoPaths.length > 0;
   });
@@ -749,7 +766,7 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
 
     const allPhotoRefs: { label: string; paths: { bucket: string; path: string }[] }[] = [];
-    for (const sec of [eq.sections.assembly, eq.sections.wiring, eq.sections.cold_comm]) {
+    for (const sec of activeSections.map((k) => eq.sections[k])) {
       for (const row of sec.rows) {
         if (row.kind === "item" && (row.photoPaths?.length ?? 0) > 0) {
           allPhotoRefs.push({ label: `${SECTION_META[sec.section].label} · ${row.label}`, paths: row.photoPaths!.slice(0, 4) });
