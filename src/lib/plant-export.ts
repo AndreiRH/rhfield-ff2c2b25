@@ -513,13 +513,16 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
       totalFlagged += sec.flaggedItems;
       for (const row of sec.rows) {
         if (row.kind === "type") {
-          lines.push([`# ${row.label}`, "", "", "", ""].map(csvCell).join(","));
-        } else if (row.kind === "component") {
-          lines.push([`  ${row.label}`, "", "", "", ""].map(csvCell).join(","));
+          const stats = row.typeStats;
+          const tail = stats ? `  (${stats.done}/${stats.total}${stats.flagged ? ` · ${stats.flagged} flagged` : ""})` : "";
+          lines.push([`# ${row.label}${tail}`, "", "", "", ""].map(csvCell).join(","));
         } else {
           const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
+          const depth = Math.max(1, row.indent ?? 1);
+          const pad = "  ".repeat(depth + 1);
+          const bullet = depth > 1 ? "↳ " : "• ";
           lines.push([
-            `    ${row.label}`,
+            `${pad}${bullet}${row.label}`,
             status,
             markFor(row),
             row.note ?? "",
@@ -527,15 +530,15 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
           ].map(csvCell).join(","));
         }
       }
+      if (sec.notes.length > 0) {
+        lines.push([`-- Notes — ${meta.label} --`, "", "", "", ""].map(csvCell).join(","));
+        for (const n of sec.notes) {
+          lines.push([`    📝 ${n.title || "Note"}`, "", "", n.body, ""].map(csvCell).join(","));
+        }
+      }
     }
-    if (eq.notes.length > 0 || eq.photoPaths.length > 0) {
-      lines.push(["## Equipment notes & attachments", "", "", "", ""].map(csvCell).join(","));
-      for (const n of eq.notes) {
-        lines.push([`  ${n.title || "Note"}`, "", "", n.body, ""].map(csvCell).join(","));
-      }
-      if (eq.photoPaths.length > 0) {
-        lines.push([`  Equipment photos`, "", "", "", `${eq.photoPaths.length} photo(s)`].map(csvCell).join(","));
-      }
+    if (eq.photoPaths.length > 0) {
+      lines.push([`Equipment photos`, "", "", "", `${eq.photoPaths.length} photo(s)`].map(csvCell).join(","));
     }
     lines.push("");
   }
