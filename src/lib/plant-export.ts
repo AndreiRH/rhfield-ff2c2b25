@@ -645,22 +645,24 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
         totalFlagged += sec.flaggedItems;
         for (const row of sec.rows) {
           if (row.kind === "type") {
+            const stats = row.typeStats;
+            const tail = stats
+              ? `   —   ${stats.done}/${stats.total} done${stats.flagged ? ` · ${stats.flagged} flagged` : ""}${stats.photos ? ` · ${stats.photos}📷` : ""}${stats.files ? ` · ${stats.files}📎` : ""}`
+              : "";
             rows.push([{
-              content: row.label,
+              content: `${row.label}${tail}`,
               colSpan: 5,
               styles: { fontStyle: "bold", fillColor: [243, 244, 246], textColor: [17, 24, 39] },
-            }]);
-          } else if (row.kind === "component") {
-            rows.push([{
-              content: `  ${row.label}`,
-              colSpan: 5,
-              styles: { fontStyle: "bold", fillColor: [249, 250, 251], textColor: [55, 65, 81] },
             }]);
           } else {
             const status = row.done ? "Done" : row.flagged ? "Flagged" : "Open";
             const statusColor: [number, number, number] = row.done ? [16, 185, 129] : row.flagged ? [239, 68, 68] : [156, 163, 175];
+            const depth = Math.max(1, row.indent ?? 1);
+            const pad = "    ".repeat(depth);
+            const bullet = depth > 1 ? "↳ " : "• ";
+            const subStyle = depth > 1 ? { textColor: [75, 85, 99] as [number, number, number] } : {};
             rows.push([
-              `      ${row.label}`,
+              { content: `${pad}${bullet}${row.label}`, styles: subStyle },
               { content: status, styles: { fillColor: statusColor, textColor: [255, 255, 255], fontStyle: "bold", halign: "center" } },
               { content: markFor(row), styles: { halign: "center", fontStyle: "bold" } },
               row.note ?? "",
@@ -671,6 +673,15 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
         if (sec.rows.length === 0) {
           rows.push([{ content: "(no checklist items)", colSpan: 5, styles: { fontStyle: "italic", textColor: [156, 163, 175] } }]);
         }
+      }
+
+      // Section-scoped notes appended at the bottom of the section table
+      for (const n of sec.notes) {
+        rows.push([{
+          content: `📝 ${n.title || "Note"}${n.body ? `\n${n.body}` : ""}`,
+          colSpan: 5,
+          styles: { fontStyle: "italic", fillColor: [229, 231, 235], textColor: [55, 65, 81] },
+        }]);
       }
 
       // Section banner
@@ -700,18 +711,6 @@ async function exportPdf(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
       cursorY = (doc as any).lastAutoTable.finalY + 6;
     }
 
-    // Equipment notes
-    if (eq.notes.length > 0) {
-      autoTable(doc, {
-        startY: cursorY,
-        margin: { left: margin, right: margin },
-        head: [[{ content: "Equipment notes", colSpan: 2, styles: { fillColor: [229, 231, 235], textColor: [55, 65, 81], fontStyle: "bold" } }]],
-        body: eq.notes.map((n) => [n.title || "Note", n.body]),
-        styles: { fontSize: 8, cellPadding: 3, valign: "top", lineColor: [209, 213, 219], lineWidth: 0.4 },
-        columnStyles: { 0: { cellWidth: 120, fontStyle: "bold" }, 1: { cellWidth: "auto" } },
-      });
-      cursorY = (doc as any).lastAutoTable.finalY + 6;
-    }
     cursorY += 6;
   }
 
