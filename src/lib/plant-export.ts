@@ -563,9 +563,9 @@ function exportCsv(opts: PlantExportOptions, blocks: EquipmentBlock[]) {
 
   if (blocks.length === opts.allEquipmentCount && blocks.length > 1) {
     const avg = (k: Section) => Math.round(blocks.reduce((s, b) => s + b.sections[k].pct, 0) / blocks.length);
-    const am = avg("assembly"), wm = avg("wiring"), cm = avg("cold_comm");
-    const overall = Math.round((am + wm + cm) / 3);
-    lines.push([`PLANT AVERAGE — Overall ${overall}% · Assembly ${am}% · Wiring ${wm}% · Cold ${cm}%`, "", "", "", ""].map(csvCell).join(","));
+    const parts = activeSections.map((k) => `${SECTION_META[k].label} ${avg(k)}%`);
+    const overall = Math.round(activeSections.reduce((s, k) => s + avg(k), 0) / Math.max(activeSections.length, 1));
+    lines.push([`PLANT AVERAGE — Overall ${overall}% · ${parts.join(" · ")}`, "", "", "", ""].map(csvCell).join(","));
   }
 
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
