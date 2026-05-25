@@ -11,6 +11,14 @@ import { toast } from "sonner";
 import { runPlantExport, type PlantExportFormat } from "@/lib/plant-export";
 import { toUserMessage } from "@/lib/errors";
 
+type Section = "assembly" | "wiring" | "cold_comm";
+const SECTION_LABELS: Record<Section, string> = {
+  assembly: "Assembly",
+  wiring: "Wiring",
+  cold_comm: "Cold commissioning",
+};
+const ALL_SECTIONS: Section[] = ["assembly", "wiring", "cold_comm"];
+
 interface Props {
   projectId: string;
   lineNumber: string;
