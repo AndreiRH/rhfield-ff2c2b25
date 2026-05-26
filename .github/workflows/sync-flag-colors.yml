@@ -1,0 +1,270 @@
+name: Sync flag colors
+
+on:
+  push:
+    paths:
+      - .github/workflows/sync-flag-colors.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Update flag colors
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          fs.writeFileSync('src/lib/checklist-flags.ts', `import { supabase } from "@/integrations/supabase/client";
+
+export type FlagPriority = "yellow" | "orange" | "red";
+export type FlagStatus = "open" | "acknowledged" | "resolved";
+
+export type ChecklistFlagMeta = {
+  priority: FlagPriority;
+  waitDays: number;
+  dueDate: string;
+  reason: string;
+  status: FlagStatus;
+  flaggedAt: string;
+};
+
+export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
+  red: 1,
+  orange: 7,
+  yellow: 14,
+};
+
+export const FLAG_PRIORITIES: Array<{
+  key: FlagPriority;
+  label: string;
+  description: string;
+}> = [
+  { key: "red", label: "Red", description: "Critical. Stop and resolve fast." },
+  { key: "orange", label: "Orange", description: "Important. Should not wait long." },
+  { key: "yellow", label: "Yellow", description: "Watch item. Can wait briefly." },
+];
+
+const STORAGE_KEY = "rhfield:checklist-flag-meta";
+
+function todayAtNoon() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
+export function dateAfterDays(days: number) {
+  const date = todayAtNoon();
+  date.setDate(date.getDate() + Math.max(0, Math.round(days)));
+  return date.toISOString().slice(0, 10);
+}
+
+function isPriority(value: unknown): value is FlagPriority {
+  return value === "yellow" || value === "orange" || value === "red";
+}
+
+function isStatus(value: unknown): value is FlagStatus {
+  return value === "open" || value === "acknowledged" || value === "resolved";
+}
+
+export function defaultFlagMeta(priority: FlagPriority = "red"): ChecklistFlagMeta {
+  const waitDays = FLAG_DEFAULT_DAYS[priority];
+  return {
+    priority,
+    waitDays,
+    dueDate: dateAfterDays(waitDays),
+    reason: "",
+    status: "open",
+    flaggedAt: new Date().toISOString(),
+  };
+}
+
+export function normalizeFlagMeta(input: any, fallbackPriority: FlagPriority = "red"): ChecklistFlagMeta {
+  const rawPriority = input?.priority ?? input?.flag_priority;
+  const priority = rawPriority === "black"
+    ? "red"
+    : isPriority(rawPriority)
+    ? rawPriority
+    : fallbackPriority;
+  const parsedDays = Number(input?.waitDays ?? input?.flag_wait_days ?? FLAG_DEFAULT_DAYS[priority]);
+  const waitDays = Number.isFinite(parsedDays) && parsedDays >= 0
+    ? Math.round(parsedDays)
+    : FLAG_DEFAULT_DAYS[priority];
+  return {
+    priority,
+    waitDays,
+    dueDate: String(input?.dueDate ?? input?.flag_due_date ?? dateAfterDays(waitDays)),
+    reason: String(input?.reason ?? input?.flag_reason ?? ""),
+    status: isStatus(input?.status ?? input?.flag_status) ? (input.status ?? input.flag_status) : "open",
+    flaggedAt: String(input?.flaggedAt ?? input?.flagged_at ?? new Date().toISOString()),
+  };
+}
+
+function readStore(): Record<string, ChecklistFlagMeta> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
+    return Object.fromEntries(
+      Object.entries(parsed).map(([id, value]) => [id, normalizeFlagMeta(value)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeStore(store: Record<string, ChecklistFlagMeta>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
+export function getStoredFlagMeta(ids: string[]) {
+  const store = readStore();
+  return Object.fromEntries(ids.map((id) => [id, store[id]]).filter(([, value]) => !!value));
+}
+
+export function rememberFlagMeta(ids: string[], meta: ChecklistFlagMeta | null) {
+  const store = readStore();
+  for (const id of ids) {
+    if (meta) store[id] = meta;
+    else delete store[id];
+  }
+  writeStore(store);
+}
+
+export async function fetchFlagMeta(ids: string[]) {
+  if (!ids.length) return {};
+  const { data, error } = await (supabase as any)
+    .from("checklist_items")
+    .select("id, flag_priority, flag_wait_days, flag_due_date, flag_reason, flag_status, flagged_at")
+    .in("id", ids);
+  if (error) return {};
+  return Object.fromEntries(
+    (data ?? [])
+      .filter((row: any) => row.id && row.flag_priority)
+      .map((row: any) => [row.id, normalizeFlagMeta(row)]),
+  );
+}
+
+export async function updateFlagBranch(ids: string[], meta: ChecklistFlagMeta | null) {
+  if (!ids.length) return { error: null as any };
+  rememberFlagMeta(ids, meta);
+
+  const richUpdate = meta
+    ? {
+        flagged: true,
+        done: false,
+        completed_at: null,
+        flag_priority: meta.priority,
+        flag_wait_days: meta.waitDays,
+        flag_due_date: meta.dueDate,
+        flag_reason: meta.reason || null,
+        flag_status: meta.status,
+        flagged_at: meta.flaggedAt,
+        flag_resolved_at: null,
+      }
+    : {
+        flagged: false,
+        flag_priority: null,
+        flag_wait_days: null,
+        flag_due_date: null,
+        flag_reason: null,
+        flag_status: null,
+        flagged_at: null,
+        flag_resolved_at: null,
+      };
+
+  const rich = await (supabase as any).from("checklist_items").update(richUpdate).in("id", ids);
+  if (!rich.error) return rich;
+
+  const legacyUpdate = meta
+    ? { flagged: true, done: false, completed_at: null }
+    : { flagged: false };
+  return supabase.from("checklist_items").update(legacyUpdate).in("id", ids);
+}
+
+export function flagDueLabel(dueDate: string) {
+  const due = new Date(\`${'${dueDate}'}T12:00:00\`);
+  const now = todayAtNoon();
+  const days = Math.round((due.getTime() - now.getTime()) / 86_400_000);
+  if (days < 0) return \`${'${Math.abs(days)}'}d overdue\`;
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return \`${'${days}'}d left\`;
+}
+
+export function flagPriorityClasses(priority: FlagPriority) {
+  if (priority === "red") {
+    return {
+      text: "text-destructive",
+      badge: "border-destructive/50 bg-destructive text-destructive-foreground",
+      soft: "border-destructive/40 bg-destructive/10 text-destructive",
+      hover: "hover:bg-destructive/15 hover:text-destructive",
+      row: "border-destructive/60 bg-destructive/10",
+    };
+  }
+  if (priority === "orange") {
+    return {
+      text: "text-orange-700 dark:text-orange-300",
+      badge: "border-orange-500/60 bg-orange-500 text-white",
+      soft: "border-orange-400/60 bg-orange-100 text-orange-900 dark:border-orange-300/50 dark:bg-orange-950/50 dark:text-orange-200",
+      hover: "hover:bg-orange-100 hover:text-orange-800 dark:hover:bg-orange-950/50 dark:hover:text-orange-200",
+      row: "border-orange-400/60 bg-orange-50 dark:border-orange-300/40 dark:bg-orange-950/30",
+    };
+  }
+  return {
+    text: "text-amber-700 dark:text-amber-300",
+    badge: "border-amber-500/60 bg-amber-400 text-amber-950",
+    soft: "border-amber-400/60 bg-amber-100 text-amber-900 dark:border-amber-300/50 dark:bg-amber-950/50 dark:text-amber-200",
+    hover: "hover:bg-amber-100 hover:text-amber-800 dark:hover:bg-amber-950/50 dark:hover:text-amber-200",
+    row: "border-amber-400/60 bg-amber-50 dark:border-amber-300/40 dark:bg-amber-950/30",
+  };
+}
+`);
+
+          let tree = fs.readFileSync('src/components/ChecklistTree.tsx', 'utf8');
+          tree = tree
+            .replace('const FLAG_SEVERITY: Record<FlagPriority, number> = { yellow: 1, red: 2, black: 3 };', 'const FLAG_SEVERITY: Record<FlagPriority, number> = { yellow: 1, orange: 2, red: 3 };')
+            .replaceAll('meta.priority === "black"', 'meta.priority === "red"')
+            .replaceAll('Black flags need a short reason.', 'Red flags need a short reason.')
+            .replaceAll('draftFlag.priority === "black"', 'draftFlag.priority === "red"');
+          fs.writeFileSync('src/components/ChecklistTree.tsx', tree);
+
+          let migration = fs.readFileSync('supabase/migrations/20260525113000_add_checklist_flag_metadata.sql', 'utf8');
+          migration = migration.replace("flag_priority IN ('yellow', 'red', 'black')", "flag_priority IN ('yellow', 'orange', 'red')");
+          fs.writeFileSync('supabase/migrations/20260525113000_add_checklist_flag_metadata.sql', migration);
+
+          fs.writeFileSync('supabase/migrations/20260526100000_replace_black_flags_with_red.sql', `UPDATE public.checklist_items
+SET flag_priority = 'red',
+    flag_wait_days = COALESCE(flag_wait_days, 1),
+    flag_due_date = COALESCE(flag_due_date, CURRENT_DATE + 1)
+WHERE flag_priority = 'black';
+
+UPDATE public.checklist_items
+SET flag_priority = 'orange',
+    flag_wait_days = COALESCE(flag_wait_days, 7),
+    flag_due_date = COALESCE(flag_due_date, CURRENT_DATE + 7)
+WHERE flag_priority = 'red'
+  AND flagged = true
+  AND flag_wait_days = 7;
+
+ALTER TABLE public.checklist_items
+  DROP CONSTRAINT IF EXISTS checklist_items_flag_priority_check,
+  ADD CONSTRAINT checklist_items_flag_priority_check
+    CHECK (flag_priority IS NULL OR flag_priority IN ('yellow', 'orange', 'red'));
+`);
+          NODE
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/checklist-flags.ts src/components/ChecklistTree.tsx supabase/migrations/20260525113000_add_checklist_flag_metadata.sql supabase/migrations/20260526100000_replace_black_flags_with_red.sql
+          git diff --cached --quiet && exit 0
+          git commit -m "Replace black flags with orange and red"
+          git push
