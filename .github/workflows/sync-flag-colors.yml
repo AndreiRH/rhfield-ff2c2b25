@@ -14,35 +14,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: Update flag colors
         run: |
           node <<'NODE'
           const fs = require('fs');
 
-          fs.writeFileSync('src/lib/checklist-flags.ts', `import { supabase } from "@/integrations/supabase/client";
+          function replace(path, from, to) {
+            const text = fs.readFileSync(path, 'utf8');
+            if (!text.includes(from)) throw new Error(`${path} missing expected text: ${from}`);
+            fs.writeFileSync(path, text.replace(from, to));
+          }
 
-export type FlagPriority = "yellow" | "orange" | "red";
-export type FlagStatus = "open" | "acknowledged" | "resolved";
-
-export type ChecklistFlagMeta = {
-  priority: FlagPriority;
-  waitDays: number;
-  dueDate: string;
-  reason: string;
-  status: FlagStatus;
-  flaggedAt: string;
-};
-
-export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
+          replace('src/lib/checklist-flags.ts',
+            'export type FlagPriority = "yellow" | "red" | "black";',
+            'export type FlagPriority = "yellow" | "orange" | "red";');
+          replace('src/lib/checklist-flags.ts',
+            `export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
+  black: 1,
+  red: 7,
+  yellow: 14,
+};`,
+            `export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
   red: 1,
   orange: 7,
   yellow: 14,
-};
-
-export const FLAG_PRIORITIES: Array<{
+};`);
+          replace('src/lib/checklist-flags.ts',
+            `export const FLAG_PRIORITIES: Array<{
+  key: FlagPriority;
+  label: string;
+  description: string;
+}> = [
+  { key: "black", label: "Black", description: "Critical. Stop and resolve fast." },
+  { key: "red", label: "Red", description: "Important. Should not wait long." },
+  { key: "yellow", label: "Yellow", description: "Watch item. Can wait briefly." },
+];`,
+            `export const FLAG_PRIORITIES: Array<{
   key: FlagPriority;
   label: string;
   description: string;
@@ -50,156 +57,23 @@ export const FLAG_PRIORITIES: Array<{
   { key: "red", label: "Red", description: "Critical. Stop and resolve fast." },
   { key: "orange", label: "Orange", description: "Important. Should not wait long." },
   { key: "yellow", label: "Yellow", description: "Watch item. Can wait briefly." },
-];
-
-const STORAGE_KEY = "rhfield:checklist-flag-meta";
-
-function todayAtNoon() {
-  const date = new Date();
-  date.setHours(12, 0, 0, 0);
-  return date;
-}
-
-export function dateAfterDays(days: number) {
-  const date = todayAtNoon();
-  date.setDate(date.getDate() + Math.max(0, Math.round(days)));
-  return date.toISOString().slice(0, 10);
-}
-
-function isPriority(value: unknown): value is FlagPriority {
-  return value === "yellow" || value === "orange" || value === "red";
-}
-
-function isStatus(value: unknown): value is FlagStatus {
-  return value === "open" || value === "acknowledged" || value === "resolved";
-}
-
-export function defaultFlagMeta(priority: FlagPriority = "red"): ChecklistFlagMeta {
-  const waitDays = FLAG_DEFAULT_DAYS[priority];
-  return {
-    priority,
-    waitDays,
-    dueDate: dateAfterDays(waitDays),
-    reason: "",
-    status: "open",
-    flaggedAt: new Date().toISOString(),
-  };
-}
-
-export function normalizeFlagMeta(input: any, fallbackPriority: FlagPriority = "red"): ChecklistFlagMeta {
-  const rawPriority = input?.priority ?? input?.flag_priority;
+];`);
+          replace('src/lib/checklist-flags.ts',
+            '  return value === "yellow" || value === "red" || value === "black";',
+            '  return value === "yellow" || value === "orange" || value === "red";');
+          replace('src/lib/checklist-flags.ts',
+            `  const priority = isPriority(input?.priority ?? input?.flag_priority)
+    ? (input.priority ?? input.flag_priority)
+    : fallbackPriority;`,
+            `  const rawPriority = input?.priority ?? input?.flag_priority;
   const priority = rawPriority === "black"
     ? "red"
     : isPriority(rawPriority)
     ? rawPriority
-    : fallbackPriority;
-  const parsedDays = Number(input?.waitDays ?? input?.flag_wait_days ?? FLAG_DEFAULT_DAYS[priority]);
-  const waitDays = Number.isFinite(parsedDays) && parsedDays >= 0
-    ? Math.round(parsedDays)
-    : FLAG_DEFAULT_DAYS[priority];
-  return {
-    priority,
-    waitDays,
-    dueDate: String(input?.dueDate ?? input?.flag_due_date ?? dateAfterDays(waitDays)),
-    reason: String(input?.reason ?? input?.flag_reason ?? ""),
-    status: isStatus(input?.status ?? input?.flag_status) ? (input.status ?? input.flag_status) : "open",
-    flaggedAt: String(input?.flaggedAt ?? input?.flagged_at ?? new Date().toISOString()),
-  };
-}
+    : fallbackPriority;`);
 
-function readStore(): Record<string, ChecklistFlagMeta> {
-  if (typeof window === "undefined") return {};
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
-    return Object.fromEntries(
-      Object.entries(parsed).map(([id, value]) => [id, normalizeFlagMeta(value)]),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function writeStore(store: Record<string, ChecklistFlagMeta>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-}
-
-export function getStoredFlagMeta(ids: string[]) {
-  const store = readStore();
-  return Object.fromEntries(ids.map((id) => [id, store[id]]).filter(([, value]) => !!value));
-}
-
-export function rememberFlagMeta(ids: string[], meta: ChecklistFlagMeta | null) {
-  const store = readStore();
-  for (const id of ids) {
-    if (meta) store[id] = meta;
-    else delete store[id];
-  }
-  writeStore(store);
-}
-
-export async function fetchFlagMeta(ids: string[]) {
-  if (!ids.length) return {};
-  const { data, error } = await (supabase as any)
-    .from("checklist_items")
-    .select("id, flag_priority, flag_wait_days, flag_due_date, flag_reason, flag_status, flagged_at")
-    .in("id", ids);
-  if (error) return {};
-  return Object.fromEntries(
-    (data ?? [])
-      .filter((row: any) => row.id && row.flag_priority)
-      .map((row: any) => [row.id, normalizeFlagMeta(row)]),
-  );
-}
-
-export async function updateFlagBranch(ids: string[], meta: ChecklistFlagMeta | null) {
-  if (!ids.length) return { error: null as any };
-  rememberFlagMeta(ids, meta);
-
-  const richUpdate = meta
-    ? {
-        flagged: true,
-        done: false,
-        completed_at: null,
-        flag_priority: meta.priority,
-        flag_wait_days: meta.waitDays,
-        flag_due_date: meta.dueDate,
-        flag_reason: meta.reason || null,
-        flag_status: meta.status,
-        flagged_at: meta.flaggedAt,
-        flag_resolved_at: null,
-      }
-    : {
-        flagged: false,
-        flag_priority: null,
-        flag_wait_days: null,
-        flag_due_date: null,
-        flag_reason: null,
-        flag_status: null,
-        flagged_at: null,
-        flag_resolved_at: null,
-      };
-
-  const rich = await (supabase as any).from("checklist_items").update(richUpdate).in("id", ids);
-  if (!rich.error) return rich;
-
-  const legacyUpdate = meta
-    ? { flagged: true, done: false, completed_at: null }
-    : { flagged: false };
-  return supabase.from("checklist_items").update(legacyUpdate).in("id", ids);
-}
-
-export function flagDueLabel(dueDate: string) {
-  const due = new Date(\`${'${dueDate}'}T12:00:00\`);
-  const now = todayAtNoon();
-  const days = Math.round((due.getTime() - now.getTime()) / 86_400_000);
-  if (days < 0) return \`${'${Math.abs(days)}'}d overdue\`;
-  if (days === 0) return "Due today";
-  if (days === 1) return "Due tomorrow";
-  return \`${'${days}'}d left\`;
-}
-
-export function flagPriorityClasses(priority: FlagPriority) {
+          let flags = fs.readFileSync('src/lib/checklist-flags.ts', 'utf8');
+          flags = flags.replace(/export function flagPriorityClasses\(priority: FlagPriority\) \{[\s\S]*$/, `export function flagPriorityClasses(priority: FlagPriority) {
   if (priority === "red") {
     return {
       text: "text-destructive",
@@ -227,6 +101,7 @@ export function flagPriorityClasses(priority: FlagPriority) {
   };
 }
 `);
+          fs.writeFileSync('src/lib/checklist-flags.ts', flags);
 
           let tree = fs.readFileSync('src/components/ChecklistTree.tsx', 'utf8');
           tree = tree
