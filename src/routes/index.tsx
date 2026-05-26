@@ -3,8 +3,6 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lineOverallPct } from "@/lib/progress";
-import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,26 +26,9 @@ function ProjectsPage() {
       const { data, error } = await supabase
         .from("projects")
         .select(`
-          id, name,
-          lines(
-            id,
-            plant_equipment(
-              id, deleted_at, mech_mode, mech_manual_pct,
-              equipment_groups(
-                id, chapter, deleted_at,
-                components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id)),
-                component_types(
-                  id, deleted_at,
-                  checklist_items(id, done, flagged, deleted_at, parent_item_id),
-                  components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
-                )
-              )
-            ),
-            equipment_groups(
-              id, kind, deleted_at,
-              components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
-            )
-          )
+          id,
+          name,
+          lines(id)
         `)
         .order("created_at");
       if (error) throw error;
@@ -75,10 +56,6 @@ function ProjectsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(projects ?? []).map((p) => {
-              const lineParts = (p.lines ?? []).map((l: any) => lineOverallPct(l));
-              const pct = lineParts.length === 0
-                ? 0
-                : Math.round(lineParts.reduce((s: number, n: number) => s + n, 0) / lineParts.length);
               return (
                 <div key={p.id} className="relative">
                   <Link to="/p/$projectId" params={{ projectId: p.id }}>
@@ -91,8 +68,7 @@ function ProjectsPage() {
                           </div>
                         </div>
                         <h2 className="mb-3 text-2xl font-semibold">{p.name}</h2>
-                        <ProgressBar value={pct} size="md" />
-                        <div className="mt-2 text-sm tabular-nums">{pct}% complete</div>
+                        <div className="text-sm text-muted-foreground">Open project</div>
                       </CardContent>
                     </Card>
                   </Link>
