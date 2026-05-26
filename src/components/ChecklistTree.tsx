@@ -3,6 +3,11 @@ import { toUserMessage } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -28,6 +33,21 @@ import { localUuid } from "@/lib/local-id";
 import { useCurrentLine } from "@/lib/current-line";
 import { confirmUnshareToOriginLine, getUnshareWarning } from "@/lib/confirm-unshare";
 import { confirmSharedDelete } from "@/lib/confirm-shared-delete";
+import {
+  FLAG_DEFAULT_DAYS,
+  FLAG_PRIORITIES,
+  type ChecklistFlagMeta,
+  type FlagPriority,
+  dateAfterDays,
+  defaultFlagMeta,
+  fetchFlagMeta,
+  flagDueLabel,
+  flagPriorityClasses,
+  getStoredFlagMeta,
+  normalizeFlagMeta,
+  rememberFlagMeta,
+  updateFlagBranch,
+} from "@/lib/checklist-flags";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -58,6 +78,8 @@ export function ChecklistTree({
   const visibleItems = liveChecklistItems(
     (items ?? []).filter((i: any) => !i.local_line_id || (currentLine && i.local_line_id === currentLine.lineId))
   );
+  const visibleItemIds = visibleItems.map((i: any) => i.id).filter(Boolean).join(",");
+  const [flagMetaById, setFlagMetaById] = useState<Record<string, ChecklistFlagMeta>>({});
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const [localConfirm, setLocalConfirm] = useState<{
@@ -73,6 +95,22 @@ export function ChecklistTree({
   const rootItems = visibleItems
     .filter((i: any) => !i.parent_item_id)
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+  useEffect(() => {
+    const ids = visibleItemIds ? visibleItemIds.split(",") : [];
+    if (!ids.length) {
+      setFlagMetaById({});
+      return;
+    }
+    let cancelled = false;
+    setFlagMetaById((prev) => ({ ...getStoredFlagMeta(ids), ...prev }));
+    fetchFlagMeta(ids).then((meta) => {
+      if (!cancelled && Object.keys(meta).length > 0) {
+        setFlagMetaById((prev) => ({ ...prev, ...meta }));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [visibleItemIds]);
 
   const addItem = async () => {
     if (!text.trim()) return;
@@ -157,7 +195,8 @@ export function ChecklistTree({
             {rootItems.map((it: any) => (
               <TreeNode key={it.id} item={it} allItems={visibleItems} canEdit={canEdit}
                 onChange={onChange} depth={0} sortable showLabels={showLabels} defaultOpen={defaultOpen}
-                canDeleteRoot={canDeleteRoot} requestLocalConfirm={setLocalConfirm} />
+                canDeleteRoot={canDeleteRoot} requestLocalConfirm={setLocalConfirm}
+                flagMetaById={flagMetaById} setFlagMetaById={setFlagMetaById} />
             ))}
           </ul>
         </SortableContext>
@@ -186,7 +225,13 @@ export function ChecklistTree({
   );
 }
 
-function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true, requestLocalConfirm }: any) {
+const FLAG_SEVERITY: Record<FlagPriority, number> = { yellow: 1, red: 2, black: 3 };
+
+function highestFlagPriority(priorities: FlagPriority[]) {
+  return priorities.sort((a, b) => FLAG_SEVERITY[b] - FLAG_SEVERITY[a])[0] ?? "red";
+}
+
+function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabels, defaultOpen = false, canDeleteRoot = true, requestLocalConfirm, flagMetaById = {}, setFlagMetaById }: any) {
   const currentLine = useCurrentLine();
   const action = useTreeAction();
   const mode = action?.mode ?? "none";
@@ -233,19 +278,31 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   const photosCount = descendants.reduce((s: number, d: any) => s + (d.item_photos?.length ?? 0), 0) + photos.length;
   const filesCount = descendants.reduce((s: number, d: any) => s + (d.item_files?.length ?? 0), 0) + files.length;
   const descFlagged = descendants.filter((d: any) => d.flagged).length;
-  const flaggedCount = descFlagged + (item.flagged ? 1 : 0);
-  // "Uniformly flagged" — used to decide red shading on parents.
+  const itemFlagMeta = item.flagged
+    ? normalizeFlagMeta(flagMetaById[item.id] ?? item)
+    : null;
+  const flaggedPriorities = [item, ...descendants]
+    .filter((d: any) => d.flagged)
+    .map((d: any) => normalizeFlagMeta(flagMetaById[d.id] ?? d).priority);
+  const highestPriority = highestFlagPriority(flaggedPriorities);
+  const flagClasses = flagPriorityClasses(itemFlagMeta?.priority ?? highestPriority);
+  const descendantFlagClasses = flagPriorityClasses(highestPriority);
+  // "Uniformly flagged" â€” used to decide red shading on parents.
   // A parent shows red only when EVERY descendant is flagged (or it has no
   // descendants and is itself flagged). Mixed states (some flagged + some
   // not, or flagged + done, or flagged + unmarked) render as default.
   const allFlagged = !!item.flagged && (subsTotal === 0 || descFlagged === subsTotal);
-  const isFlaggedShade = allFlagged;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [addingSub, setAddingSub] = useState(false);
   const [subText, setSubText] = useState("");
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [draftFlag, setDraftFlag] = useState<ChecklistFlagMeta>(() => itemFlagMeta ?? defaultFlagMeta("red"));
 
+  useEffect(() => {
+    if (!flagDialogOpen) setDraftFlag(itemFlagMeta ?? defaultFlagMeta("red"));
+  }, [flagDialogOpen, itemFlagMeta?.priority, itemFlagMeta?.waitDays, itemFlagMeta?.dueDate, itemFlagMeta?.reason, itemFlagMeta?.status]);
 
 
   const [editingLabel, setEditingLabel] = useState(false);
@@ -270,6 +327,14 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     const { error } = await supabase.from("checklist_items")
       .update(updates).in("id", ids);
     if (error) { toast.error(toUserMessage(error)); return; }
+    if (next) {
+      rememberFlagMeta(ids, null);
+      setFlagMetaById?.((prev: Record<string, ChecklistFlagMeta>) => {
+        const copy = { ...prev };
+        ids.forEach((id) => delete copy[id]);
+        return copy;
+      });
+    }
     // Cascade up: marking done propagates when all siblings are done;
     // unmarking propagates to any done ancestor (an item can't be done if a descendant isn't).
     if (next) {
@@ -284,6 +349,12 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         const { error: pErr } = await supabase.from("checklist_items")
           .update({ done: true, completed_at: nowIso, flagged: false }).eq("id", parentId);
         if (pErr) { toast.error(toUserMessage(pErr)); break; }
+        rememberFlagMeta([parentId], null);
+        setFlagMetaById?.((prev: Record<string, ChecklistFlagMeta>) => {
+          const copy = { ...prev };
+          delete copy[parentId];
+          return copy;
+        });
         doneSet.add(parentId);
         parentId = parent.parent_item_id ?? null;
       }
@@ -306,30 +377,55 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
   };
   // Toggle the "problem / needs attention" flag on this item AND cascade to all
   // sublayers below it. Flagging also clears the done state on this branch and
-  // on any done ancestors — a flagged item can't be considered complete.
-  const toggleFlag = async () => {
-    const next = !item.flagged;
+  // on any done ancestors â€” a flagged item can't be considered complete.
+  const applyFlag = async () => {
     const ids = [item.id, ...descendants.map((d: any) => d.id)];
-    const updates: any = { flagged: next };
-    if (next) { updates.done = false; updates.completed_at = null; }
-    const { error } = await supabase.from("checklist_items")
-      .update(updates).in("id", ids);
-    if (error) { toast.error(toUserMessage(error)); return; }
-    if (next) {
-      const ancestors: string[] = [];
-      let parentId: string | null = item.parent_item_id ?? null;
-      while (parentId) {
-        const parent: any = allItems.find((i: any) => i.id === parentId);
-        if (!parent) break;
-        if (parent.done) ancestors.push(parentId);
-        parentId = parent.parent_item_id ?? null;
-      }
-      if (ancestors.length) {
-        const { error: pErr } = await supabase.from("checklist_items")
-          .update({ done: false, completed_at: null }).in("id", ancestors);
-        if (pErr) toast.error(toUserMessage(pErr));
-      }
+    const waitDays = Math.max(0, Math.round(Number(draftFlag.waitDays) || 0));
+    const meta: ChecklistFlagMeta = {
+      ...draftFlag,
+      waitDays,
+      dueDate: dateAfterDays(waitDays),
+      reason: draftFlag.reason.trim(),
+      flaggedAt: itemFlagMeta?.flaggedAt ?? new Date().toISOString(),
+    };
+    if (meta.priority === "black" && meta.reason.length === 0) {
+      toast.error("Black flags need a short reason.");
+      return;
     }
+    const { error } = await updateFlagBranch(ids, meta);
+    if (error) { toast.error(toUserMessage(error)); return; }
+    setFlagMetaById?.((prev: Record<string, ChecklistFlagMeta>) => {
+      const next = { ...prev };
+      ids.forEach((id) => { next[id] = meta; });
+      return next;
+    });
+    const ancestors: string[] = [];
+    let parentId: string | null = item.parent_item_id ?? null;
+    while (parentId) {
+      const parent: any = allItems.find((i: any) => i.id === parentId);
+      if (!parent) break;
+      if (parent.done) ancestors.push(parentId);
+      parentId = parent.parent_item_id ?? null;
+    }
+    if (ancestors.length) {
+      const { error: pErr } = await supabase.from("checklist_items")
+        .update({ done: false, completed_at: null }).in("id", ancestors);
+      if (pErr) toast.error(toUserMessage(pErr));
+    }
+    setFlagDialogOpen(false);
+    onChange();
+  };
+
+  const clearFlag = async () => {
+    const ids = [item.id, ...descendants.map((d: any) => d.id)];
+    const { error } = await updateFlagBranch(ids, null);
+    if (error) { toast.error(toUserMessage(error)); return; }
+    setFlagMetaById?.((prev: Record<string, ChecklistFlagMeta>) => {
+      const next = { ...prev };
+      ids.forEach((id) => delete next[id]);
+      return next;
+    });
+    setFlagDialogOpen(false);
     onChange();
   };
   const itemParentCols = item.component_type_id
@@ -481,7 +577,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
     } else {
       updates.push(supabase.from("checklist_items").update(baseUpd).eq("id", item.id));
     }
-    // Cascade to descendants — group by template_id when present, else by id
+    // Cascade to descendants â€” group by template_id when present, else by id
     const descTemplateIds = new Set<string>();
     const descPlainIds: string[] = [];
     for (const id of descendantIds) {
@@ -573,7 +669,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         mode === "delete" ? (blockedFromMode ? "opacity-40" : selected ? "bg-destructive/15" : "bg-destructive/5 hover:bg-destructive/10") :
         mode === "copy" ? (selected ? "bg-primary/15" : "bg-primary/5 hover:bg-primary/10") :
         inReorder ? "bg-muted/30" :
-        allFlagged ? "bg-destructive/15" : ""
+        allFlagged ? flagClasses.row : ""
       }`}
       onClick={inSelectMode ? onRowClick : (canExpand ? () => setOpen((v) => !v) : undefined)}
     >
@@ -630,8 +726,17 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
           <span className="font-mono text-xs tabular-nums text-muted-foreground">{subsDone}/{subsTotal}</span>
         )}
         {!inMode && descFlagged > 0 && !item.flagged && (
-          <span className="inline-flex items-center gap-0.5 rounded-md border border-destructive/40 bg-destructive/10 px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-destructive" title={`${descFlagged} flagged below`}>
+          <span className={`inline-flex items-center gap-0.5 rounded-md border px-1 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums ${descendantFlagClasses.soft}`} title={`${descFlagged} flagged below`}>
             <Flag className="h-3 w-3 fill-current" />{descFlagged}
+          </span>
+        )}
+        {!inMode && itemFlagMeta && (
+          <span
+            className={`inline-flex max-w-[7.5rem] items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none ${flagClasses.soft}`}
+            title={`${itemFlagMeta.priority} flag: ${flagDueLabel(itemFlagMeta.dueDate)}${itemFlagMeta.reason ? ` - ${itemFlagMeta.reason}` : ""}`}
+          >
+            <Flag className="h-3 w-3 shrink-0 fill-current" />
+            <span className="truncate">{flagDueLabel(itemFlagMeta.dueDate)}</span>
           </span>
         )}
         {!inMode && notesCount > 0 && (
@@ -651,11 +756,11 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
         )}
         {!inMode && canEdit && (
           <button
-            onClick={(e) => { e.stopPropagation(); toggleFlag(); }}
-            title={item.flagged ? "Clear problem flag (also clears sublayers)" : "Flag a problem with this device"}
-            aria-label={item.flagged ? "Unflag problem" : "Flag problem"}
+            onClick={(e) => { e.stopPropagation(); setDraftFlag(itemFlagMeta ?? defaultFlagMeta("red")); setFlagDialogOpen(true); }}
+            title={item.flagged ? "Edit problem flag" : "Flag a problem with this item"}
+            aria-label={item.flagged ? "Edit problem flag" : "Flag problem"}
             className={`inline-flex items-center justify-center rounded p-0.5 transition-colors ${
-              item.flagged ? "text-destructive hover:bg-destructive/15" : "text-muted-foreground/50 hover:bg-accent hover:text-destructive"
+              item.flagged ? `${flagClasses.text} ${flagClasses.hover}` : "text-muted-foreground/50 hover:bg-accent hover:text-destructive"
             }`}
           >
             <Flag className={`h-3.5 w-3.5 ${item.flagged ? "fill-current" : ""}`} />
@@ -671,10 +776,87 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       className={`rounded-md border bg-card ${depth === 0 ? "ml-2 border-l-4 border-l-muted-foreground/30" : ""} ${
         mode === "delete" ? (selected ? "border-destructive" : "border-destructive/40") :
         mode === "copy" ? (selected ? "border-primary" : "border-primary/40") :
-        allFlagged ? "border-destructive/60 bg-destructive/10" :
+        allFlagged ? flagClasses.row :
         item.done ? "border-success/40 bg-success/10" : ""
       }`}>
       {row}
+      <Dialog open={flagDialogOpen} onOpenChange={setFlagDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Problem flag</DialogTitle>
+            <DialogDescription>
+              Set urgency and how many days this issue can wait.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {FLAG_PRIORITIES.map((priority) => {
+                  const active = draftFlag.priority === priority.key;
+                  const classes = flagPriorityClasses(priority.key);
+                  return (
+                    <button
+                      key={priority.key}
+                      type="button"
+                      onClick={() => setDraftFlag((prev) => ({
+                        ...prev,
+                        priority: priority.key,
+                        waitDays: FLAG_DEFAULT_DAYS[priority.key],
+                        dueDate: dateAfterDays(FLAG_DEFAULT_DAYS[priority.key]),
+                      }))}
+                      className={`rounded-md border px-2 py-2 text-left text-xs transition-colors ${active ? classes.soft : "border-border hover:bg-accent"}`}
+                      title={priority.description}
+                    >
+                      <span className="block font-semibold">{priority.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{FLAG_DEFAULT_DAYS[priority.key]}d</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+              <div className="space-y-2">
+                <Label htmlFor={`flag-days-${item.id}`}>Can wait</Label>
+                <Input
+                  id={`flag-days-${item.id}`}
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draftFlag.waitDays}
+                  onChange={(e) => {
+                    const waitDays = Math.max(0, Math.round(Number(e.target.value) || 0));
+                    setDraftFlag((prev) => ({ ...prev, waitDays, dueDate: dateAfterDays(waitDays) }));
+                  }}
+                />
+              </div>
+              <div className={`rounded-md border px-2 py-2 text-xs font-semibold ${flagPriorityClasses(draftFlag.priority).soft}`}>
+                {flagDueLabel(dateAfterDays(Number(draftFlag.waitDays) || 0))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`flag-reason-${item.id}`}>Reason{draftFlag.priority === "black" ? " required" : ""}</Label>
+              <Textarea
+                id={`flag-reason-${item.id}`}
+                value={draftFlag.reason}
+                onChange={(e) => setDraftFlag((prev) => ({ ...prev, reason: e.target.value }))}
+                placeholder="What needs attention?"
+                className="min-h-20"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {item.flagged && (
+              <Button type="button" variant="outline" onClick={clearFlag}>
+                Clear
+              </Button>
+            )}
+            <Button type="button" onClick={applyFlag}>
+              Save flag
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {open && (
         <div className="border-t bg-muted/10">
           {!inMode && canEdit && (
@@ -725,7 +907,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               {currentLine && (
                 <button
                   onClick={toggleLocalLine}
-                  title={item.local_line_id ? "Local to this production line — click to share across all production lines" : "Shared across all production lines — click to make local to this line"}
+                  title={item.local_line_id ? "Local to this production line â€” click to share across all production lines" : "Shared across all production lines â€” click to make local to this line"}
                   aria-label={item.local_line_id ? "Make shared" : "Make local"}
                   className={`ml-auto inline-flex items-center ${showLabels ? "gap-1 px-2 py-0.5 text-[11px]" : "justify-center p-1"} rounded ${item.local_line_id ? "text-muted-foreground hover:bg-accent hover:text-foreground" : "text-primary hover:bg-accent"}`}
                 >
@@ -817,7 +999,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
                     <TreeNode key={s.id} item={s} allItems={allItems} canEdit={canEdit}
                       onChange={onChange} depth={depth + 1} sortable showLabels={false}
                       canDeleteRoot={canDeleteRoot} defaultOpen={defaultOpen}
-                      requestLocalConfirm={requestLocalConfirm} />
+                      requestLocalConfirm={requestLocalConfirm}
+                      flagMetaById={flagMetaById} setFlagMetaById={setFlagMetaById} />
                   ))}
                 </ul>
               </SortableContext>
@@ -875,7 +1058,7 @@ export function PhotoTile({ path, canEdit, onRemove, isShared, onToggleShared, g
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
-          title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          title={isShared ? "Shared across all production lines â€” click to make local" : "Local to this production line â€” click to share across all production lines"}
           className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           {isShared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -901,7 +1084,7 @@ export function FileChip({ f, canEdit, onRemove, onToggleShared }: {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
-          title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          title={f.is_shared ? "Shared across all production lines â€” click to make local" : "Local to this production line â€” click to share across all production lines"}
           className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           {f.is_shared ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
@@ -950,7 +1133,7 @@ function SortablePhotoTile({ id, path, canEdit, onRemove, isShared, onToggleShar
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
-          title={isShared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          title={isShared ? "Shared across all production lines â€” click to make local" : "Local to this production line â€” click to share across all production lines"}
           className={`absolute left-1 top-1 rounded bg-background/80 p-0.5 backdrop-blur ${isShared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           {isShared ? <Share2 className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -993,7 +1176,7 @@ function SortableFileChip({ id, f, canEdit, onRemove, onToggleShared }: {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
-          title={f.is_shared ? "Shared across all production lines — click to make local" : "Local to this production line — click to share across all production lines"}
+          title={f.is_shared ? "Shared across all production lines â€” click to make local" : "Local to this production line â€” click to share across all production lines"}
           className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded ${f.is_shared ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           {f.is_shared ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
