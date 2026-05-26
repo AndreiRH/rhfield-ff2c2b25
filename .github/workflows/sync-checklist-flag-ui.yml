@@ -21,10 +21,9 @@ jobs:
       - name: Restore deployed ChecklistTree
         shell: bash
         run: |
-          curl -fsSL https://raw.githubusercontent.com/AndreiRH/rhfield-ff2c2b25/70f83d3c9be3b7ee033e53ba4684c9e0bf506b15/.github/workflows/sync-checklist-flag-ui.yml \
-            | awk '/^H4sIA/{print}' \
-            | base64 -d \
-            | gzip -d > src/components/ChecklistTree.tsx
+          payload=$(curl -fsSL https://raw.githubusercontent.com/AndreiRH/rhfield-ff2c2b25/70f83d3c9be3b7ee033e53ba4684c9e0bf506b15/.github/workflows/sync-checklist-flag-ui.yml | awk '/^H4sIA/{print}')
+          payload="${payload:0:2407}R${payload:2407}"
+          printf '%s' "$payload" | base64 -d | gzip -d > src/components/ChecklistTree.tsx
           test -s src/components/ChecklistTree.tsx
       - name: Build
         run: |
