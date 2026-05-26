@@ -1,0 +1,201 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export type FlagPriority = "yellow" | "red" | "black";
+export type FlagStatus = "open" | "acknowledged" | "resolved";
+
+export type ChecklistFlagMeta = {
+  priority: FlagPriority;
+  waitDays: number;
+  dueDate: string;
+  reason: string;
+  status: FlagStatus;
+  flaggedAt: string;
+};
+
+export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
+  black: 1,
+  red: 7,
+  yellow: 14,
+};
+
+export const FLAG_PRIORITIES: Array<{
+  key: FlagPriority;
+  label: string;
+  description: string;
+}> = [
+  { key: "black", label: "Black", description: "Critical. Stop and resolve fast." },
+  { key: "red", label: "Red", description: "Important. Should not wait long." },
+  { key: "yellow", label: "Yellow", description: "Watch item. Can wait briefly." },
+];
+
+const STORAGE_KEY = "rhfield:checklist-flag-meta";
+
+function todayAtNoon() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
+export function dateAfterDays(days: number) {
+  const date = todayAtNoon();
+  date.setDate(date.getDate() + Math.max(0, Math.round(days)));
+  return date.toISOString().slice(0, 10);
+}
+
+function isPriority(value: unknown): value is FlagPriority {
+  return value === "yellow" || value === "red" || value === "black";
+}
+
+function isStatus(value: unknown): value is FlagStatus {
+  return value === "open" || value === "acknowledged" || value === "resolved";
+}
+
+export function defaultFlagMeta(priority: FlagPriority = "red"): ChecklistFlagMeta {
+  const waitDays = FLAG_DEFAULT_DAYS[priority];
+  return {
+    priority,
+    waitDays,
+    dueDate: dateAfterDays(waitDays),
+    reason: "",
+    status: "open",
+    flaggedAt: new Date().toISOString(),
+  };
+}
+
+export function normalizeFlagMeta(input: any, fallbackPriority: FlagPriority = "red"): ChecklistFlagMeta {
+  const priority = isPriority(input?.priority ?? input?.flag_priority)
+    ? (input.priority ?? input.flag_priority)
+    : fallbackPriority;
+  const parsedDays = Number(input?.waitDays ?? input?.flag_wait_days ?? FLAG_DEFAULT_DAYS[priority]);
+  const waitDays = Number.isFinite(parsedDays) && parsedDays >= 0
+    ? Math.round(parsedDays)
+    : FLAG_DEFAULT_DAYS[priority];
+  return {
+    priority,
+    waitDays,
+    dueDate: String(input?.dueDate ?? input?.flag_due_date ?? dateAfterDays(waitDays)),
+    reason: String(input?.reason ?? input?.flag_reason ?? ""),
+    status: isStatus(input?.status ?? input?.flag_status) ? (input.status ?? input.flag_status) : "open",
+    flaggedAt: String(input?.flaggedAt ?? input?.flagged_at ?? new Date().toISOString()),
+  };
+}
+
+function readStore(): Record<string, ChecklistFlagMeta> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
+    return Object.fromEntries(
+      Object.entries(parsed).map(([id, value]) => [id, normalizeFlagMeta(value)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeStore(store: Record<string, ChecklistFlagMeta>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
+export function getStoredFlagMeta(ids: string[]) {
+  const store = readStore();
+  return Object.fromEntries(ids.map((id) => [id, store[id]]).filter(([, value]) => !!value));
+}
+
+export function rememberFlagMeta(ids: string[], meta: ChecklistFlagMeta | null) {
+  const store = readStore();
+  for (const id of ids) {
+    if (meta) store[id] = meta;
+    else delete store[id];
+  }
+  writeStore(store);
+}
+
+export async function fetchFlagMeta(ids: string[]) {
+  if (!ids.length) return {};
+  const { data, error } = await (supabase as any)
+    .from("checklist_items")
+    .select("id, flag_priority, flag_wait_days, flag_due_date, flag_reason, flag_status, flagged_at")
+    .in("id", ids);
+  if (error) return {};
+  return Object.fromEntries(
+    (data ?? [])
+      .filter((row: any) => row.id && row.flag_priority)
+      .map((row: any) => [row.id, normalizeFlagMeta(row)]),
+  );
+}
+
+export async function updateFlagBranch(ids: string[], meta: ChecklistFlagMeta | null) {
+  if (!ids.length) return { error: null as any };
+  rememberFlagMeta(ids, meta);
+
+  const richUpdate = meta
+    ? {
+        flagged: true,
+        done: false,
+        completed_at: null,
+        flag_priority: meta.priority,
+        flag_wait_days: meta.waitDays,
+        flag_due_date: meta.dueDate,
+        flag_reason: meta.reason || null,
+        flag_status: meta.status,
+        flagged_at: meta.flaggedAt,
+        flag_resolved_at: null,
+      }
+    : {
+        flagged: false,
+        flag_priority: null,
+        flag_wait_days: null,
+        flag_due_date: null,
+        flag_reason: null,
+        flag_status: null,
+        flagged_at: null,
+        flag_resolved_at: null,
+      };
+
+  const rich = await (supabase as any).from("checklist_items").update(richUpdate).in("id", ids);
+  if (!rich.error) return rich;
+
+  const legacyUpdate = meta
+    ? { flagged: true, done: false, completed_at: null }
+    : { flagged: false };
+  return supabase.from("checklist_items").update(legacyUpdate).in("id", ids);
+}
+
+export function flagDueLabel(dueDate: string) {
+  const due = new Date(`${dueDate}T12:00:00`);
+  const now = todayAtNoon();
+  const days = Math.round((due.getTime() - now.getTime()) / 86_400_000);
+  if (days < 0) return `${Math.abs(days)}d overdue`;
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return `${days}d left`;
+}
+
+export function flagPriorityClasses(priority: FlagPriority) {
+  if (priority === "black") {
+    return {
+      text: "text-zinc-950 dark:text-zinc-50",
+      badge: "border-zinc-950/50 bg-zinc-950 text-white dark:border-zinc-50/60 dark:bg-zinc-50 dark:text-zinc-950",
+      soft: "border-zinc-800/40 bg-zinc-100 text-zinc-950 dark:border-zinc-100/40 dark:bg-zinc-900 dark:text-zinc-50",
+      hover: "hover:bg-zinc-950/10 hover:text-zinc-950 dark:hover:bg-zinc-50/10 dark:hover:text-zinc-50",
+      row: "border-zinc-800/50 bg-zinc-100/80 dark:border-zinc-100/40 dark:bg-zinc-900/60",
+    };
+  }
+  if (priority === "red") {
+    return {
+      text: "text-destructive",
+      badge: "border-destructive/50 bg-destructive text-destructive-foreground",
+      soft: "border-destructive/40 bg-destructive/10 text-destructive",
+      hover: "hover:bg-destructive/15 hover:text-destructive",
+      row: "border-destructive/60 bg-destructive/10",
+    };
+  }
+  return {
+    text: "text-amber-700 dark:text-amber-300",
+    badge: "border-amber-500/60 bg-amber-400 text-amber-950",
+    soft: "border-amber-400/60 bg-amber-100 text-amber-900 dark:border-amber-300/50 dark:bg-amber-950/50 dark:text-amber-200",
+    hover: "hover:bg-amber-100 hover:text-amber-800 dark:hover:bg-amber-950/50 dark:hover:text-amber-200",
+    row: "border-amber-400/60 bg-amber-50 dark:border-amber-300/40 dark:bg-amber-950/30",
+  };
+}
