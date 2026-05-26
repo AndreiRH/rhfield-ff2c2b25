@@ -225,7 +225,7 @@ export function ChecklistTree({
   );
 }
 
-const FLAG_SEVERITY: Record<FlagPriority, number> = { yellow: 1, red: 2, black: 3 };
+const FLAG_SEVERITY: Record<FlagPriority, number> = { yellow: 1, orange: 2, red: 3 };
 
 function highestFlagPriority(priorities: FlagPriority[]) {
   return priorities.sort((a, b) => FLAG_SEVERITY[b] - FLAG_SEVERITY[a])[0] ?? "red";
@@ -388,8 +388,8 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
       reason: draftFlag.reason.trim(),
       flaggedAt: itemFlagMeta?.flaggedAt ?? new Date().toISOString(),
     };
-    if (meta.priority === "black" && meta.reason.length === 0) {
-      toast.error("Black flags need a short reason.");
+    if (meta.priority === "red" && meta.reason.length === 0) {
+      toast.error("Red flags need a short reason.");
       return;
     }
     const { error } = await updateFlagBranch(ids, meta);
@@ -835,7 +835,7 @@ function TreeNode({ item, allItems, canEdit, onChange, depth, sortable, showLabe
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`flag-reason-${item.id}`}>Reason{draftFlag.priority === "black" ? " required" : ""}</Label>
+              <Label htmlFor={`flag-reason-${item.id}`}>Reason{draftFlag.priority === "red" ? " required" : ""}</Label>
               <Textarea
                 id={`flag-reason-${item.id}`}
                 value={draftFlag.reason}
