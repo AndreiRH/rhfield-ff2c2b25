@@ -10,7 +10,7 @@ ALTER TABLE public.checklist_items
 ALTER TABLE public.checklist_items
   DROP CONSTRAINT IF EXISTS checklist_items_flag_priority_check,
   ADD CONSTRAINT checklist_items_flag_priority_check
-    CHECK (flag_priority IS NULL OR flag_priority IN ('yellow', 'red', 'black'));
+    CHECK (flag_priority IS NULL OR flag_priority IN ('yellow', 'orange', 'red'));
 
 ALTER TABLE public.checklist_items
   DROP CONSTRAINT IF EXISTS checklist_items_flag_status_check,
