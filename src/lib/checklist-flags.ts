@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type FlagPriority = "yellow" | "red" | "black";
+export type FlagPriority = "yellow" | "orange" | "red";
 export type FlagStatus = "open" | "acknowledged" | "resolved";
 
 export type ChecklistFlagMeta = {
@@ -13,8 +13,8 @@ export type ChecklistFlagMeta = {
 };
 
 export const FLAG_DEFAULT_DAYS: Record<FlagPriority, number> = {
-  black: 1,
-  red: 7,
+  red: 1,
+  orange: 7,
   yellow: 14,
 };
 
@@ -23,8 +23,8 @@ export const FLAG_PRIORITIES: Array<{
   label: string;
   description: string;
 }> = [
-  { key: "black", label: "Black", description: "Critical. Stop and resolve fast." },
-  { key: "red", label: "Red", description: "Important. Should not wait long." },
+  { key: "red", label: "Red", description: "Critical. Stop and resolve fast." },
+  { key: "orange", label: "Orange", description: "Important. Should not wait long." },
   { key: "yellow", label: "Yellow", description: "Watch item. Can wait briefly." },
 ];
 
@@ -43,7 +43,7 @@ export function dateAfterDays(days: number) {
 }
 
 function isPriority(value: unknown): value is FlagPriority {
-  return value === "yellow" || value === "red" || value === "black";
+  return value === "yellow" || value === "orange" || value === "red";
 }
 
 function isStatus(value: unknown): value is FlagStatus {
@@ -63,8 +63,11 @@ export function defaultFlagMeta(priority: FlagPriority = "red"): ChecklistFlagMe
 }
 
 export function normalizeFlagMeta(input: any, fallbackPriority: FlagPriority = "red"): ChecklistFlagMeta {
-  const priority = isPriority(input?.priority ?? input?.flag_priority)
-    ? (input.priority ?? input.flag_priority)
+  const rawPriority = input?.priority ?? input?.flag_priority;
+  const priority = rawPriority === "black"
+    ? "red"
+    : isPriority(rawPriority)
+    ? rawPriority
     : fallbackPriority;
   const parsedDays = Number(input?.waitDays ?? input?.flag_wait_days ?? FLAG_DEFAULT_DAYS[priority]);
   const waitDays = Number.isFinite(parsedDays) && parsedDays >= 0
@@ -173,15 +176,6 @@ export function flagDueLabel(dueDate: string) {
 }
 
 export function flagPriorityClasses(priority: FlagPriority) {
-  if (priority === "black") {
-    return {
-      text: "text-zinc-950 dark:text-zinc-50",
-      badge: "border-zinc-950/50 bg-zinc-950 text-white dark:border-zinc-50/60 dark:bg-zinc-50 dark:text-zinc-950",
-      soft: "border-zinc-800/40 bg-zinc-100 text-zinc-950 dark:border-zinc-100/40 dark:bg-zinc-900 dark:text-zinc-50",
-      hover: "hover:bg-zinc-950/10 hover:text-zinc-950 dark:hover:bg-zinc-50/10 dark:hover:text-zinc-50",
-      row: "border-zinc-800/50 bg-zinc-100/80 dark:border-zinc-100/40 dark:bg-zinc-900/60",
-    };
-  }
   if (priority === "red") {
     return {
       text: "text-destructive",
@@ -189,6 +183,15 @@ export function flagPriorityClasses(priority: FlagPriority) {
       soft: "border-destructive/40 bg-destructive/10 text-destructive",
       hover: "hover:bg-destructive/15 hover:text-destructive",
       row: "border-destructive/60 bg-destructive/10",
+    };
+  }
+  if (priority === "orange") {
+    return {
+      text: "text-orange-700 dark:text-orange-300",
+      badge: "border-orange-500/60 bg-orange-500 text-white",
+      soft: "border-orange-400/60 bg-orange-100 text-orange-900 dark:border-orange-300/50 dark:bg-orange-950/50 dark:text-orange-200",
+      hover: "hover:bg-orange-100 hover:text-orange-800 dark:hover:bg-orange-950/50 dark:hover:text-orange-200",
+      row: "border-orange-400/60 bg-orange-50 dark:border-orange-300/40 dark:bg-orange-950/30",
     };
   }
   return {
