@@ -3,6 +3,9 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { lineOverallPct, flaggedInLine } from "@/lib/progress";
+import { FlagBadge } from "@/components/FlagBadge";
+import { ProgressBar } from "@/components/ProgressBar";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +14,8 @@ import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton"
 
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
+
+const lineProgress = lineOverallPct;
 
 function ProjectDashboard() {
   const { projectId } = Route.useParams();
@@ -27,7 +32,25 @@ function ProjectDashboard() {
       if (pe) throw pe;
       const { data: lines, error: le } = await supabase
         .from("lines")
-        .select("id, number, name")
+        .select(`
+          id, number, name,
+          plant_equipment(
+            id, deleted_at, mech_mode, mech_manual_pct,
+            equipment_groups(
+              id, chapter, deleted_at,
+              components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id)),
+              component_types(
+                id, deleted_at,
+                checklist_items(id, done, flagged, deleted_at, parent_item_id),
+                components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
+              )
+            )
+          ),
+          equipment_groups(
+            id, kind, deleted_at,
+            components(id, deleted_at, checklist_items(id, done, flagged, deleted_at, parent_item_id))
+          )
+        `)
         .eq("project_id", projectId)
         .order("number");
       if (le) throw le;
@@ -36,6 +59,10 @@ function ProjectDashboard() {
   });
 
   if (!session) return null;
+
+  const lineProgresses = (data?.lines ?? []).map(lineProgress);
+  const overallPct = lineProgresses.length === 0 ? 0
+    : Math.round(lineProgresses.reduce((s, n) => s + n, 0) / lineProgresses.length);
 
   return (
     <div className="min-h-screen">
@@ -53,7 +80,8 @@ function ProjectDashboard() {
               <div>
                 <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</div>
                 <h1 className="mt-1 text-3xl font-semibold">{data?.project?.name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines</p>
+                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
+                <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
               <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
                 <ProjectHotCalendarButton projectId={projectId} />
@@ -72,19 +100,22 @@ function ProjectDashboard() {
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {(data?.lines ?? []).map((l: any) => {
+          {(data?.lines ?? []).map((l: any, i: number) => {
+            const pct = lineProgresses[i];
+            const flagCount = flaggedInLine(l);
             return (
               <Link key={l.id} to="/p/$projectId/lines/$lineNumber" params={{ projectId, lineNumber: String(l.number) }}>
                 <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="p-4">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Production line</span>
-                      <span className="text-xs text-muted-foreground">Open</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="text-3xl font-semibold tabular-nums">{l.number.toString().padStart(2, "0")}</div>
+                      <FlagBadge count={flagCount} />
                     </div>
-                    {l.name && <p className="mt-2 text-xs text-muted-foreground">{l.name}</p>}
+                    <div className="mt-3"><ProgressBar value={pct} size="sm" /></div>
                   </CardContent>
                 </Card>
               </Link>
