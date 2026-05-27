@@ -43,13 +43,13 @@ function ProjectsPage() {
     <div className="min-h-screen">
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6 flex items-end justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Projects</h1>
             <p className="text-sm text-muted-foreground">Active commissioning projects.</p>
           </div>
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               <NewProjectButton />
               <ImportProjectButton />
             </div>
