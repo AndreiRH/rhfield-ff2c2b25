@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Folder, ChevronLeft } from "lucide-react";
 import { ProjectHotCalendarButton } from "@/components/ProjectHotCalendarButton";
+import { PartListImportButton } from "@/components/PartListImportButton";
 
 
 export const Route = createFileRoute("/p/$projectId/")({ component: ProjectDashboard });
@@ -19,7 +20,7 @@ const lineProgress = lineOverallPct;
 
 function ProjectDashboard() {
   const { projectId } = Route.useParams();
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { if (!loading && !session) navigate({ to: "/login" }); }, [session, loading, navigate]);
 
@@ -80,10 +81,11 @@ function ProjectDashboard() {
               <div>
                 <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project</div>
                 <h1 className="mt-1 text-3xl font-semibold">{data?.project?.name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines · {overallPct}% overall</p>
+                <p className="mt-1 text-sm text-muted-foreground">{data?.lines?.length ?? 0} production lines Â· {overallPct}% overall</p>
                 <div className="mt-4 max-w-md"><ProgressBar value={overallPct} size="lg" /></div>
               </div>
               <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                {isAdmin && <PartListImportButton projectId={projectId} />}
                 <ProjectHotCalendarButton projectId={projectId} />
                 {/* AI Search hidden until the feature is ready.
                 <Link
@@ -91,7 +93,7 @@ function ProjectDashboard() {
                   params={{ projectId }}
                   className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
                 >
-                  ✨ AI Search
+                  âœ¨ AI Search
                 </Link>
                 */}
               </div>
