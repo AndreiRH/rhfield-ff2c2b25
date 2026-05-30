@@ -68,8 +68,8 @@ export function ImportProjectButton() {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Upload className="mr-2 h-4 w-4" /> Import from ZIP
+        <Button variant="outline" size="sm" className="min-w-0 flex-1 sm:flex-none">
+          <Upload className="h-4 w-4" /> Import from ZIP
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
@@ -88,7 +88,7 @@ export function ImportProjectButton() {
             </div>
             <div>
               <Label htmlFor="name">New project name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Plant – restored" />
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Plant - restored" />
             </div>
             <Alert>
               <AlertTriangle className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function ImportProjectButton() {
                   <div>{summary.counts.checklist_items ?? 0} checklist items</div>
                   <div>{summary.counts.equipment_notes ?? 0} equipment notes</div>
                   <div>{summary.counts.pa_folders ?? 0} provisional acceptance folders</div>
-                  <div>{summary.counts.milestones ?? 0} milestones</div>
+                  <div>{summary.counts.line_activities ?? 0} line activities</div>
                   <div className="pt-1">{summary.mediaUploaded} media files uploaded{summary.mediaMissing > 0 ? `, ${summary.mediaMissing} missing` : ""}</div>
                 </div>
               </AlertDescription>
